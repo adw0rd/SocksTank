@@ -2,7 +2,13 @@
 
 ### Camera
 
-Запускаем camera2.py
+Запускаем камеру
+
+```bash
+sudo python camera.py
+```
+
+Раз в 10 секунд будет делать 10 снимков с паузой в 2 секунды
 
 ### Roboflow: Upload Data
 
