@@ -18,7 +18,27 @@
 
 ### Roboflow: Versions
 
-1. Create New Version (+Augmentation)
-2. Download Dataset
+Create New Version (+Augmentation)
   
 <img width="1406" height="439" alt="image" src="https://github.com/user-attachments/assets/02dc7c54-c0b4-49e0-9636-459974bde62a" />
+
+После чего скачиваем датасет (кнопка "Download Dataset") в формате "Yolo v8"
+
+### Yolo
+
+Обучение m3 pro
+
+```
+mkdir test && cd test
+curl -L "https://app.roboflow.com/ds/LKb6HuPfNp?key=588uQVlgla" > roboflow.zip; unzip roboflow.zip; rm roboflow.zip
+yolo task=detect mode=train model=yolov8n.pt imgsz=640 data=data.yaml epochs=10 batch=8 name=/path/to/result
+```
+
+Либо через ultralytics
+
+```py
+from ultralytics import YOLO
+model = YOLO("yolo11n.pt")  # load a pretrained model (recommended for training)
+# Train the model with MPS
+results = model.train(data="coco8.yaml", epochs=100, imgsz=640, device="mps")
+```
