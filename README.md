@@ -25,7 +25,7 @@ sudo python camera.py
 ## Roboflow: Versions
 
 Create New Version (+Augmentation)
-  
+
 <img width="1406" height="439" alt="image" src="https://github.com/user-attachments/assets/02dc7c54-c0b4-49e0-9636-459974bde62a" />
 
 После чего скачиваем датасет (кнопка "Download Dataset") в формате "Yolo v8"
@@ -37,7 +37,7 @@ nvidia-smi
 ncc
 
 python3 -m venv venv
-
+pip install ultralytics
 ```
 
 ## YOLOv8
@@ -51,7 +51,7 @@ mkdir test && cd test
 curl -L "https://app.roboflow.com/ds/LKb6HuPfNp?key=588uQVlgla" > roboflow.zip; unzip roboflow.zip; rm roboflow.zip
 ```
 
-Обучение на Apple Silicon (m3 pro):
+Обучение на Apple Silicon (m3 pro), для этого надо указать "device=mps":
 
 ```bash
 yolo task=detect mode=train model=yolov8n.pt imgsz=640 data=data.yaml epochs=10 batch=8 name=/path/to/result device=mps
@@ -62,6 +62,7 @@ yolo task=detect mode=train model=yolov8n.pt imgsz=640 data=data.yaml epochs=10 
 
 ```py
 from ultralytics import YOLO
-model = YOLO("yolo11n.pt")
-results = model.train(data="coco8.yaml", epochs=100, imgsz=640, device="mps")
+
+model = YOLO("yolov8n.pt")
+results = model.train(data="data.yaml", epochs=10, imgsz=640, batch=8, device="mps")
 ```
