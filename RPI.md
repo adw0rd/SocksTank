@@ -1,9 +1,36 @@
+## Обновление до deb12u1-u3
+
+```
+sudo rm /var/lib/apt/lists/*.debian.org_*
+sudo apt update
+sudo apt upgrade -y
+```
+
 # Установка
 
-Чтобы работал Led нужно доустановить rpi_ws281x:
+Установка тулзов:
+
+```
+sudo apt install htop mc emacs-nox git screen
+```
+
+Можно установить сразу все зависимости, установить тип камеры (у меня "ov5647", подробнее в Tutorial.pdf):
+
+```
+cd ~/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/Code
+sudo python setup.py
+```
+
+Чтобы работал Led нужно доустановить `rpi_ws281x`:
 
 ```
 sudo pip install rpi_ws281x --break-system-packages
+```
+
+Чтобы работал Servo нужно доустановить `rpi-hardware-pwm`:
+
+```
+sudo pip install rpi-hardware-pwm --break-system-packages
 ```
 
 # Автозаспуск
@@ -21,12 +48,45 @@ sudo pigpiod
 # sudo python main.py
 ```
 
-И добавляем его в автозапуск:
+Создаем каталог и файл автозапуска:
 
 ```
 mkdir ~/.config/autostart/
-echo "Exec=/home/zeus/start.sh" > ~/.config/autostart/start.desktop
+touch ~/.config/autostart/start.desktop
+chmod +x ~/.config/autostart/start.desktop
 chmod +x ~/start.sh
+```
+
+И добавляем его в автозапуск `~/.config/autostart/start.desktop`:
+
+```
+[Desktop Entry]
+Type=Application
+Name=start
+NoDisplay=true
+Exec=/home/zeus/start.sh
+```
+
+## Камера
+
+```
+sudo apt install libcap-dev
+sudo apt install python3-picamera2
+# OR
+sudo pip install picamera2 --break-system-packages
+```
+
+```
+. ~/.venv/bin/activate
+pip install picamera2
+```
+
+Добавить запуск иксов и камеры в `/boot/firmware/config.txt`:
+
+```
+start_x=1
+gpu_mem=128
+camera_auto_detect=1
 ```
 
 ## Разгон
@@ -63,4 +123,14 @@ CPU(s) scaling MHz:                   100%
 CPU max MHz:                          2200.0000
 CPU min MHz:                          2200.0000
 NUMA node0 CPU(s):                    0-3
+```
+
+
+## Проверка
+
+```
+cd ~/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/Code/Server/
+sudo python test.py Led
+sudo python test.py Servo
+sudo python test.py Motor
 ```
