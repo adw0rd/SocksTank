@@ -1,5 +1,7 @@
 ## Обновление до deb12u1-u3
 
+Иначе не установится emacs-nox, libcap-dev.
+
 ```
 sudo rm /var/lib/apt/lists/*.debian.org_*
 sudo apt update
@@ -15,6 +17,9 @@ sudo apt install htop mc emacs-nox git screen
 ```
 
 Можно установить сразу все зависимости, установить тип камеры (у меня "ov5647", подробнее в Tutorial.pdf):
+
+<img width="691" height="343" alt="image" src="https://github.com/user-attachments/assets/92a97d1a-6de4-4354-aee3-20511d304f79" />
+
 
 ```
 cd ~/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/Code
