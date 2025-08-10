@@ -74,6 +74,11 @@ Exec=/home/zeus/start.sh
 
 ## Камера
 
+Camera info, drivers:
+```
+v4l2-ctl --device /dev/video0 --all
+```
+
 ```
 sudo apt install libcap-dev
 sudo apt install python3-picamera2
@@ -81,17 +86,17 @@ sudo apt install python3-picamera2
 sudo pip install picamera2 --break-system-packages
 ```
 
-```
-. ~/.venv/bin/activate
-pip install picamera2
-```
-
 Добавить запуск иксов и камеры в `/boot/firmware/config.txt`:
 
 ```
 start_x=1
-gpu_mem=128
-camera_auto_detect=1
+gpu_mem=512
+
+# dtoverlay=vc4-kms-v3d
+dtoverlay=cma,cma-320
+dtoverlay=dmaheap,size=128M
+# dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,func2=4
+dtoverlay=ov5647
 ```
 
 ## Разгон
@@ -138,4 +143,24 @@ cd ~/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/Code/Server/
 sudo python test.py Led
 sudo python test.py Servo
 sudo python test.py Motor
+```
+
+
+## Установка ultralytics/YOLO
+
+```
+pip install ultralytics[extra] --break-system-packages
+```
+
+Если после установки `ultralytics` возникла ошибка:
+
+```
+  File "simplejpeg/_jpeg.pyx", line 1, in init simplejpeg._jpeg
+ValueError: numpy.dtype size changed, may indicate binary incompatibility. Expected 96 from C header, got 88 from PyObject
+```
+
+Поможет переустановка picamera2 и simplejpeg:
+
+```
+pip install --upgrade picamera2 simplejpeg --break-system-packages
 ```
