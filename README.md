@@ -2,7 +2,7 @@
 
 На базе проекта [Freenove Tank Robot](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi) был выдуман проект `SocksTank`, его главная миссия - искать носки по квартире и собирать их в общую кучу, рядом со стиральной машинкой.
 
-![SocksTank](assets/sockstank.jpeg)
+![SocksTank](assets/SocksTank.jpeg)
 
 Если вы уже собрали проект [Freenove Tank](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi), то можно приступить к обучению модели и инференсу на Raspberry Pi. Для этого я пошагово разложил своё скромное руководство:
 
