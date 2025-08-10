@@ -1,10 +1,14 @@
 # SocksTank
 
-На базе проекта [Freenove Tank Robot](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi) был выдуман проект `SocksTank`, его главная миссия - искать носки по квартире и собирать их в общую кучу, рядом со стиральной машинкой.
+<img align="left" width="200px" src="assets/SocksTank.jpeg">
 
-![SocksTank](assets/SocksTank.jpeg)
+На базе проекта [Freenove Tank Robot](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi) был выдуман проект `SocksTank`, его главная миссия - искать носки по всей квартире и аккуратно собирать их в одну большую кучу прямо возле стиральной машинки.
 
-Если вы уже собрали проект [Freenove Tank](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi), то можно приступить к обучению модели и инференсу на Raspberry Pi. Для этого я пошагово разложил своё скромное руководство:
+Если вы уже успешно собрали проект [Freenove Tank](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi), тогда самое время перейти к следующему этапу: обучение собственной модели и последующий запуск её на платформе Raspberry Pi.
+
+Я подготовил подробнейшее руководство, которое шаг за шагом проведет вас через весь процесс настройки и запуска модели на вашем устройстве.
+
+---
 
 * **Подготовка Raspberry Pi**
     * [Выбор между RPI4B и RPI5](docs/ru/rpi.md)
