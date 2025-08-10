@@ -38,7 +38,7 @@ sudo pip install rpi_ws281x --break-system-packages
 sudo pip install rpi-hardware-pwm --break-system-packages
 ```
 
-# Автозаспуск
+# Автозапуск
 
 Описываем `~/start.sh`:
 
