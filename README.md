@@ -12,10 +12,10 @@
 
 * **Подготовка Raspberry Pi**
     * [Выбор между RPI4B и RPI5](docs/ru/rpi.md)
-    * [Запуск с носителя (sd card, usb flash, hat+ssd)](docs/ru/rpi5.md#storage)
-    * [Обновление Raspberry Pi OS (Debian) до deb12u1-u3](docs/ru/rpi5.md#upgrade)
-    * [Установка зависимостей](docs/ru/rpi5.md#deps)
-    * [Настройка автозапуска](docs/ru/rpi5.md#autostart)
+    * [Запуск с носителя (sd card, usb flash, hat+ssd)](docs/ru/rpi5.md#user-content-storage)
+    * [Обновление Raspberry Pi OS (Debian) до deb12u1-u3](docs/ru/rpi5.md#user-content-upgrade)
+    * [Установка зависимостей](docs/ru/rpi5.md#user-content-deps)
+    * [Настройка автозапуска](docs/ru/rpi5.md#user-content-autostart)
     * [Работа с камерой](docs/ru/rpi5.md#camera)
     * [Разгон Raspberry Pi](docs/ru/rpi5.md#boost)
     * [Охлаждение](docs/ru/rpi5.md#cooling)
