@@ -4,7 +4,7 @@
 
 ![telegram-cloud-photo-size-2-5244546013975413165-x](https://github.com/user-attachments/assets/b198d248-06c3-4d03-9301-35bda57b878f)
 
-Таким образом, после сборки проекта `Freenove Tank` можно будет перейти к обучению модели и инференсу на Raspberry PI
+Таким образом, после сборки проекта [Freenove Tank](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi) можно будет перейти к обучению модели и инференсу на Raspberry PI
 
 * **Подготовка Raspberry Pi**
     * [Выбор между RPI4B и RPI5](docs/rpi.md)
