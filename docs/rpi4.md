@@ -164,3 +164,9 @@ ValueError: numpy.dtype size changed, may indicate binary incompatibility. Expec
 ```
 pip install --upgrade picamera2 simplejpeg --break-system-packages
 ```
+
+## Vnc
+
+WayVNC
+rasp-config
+RealVNC Viewer
