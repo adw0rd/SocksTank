@@ -1,4 +1,4 @@
-## Обновление до deb12u1-u3
+<h1 id="upgrade">Обновление до deb12u1-u3</h1>
 
 Иначе не установится emacs-nox, libcap-dev.
 
@@ -8,7 +8,7 @@ sudo apt update
 sudo apt upgrade -y
 ```
 
-# Установка
+<h1 id="deps">Установка</h1>
 
 Установка тулзов:
 
@@ -38,7 +38,7 @@ sudo pip install rpi_ws281x --break-system-packages
 sudo pip install rpi-hardware-pwm --break-system-packages
 ```
 
-# Автозапуск
+<h1 id="autostart">Автозапуск</h1>
 
 Описываем `~/start.sh`:
 
