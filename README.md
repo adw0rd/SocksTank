@@ -12,6 +12,7 @@
     * [Настройка автозапуска](docs/rpi5.md#autostart)
     * [Работа с камерой](docs/rpi5.md#camera)
     * [Разгон процессора](docs/rpi5.md#boost)
+    * [Охлаждение](docs/rpi5.md#cooling)
     * [Установка ultralytics](docs/rpi5.md#ultralytics)
 * Подготовака датасета:
     * [Создание коллекции фотографий носков](docs/camera_shot.md)
