@@ -20,7 +20,7 @@
     * [Разгон Raspberry Pi](docs/ru/rpi5.md#user-content-boost)
     * [Охлаждение](docs/ru/rpi5.md#user-content-cooling)
     * [Установка ultralytics, pytorch и т.д.](docs/ru/rpi5.md#user-content-ultralytics)
-* **Подготовака датасета**
+* **Подготовка датасета**
     * [Создание коллекции фотографий носков](docs/ru/dataset.md#user-content-camera)
     * [Использование Roboflow для аннотаций](docs/ru/dataset.md#user-content-roboflow)
     * [Аугментация при помощи imgaug](docs/ru/dataset.md#user-content-augmentation)
