@@ -39,7 +39,7 @@ def bench(
 
 @app.command()
 def detect(
-    model: str = typer.Option("models/yolo8_best.pt", help="Путь к обученной модели"),
+    model: str = typer.Option("models/yolo11_best.pt", help="Путь к обученной модели"),
     output: str = typer.Option("detect.mp4", help="Выходной видеофайл"),
     conf: float = typer.Option(0.5, help="Порог уверенности"),
     frames: int = typer.Option(300, help="Макс. количество кадров"),
@@ -146,7 +146,7 @@ def shot(
 
 @app.command()
 def serve(
-    model: str = typer.Option("models/yolo8_best.pt", help="Путь к модели YOLO"),
+    model: str = typer.Option("models/yolo11_best.pt", help="Путь к модели YOLO"),
     conf: float = typer.Option(0.5, help="Порог уверенности"),
     host: str = typer.Option("0.0.0.0", help="Хост"),
     port: int = typer.Option(8080, help="Порт"),
