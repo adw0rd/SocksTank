@@ -37,24 +37,25 @@
 
 **Автозапуск**: `start.sh` запускает `pigpiod` (демон для GPIO). Запуск сервера Freenove закомментирован.
 
-### GPU-сервер (для тренировки)
+### blackops (GPU-сервер для тренировки)
 
 - **Назначение**: тренировка моделей YOLO на GPU
+- **GPU**: NVIDIA RTX 4070 SUPER
 
 **Рабочая директория**:
 ```
 ~/work/
 ├── test20250807_yolov8/        # Основная рабочая директория
+│   ├── venv/                   # Python venv (ultralytics + torch)
 │   ├── data.yaml               # Конфиг датасета v2 (961 изображение)
 │   ├── train.py                # Скрипт тренировки (100 эпох)
 │   ├── bench.py                # Бенчмарк модели
 │   ├── train/valid/test/       # Датасет (train/valid/test splits)
 │   ├── yolov8n.pt              # Базовая модель YOLOv8n
 │   ├── yolo11n.pt              # Базовая модель YOLOv11n
-│   └── RESULT/                 # Лучший результат (100 эпох, batch=16, GPU)
-│       ├── weights/best.pt     # mAP50=0.995, mAP50-95=0.885
-│       ├── results.csv         # Метрики по эпохам
-│       └── confusion_matrix.png, F1_curve.png, etc.
+│   └── runs/detect/            # Результаты тренировок
+│       ├── train/weights/best.pt   # YOLOv8n: mAP50=0.995, mAP50-95=0.885
+│       └── train2/weights/best.pt  # YOLOv11n: mAP50=0.995, mAP50-95=0.96
 └── ultralytics/                # Клон репо ultralytics (для разработки)
 ```
 
@@ -63,14 +64,14 @@
 Все устройства в одной локальной сети. Для удобства рекомендуется настроить SSH-алиасы в `~/.ssh/config`:
 
 ```
-Host rpi
+Host rpi4
     HostName 192.168.x.x
     User user
 
-Host gpu-server
+Host blackops
     HostName 192.168.x.x
     User user
-    IdentityFile ~/.ssh/gpu-server
+    IdentityFile ~/.ssh/blackops
 ```
 
 Реальные IP-адреса, имена пользователей и SSH-ключи — в `docs/credentials.md` (не коммитится).
@@ -78,12 +79,12 @@ Host gpu-server
 ## Аппаратная часть робота
 
 ### GPIO распиновка
-| Компонент | GPIO пины |
-|---|---|
+| Компонент | GPIO пины | Углы |
+|---|---|---|
 | Левый мотор | GPIO 23 (forward), GPIO 24 (backward) |
 | Правый мотор | GPIO 5 (forward), GPIO 6 (backward) |
-| Сервопривод 0 (клешня) | GPIO 7 |
-| Сервопривод 1 (подъём) | GPIO 8 |
+| Сервопривод 0 (клешня) | GPIO 7 | 90° закрыта, 150° открыта |
+| Сервопривод 1 (подъём) | GPIO 8 | 150° вверх, 90° вниз |
 | Сервопривод 2 | GPIO 25 |
 | Ультразвук trigger | GPIO 27 |
 | Ультразвук echo | GPIO 22 |

@@ -2,7 +2,7 @@
 
 <img align="left" width="200px" src="../../assets/SocksTank.jpeg">
 
-**SocksTank** — робот-танк на базе Raspberry Pi 4B, который ищет носки по квартире с помощью компьютерного зрения (YOLOv8) и собирает их клешнёй.
+**SocksTank** — робот-танк на базе Raspberry Pi 4B, который ищет носки по квартире с помощью компьютерного зрения (YOLO) и собирает их клешнёй. Включает веб-панель управления с живым видео и телеметрией.
 
 Построен поверх [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi).
 
@@ -20,7 +20,7 @@
 ### Софт
 
 - Python 3.10+
-- [ultralytics](https://github.com/ultralytics/ultralytics) (YOLOv8)
+- [ultralytics](https://github.com/ultralytics/ultralytics) (YOLOv8/v11)
 - [Roboflow](https://roboflow.com/) — для разметки датасета (бесплатный тариф)
 
 ## Quick Start
@@ -34,55 +34,53 @@
 ## Структура проекта
 
 ```
-main.py              # CLI точка входа (typer): train, bench, detect, shot
-camera_detect.py     # Legacy: инференс с камеры RPi → detect.mp4
-camera_shot.py       # Legacy: серийная съёмка для датасета → images/
-train.py             # Legacy: тренировка YOLOv8
-bench.py             # Legacy: бенчмарк модели
+main.py              # CLI точка входа (typer): train, bench, detect, shot, serve
+server/              # FastAPI backend (веб-панель управления)
+frontend/            # Vite + React + TypeScript (веб-панель)
+models/              # Обученные модели YOLO
+├── yolo8_best.pt    # YOLOv8n (mAP50=0.995, mAP50-95=0.885)
+└── yolo11_best.pt   # YOLOv11n (mAP50=0.995, mAP50-95=0.96)
+legacy/              # Старые скрипты (bench, camera_detect, camera_shot, train)
 data.yaml            # Конфиг датасета (1 класс: sock, Roboflow v2, 961 изображение)
-best.pt              # Обученная модель YOLOv8n (mAP50=0.995) [.gitignore]
 dataset/             # Приватный датасет (train/valid/test) [.gitignore]
 pyproject.toml       # Зависимости проекта (uv/pip)
 docs/
-├── ru/                  # Документация (на русском)
-│   ├── infrastructure.md  # Хосты, SSH, GPIO, аппаратная часть
-│   ├── rpi.md             # Настройка Raspberry Pi
-│   ├── dataset.md         # Подготовка датасета
-│   ├── training.md        # Тренировка модели
-│   └── inference.md       # Запуск на роботе
-└── en/                  # Documentation (English)
-    ├── infrastructure.md  # Hosts, SSH, GPIO, hardware
-    ├── rpi.md             # Raspberry Pi setup
-    ├── dataset.md         # Dataset preparation
-    ├── training.md        # Model training
-    └── inference.md       # Running on the robot
+├── ru/              # Документация (на русском)
+└── en/              # Documentation (English)
 assets/              # Изображения проекта
 ```
 
 ## CLI-команды (main.py)
 
 ```bash
+# Веб-панель управления (macOS, mock-режим)
+./main.py serve --mock
+
+# Веб-панель управления (RPi, реальное железо)
+sudo -E python main.py serve --model models/yolo11_best.pt --conf 0.5
+
 # Тренировка модели (на GPU-сервере или dev-машине)
 ./main.py train --device 0 --epochs 100
 
 # Бенчмарк модели
 ./main.py bench
 
-# Детекция носков с камеры RPi (требует sudo на RPi)
-sudo ./main.py detect --model best.pt --conf 0.5
+# Детекция носков с камеры RPi (legacy)
+sudo -E python main.py detect --model models/yolo8_best.pt --conf 0.5
 
-# Сбор фото для датасета (требует sudo на RPi)
-sudo ./main.py shot --count 200 --output-dir images
+# Сбор фото для датасета
+sudo -E python main.py shot --count 200 --output-dir images
 ```
 
 ## Установка
 
 ```bash
 # Dev-машина (macOS / Linux)
-uv venv && uv pip install typer ultralytics opencv-python-headless numpy
+uv venv && uv pip install typer ultralytics opencv-python-headless numpy fastapi uvicorn pydantic-settings websockets
+cd frontend && npm install && npm run build
 
-# Raspberry Pi (системные пакеты)
-sudo pip install ultralytics[extra] --break-system-packages
+# Raspberry Pi
+sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-system-packages
 ```
 
 ## Документация
@@ -91,6 +89,6 @@ sudo pip install ultralytics[extra] --break-system-packages
 |---|---|
 | [Настройка Raspberry Pi](rpi.md) | Установка ОС, зависимости, камера, автозапуск |
 | [Подготовка датасета](dataset.md) | Съёмка фото, Roboflow, аннотации, аугментация |
-| [Тренировка модели](training.md) | Обучение YOLOv8, параметры, оценка, экспорт |
-| [Запуск на роботе](inference.md) | Деплой модели, детекция, интеграция с танком |
+| [Тренировка модели](training.md) | Обучение YOLO, параметры, оценка, экспорт |
+| [Запуск на роботе](inference.md) | Веб-панель, деплой, детекция, интеграция с танком |
 | [Инфраструктура](infrastructure.md) | Хосты, SSH, GPIO, аппаратная часть |

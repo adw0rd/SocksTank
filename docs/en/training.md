@@ -15,7 +15,7 @@ Training a YOLOv8 model for sock detection. Training requires a GPU — on CPU i
 ### GPU server (Ubuntu + NVIDIA)
 
 ```bash
-ssh gpu-server
+ssh blackops
 
 # Verify GPU is available
 nvidia-smi
@@ -94,8 +94,15 @@ runs/detect/train/
 
 ### Key metrics
 
-- **mAP50** — mean average precision at IoU=0.5 (primary metric). Current result: **0.995**
-- **mAP50-95** — mean average precision at IoU 0.5 to 0.95. Current result: **0.885**
+- **mAP50** — mean average precision at IoU=0.5 (primary metric)
+- **mAP50-95** — mean average precision at IoU 0.5 to 0.95
+
+### Trained model results
+
+| Model | mAP50 | mAP50-95 | Size | File |
+|---|---|---|---|---|
+| YOLOv8n (100 epochs) | 0.995 | 0.885 | 6.0 MB | `models/yolo8_best.pt` |
+| YOLOv11n (100 epochs) | 0.995 | 0.96 | 5.2 MB | `models/yolo11_best.pt` |
 - **Precision** — fraction of correct detections among all detections
 - **Recall** — fraction of found objects among all real objects
 

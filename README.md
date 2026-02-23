@@ -2,7 +2,7 @@
 
 <img align="left" width="200px" src="assets/SocksTank.jpeg">
 
-**SocksTank** is a Raspberry Pi 4B-based robot tank that hunts for socks around the apartment using computer vision (YOLOv8) and picks them up with a claw.
+**SocksTank** is a Raspberry Pi 4B-based robot tank that hunts for socks around the apartment using computer vision (YOLO) and picks them up with a claw. Includes a web control panel with live video, motor/servo controls, and real-time telemetry.
 
 Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi). If you've already assembled the Freenove Tank, it's time for the next step — train your own model and run it on a Raspberry Pi.
 
@@ -24,14 +24,15 @@ Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tan
     * [Training (GPU, Apple Silicon, CPU)](docs/en/training.md#training)
     * [Evaluating results](docs/en/training.md#evaluating-results)
     * [Model export (ncnn for RPi)](docs/en/training.md#model-export)
-* **Inference**
-    * [Deploying to RPi & running detection](docs/en/inference.md)
+* **Inference & Web Panel**
+    * [Web control panel](docs/en/inference.md#web-control-panel-recommended)
+    * [Deploying to RPi](docs/en/inference.md#deploying-to-rpi)
     * [Integration with tank controls](docs/en/inference.md#integration-with-tank-controls)
 * [**Infrastructure**](docs/en/infrastructure.md)
 
 ---
 
-**SocksTank** — робот-танк на базе Raspberry Pi 4B, который ищет носки по квартире с помощью компьютерного зрения (YOLOv8) и собирает их клешнёй.
+**SocksTank** — робот-танк на базе Raspberry Pi 4B, который ищет носки по квартире с помощью компьютерного зрения (YOLO) и собирает их клешнёй. Включает веб-панель управления с живым видео, управлением моторами/сервоприводами и телеметрией в реальном времени.
 
 Построен поверх [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi). Если вы уже собрали Freenove Tank, самое время перейти к следующему этапу — обучить собственную модель и запустить её на Raspberry Pi.
 
@@ -51,8 +52,9 @@ Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tan
     * [Тренировка (GPU, Apple Silicon, CPU)](docs/ru/training.md#тренировка)
     * [Оценка результатов](docs/ru/training.md#оценка-результатов)
     * [Экспорт модели (ncnn для RPi)](docs/ru/training.md#экспорт-модели)
-* **Инференс**
-    * [Деплой на RPi и запуск детекции](docs/ru/inference.md)
+* **Инференс и веб-панель**
+    * [Веб-панель управления](docs/ru/inference.md#веб-панель-управления-рекомендуемый-способ)
+    * [Деплой на RPi](docs/ru/inference.md#деплой-на-rpi)
     * [Интеграция с управлением танком](docs/ru/inference.md#интеграция-с-управлением-танком)
 * [**Инфраструктура**](docs/ru/infrastructure.md)
 

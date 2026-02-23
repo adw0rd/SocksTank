@@ -7,19 +7,35 @@ SocksTank — робот-танк на базе Raspberry Pi 4B, который 
 ## Project Structure
 
 ```
-main.py            # CLI точка входа (typer): train, bench, detect, shot
-camera_detect.py   # Legacy: инференс с камеры RPi → detect.mp4
-camera_shot.py     # Legacy: серийная съёмка для датасета → images/
-train.py           # Legacy: тренировка YOLOv8
-bench.py           # Legacy: бенчмарк модели
+main.py            # CLI точка входа (typer): train, bench, detect, shot, serve
+server/            # FastAPI backend (веб-панель управления)
+├── app.py         # FastAPI app factory, lifespan, mount static
+├── config.py      # Pydantic Settings
+├── camera.py      # CameraManager: picamera2 + YOLO → MJPEG
+├── hardware.py    # HardwareController: Motor/Servo/Led/Ultrasonic/Infrared
+├── freenove_bridge.py  # Импорт Freenove модулей + mock fallback
+├── mock.py        # Mock-классы для macOS
+├── routes_video.py     # MJPEG стрим
+├── routes_ws.py        # WebSocket управление + телеметрия
+├── routes_api.py       # REST API (config, status, models)
+└── schemas.py          # Pydantic модели
+frontend/          # Vite + React + TypeScript (веб-панель)
+├── src/
+│   ├── App.tsx         # Layout: видео + панель управления
+│   ├── components/     # VideoFeed, MotorControl, ServoControl, LedControl, ...
+│   ├── hooks/          # useWebSocket
+│   └── lib/types.ts    # TypeScript интерфейсы
+└── dist/               # Собранный бандл [.gitignore]
+models/            # Обученные модели YOLO
+├── yolo8_best.pt  # YOLOv8n (100 эпох, mAP50=0.995, mAP50-95=0.885)
+└── yolo11_best.pt # YOLOv11n (100 эпох, mAP50=0.995, mAP50-95=0.96)
+legacy/            # Старые скрипты (bench, camera_detect, camera_shot, train)
 data.yaml          # Конфиг датасета (1 класс: sock, Roboflow v2, 961 изображение)
-best.pt            # Обученная модель YOLOv8n (100 эпох, mAP50=0.995) [.gitignore]
 dataset/           # Приватный датасет (train/valid/test) [.gitignore]
 pyproject.toml     # Зависимости проекта (uv/pip)
 docs/
-├── ru/                # Документация (на русском)
-│   └── infrastructure.md  # Хосты, SSH, GPIO, аппаратная часть
-└── en/                # Documentation (English)
+├── ru/            # Документация (на русском)
+└── en/            # Documentation (English)
 assets/            # Изображения проекта
 ```
 
@@ -28,6 +44,8 @@ assets/            # Изображения проекта
 - **Python 3.10+**, менеджер пакетов: **uv**
 - **typer** — CLI-интерфейс
 - **ultralytics** — YOLO v8/v11 (тренировка и инференс)
+- **FastAPI + uvicorn** — веб-сервер управления роботом
+- **React + TypeScript + Vite** — фронтенд веб-панели
 - **picamera2 / libcamera** — камера Raspberry Pi (ставится только на RPi)
 - **gpiozero / pigpio** — моторы, сервоприводы, сенсоры (только RPi)
 - **OpenCV (cv2)** — обработка изображений, запись видео
@@ -37,15 +55,24 @@ assets/            # Изображения проекта
 
 ```bash
 # Dev-машина (macOS)
-uv venv && uv pip install typer ultralytics opencv-python-headless numpy
+uv venv && uv pip install typer ultralytics opencv-python-headless numpy fastapi uvicorn pydantic-settings websockets
 
-# Raspberry Pi (всё уже установлено системно)
-sudo pip install picamera2 ultralytics --break-system-packages
+# Frontend (один раз)
+cd frontend && npm install && npm run build
+
+# Raspberry Pi
+sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-system-packages
 ```
 
 ## Running (CLI)
 
 ```bash
+# Веб-панель управления (macOS, mock-режим)
+./main.py serve --mock
+
+# Веб-панель управления (RPi, реальное железо)
+sudo -E python main.py serve --model models/yolo8_best.pt --conf 0.5
+
 # Тренировка (на GPU-сервере или dev-машине)
 ./main.py train --device 0 --epochs 100
 
@@ -53,7 +80,7 @@ sudo pip install picamera2 ultralytics --break-system-packages
 ./main.py bench
 
 # Детекция носков с камеры RPi (требует sudo)
-sudo ./main.py detect --model best.pt --conf 0.5
+sudo ./main.py detect --model models/yolo8_best.pt --conf 0.5
 
 # Сбор фото для датасета
 sudo ./main.py shot --count 200 --output-dir images
@@ -79,17 +106,18 @@ sudo ./main.py shot --count 200 --output-dir images
 | Хост | Назначение |
 |---|---|
 | **rpi4** | Робот-танк (RPi 4B, Debian bookworm) |
-| **GPU-сервер** | Тренировка моделей YOLO (NVIDIA GPU) |
+| **blackops** | GPU-сервер для тренировки (RTX 4070 SUPER) |
 | **rpi5** | Raspberry Pi 5 |
 
 ## Training
 
-Тренировка выполняется на GPU-сервере:
+Тренировка выполняется на GPU-сервере (blackops):
 
 ```bash
-ssh gpu-server
+ssh blackops
 cd ~/work/test20250807_yolov8
-python train.py  # 100 эпох, YOLOv8n, data.yaml
+source venv/bin/activate
+python -c "from ultralytics import YOLO; YOLO('yolo11n.pt').train(data='data.yaml', epochs=100, batch=16, device=0)"
 ```
 
 Или через CLI локально:
@@ -99,9 +127,23 @@ python train.py  # 100 эпох, YOLOv8n, data.yaml
 
 Устройства: `0` (NVIDIA CUDA), `mps` (Apple Silicon), `cpu` (фоллбэк).
 
+## Модели
+
+| Модель | Файл | mAP50 | mAP50-95 | Размер |
+|---|---|---|---|---|
+| YOLOv8n | `models/yolo8_best.pt` | 0.995 | 0.885 | 6.0 MB |
+| YOLOv11n | `models/yolo11_best.pt` | 0.995 | 0.96 | 5.2 MB |
+
 ## Deploy на робот
 
 ```bash
-scp best.pt rpi:~/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/Code/Server/
-ssh rpi "cd ~/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/Code/Server && sudo python camera_detect.py"
+# Копировать проект на RPi
+rsync -avz --exclude .venv --exclude frontend/node_modules --exclude __pycache__ --exclude .git \
+  ~/work/SocksTank/ rpi4:~/sockstank/
+
+# Запуск на RPi
+ssh rpi4
+cd ~/sockstank
+sudo -E nohup python main.py serve --model models/yolo11_best.pt --conf 0.5 > /tmp/sockstank.log 2>&1 &
+# Открыть http://rpi4:8080
 ```

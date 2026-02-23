@@ -37,24 +37,25 @@
 
 **Autostart**: `start.sh` launches `pigpiod` (GPIO daemon). Freenove server launch is commented out.
 
-### GPU server (for training)
+### blackops (GPU server for training)
 
 - **Purpose**: YOLO model training on GPU
+- **GPU**: NVIDIA RTX 4070 SUPER
 
 **Working directory**:
 ```
 ~/work/
 ├── test20250807_yolov8/        # Main working directory
+│   ├── venv/                   # Python venv (ultralytics + torch)
 │   ├── data.yaml               # Dataset config v2 (961 images)
 │   ├── train.py                # Training script (100 epochs)
 │   ├── bench.py                # Model benchmark
 │   ├── train/valid/test/       # Dataset (train/valid/test splits)
 │   ├── yolov8n.pt              # Base model YOLOv8n
 │   ├── yolo11n.pt              # Base model YOLOv11n
-│   └── RESULT/                 # Best result (100 epochs, batch=16, GPU)
-│       ├── weights/best.pt     # mAP50=0.995, mAP50-95=0.885
-│       ├── results.csv         # Metrics per epoch
-│       └── confusion_matrix.png, F1_curve.png, etc.
+│   └── runs/detect/            # Training results
+│       ├── train/weights/best.pt   # YOLOv8n: mAP50=0.995, mAP50-95=0.885
+│       └── train2/weights/best.pt  # YOLOv11n: mAP50=0.995, mAP50-95=0.96
 └── ultralytics/                # Ultralytics repo clone (for development)
 ```
 
@@ -63,14 +64,14 @@
 All devices are on the same local network. It's recommended to configure SSH aliases in `~/.ssh/config`:
 
 ```
-Host rpi
+Host rpi4
     HostName 192.168.x.x
     User user
 
-Host gpu-server
+Host blackops
     HostName 192.168.x.x
     User user
-    IdentityFile ~/.ssh/gpu-server
+    IdentityFile ~/.ssh/blackops
 ```
 
 Actual IP addresses, usernames, and SSH keys are in `docs/credentials.md` (not committed).
@@ -78,12 +79,12 @@ Actual IP addresses, usernames, and SSH keys are in `docs/credentials.md` (not c
 ## Robot hardware
 
 ### GPIO pinout
-| Component | GPIO pins |
-|---|---|
+| Component | GPIO pins | Angles |
+|---|---|---|
 | Left motor | GPIO 23 (forward), GPIO 24 (backward) |
 | Right motor | GPIO 5 (forward), GPIO 6 (backward) |
-| Servo 0 (claw) | GPIO 7 |
-| Servo 1 (lift) | GPIO 8 |
+| Servo 0 (claw) | GPIO 7 | 90° closed, 150° open |
+| Servo 1 (lift) | GPIO 8 | 150° up, 90° down |
 | Servo 2 | GPIO 25 |
 | Ultrasonic trigger | GPIO 27 |
 | Ultrasonic echo | GPIO 22 |

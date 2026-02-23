@@ -2,7 +2,7 @@
 
 <img align="left" width="200px" src="../../assets/SocksTank.jpeg">
 
-**SocksTank** is a Raspberry Pi 4B-based robot tank that hunts for socks around the apartment using computer vision (YOLOv8) and picks them up with a claw.
+**SocksTank** is a Raspberry Pi 4B-based robot tank that hunts for socks around the apartment using computer vision (YOLO) and picks them up with a claw. Includes a web control panel with live video and telemetry.
 
 Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi).
 
@@ -20,7 +20,7 @@ Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tan
 ### Software
 
 - Python 3.10+
-- [ultralytics](https://github.com/ultralytics/ultralytics) (YOLOv8)
+- [ultralytics](https://github.com/ultralytics/ultralytics) (YOLOv8/v11)
 - [Roboflow](https://roboflow.com/) — for dataset annotation (free tier)
 
 ## Quick Start
@@ -34,50 +34,53 @@ Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tan
 ## Project structure
 
 ```
-main.py              # CLI entry point (typer): train, bench, detect, shot
-camera_detect.py     # Legacy: inference from RPi camera → detect.mp4
-camera_shot.py       # Legacy: burst capture for dataset → images/
-train.py             # Legacy: YOLOv8 training
-bench.py             # Legacy: model benchmark
+main.py              # CLI entry point (typer): train, bench, detect, shot, serve
+server/              # FastAPI backend (web control panel)
+frontend/            # Vite + React + TypeScript (web panel)
+models/              # Trained YOLO models
+├── yolo8_best.pt    # YOLOv8n (mAP50=0.995, mAP50-95=0.885)
+└── yolo11_best.pt   # YOLOv11n (mAP50=0.995, mAP50-95=0.96)
+legacy/              # Old scripts (bench, camera_detect, camera_shot, train)
 data.yaml            # Dataset config (1 class: sock, Roboflow v2, 961 images)
-best.pt              # Trained YOLOv8n model (mAP50=0.995) [.gitignore]
 dataset/             # Private dataset (train/valid/test) [.gitignore]
 pyproject.toml       # Project dependencies (uv/pip)
 docs/
-├── ru/                  # Documentation (Russian)
-└── en/                  # Documentation (English)
-    ├── infrastructure.md  # Hosts, SSH, GPIO, hardware
-    ├── rpi.md             # Raspberry Pi setup
-    ├── dataset.md         # Dataset preparation
-    ├── training.md        # Model training
-    └── inference.md       # Running on the robot
+├── ru/              # Documentation (Russian)
+└── en/              # Documentation (English)
 assets/              # Project images
 ```
 
 ## CLI commands (main.py)
 
 ```bash
+# Web control panel (macOS, mock mode)
+./main.py serve --mock
+
+# Web control panel (RPi, real hardware)
+sudo -E python main.py serve --model models/yolo11_best.pt --conf 0.5
+
 # Train model (on GPU server or dev machine)
 ./main.py train --device 0 --epochs 100
 
 # Benchmark model
 ./main.py bench
 
-# Detect socks from RPi camera (requires sudo on RPi)
-sudo ./main.py detect --model best.pt --conf 0.5
+# Detect socks from RPi camera (legacy)
+sudo -E python main.py detect --model models/yolo8_best.pt --conf 0.5
 
-# Capture photos for dataset (requires sudo on RPi)
-sudo ./main.py shot --count 200 --output-dir images
+# Capture photos for dataset
+sudo -E python main.py shot --count 200 --output-dir images
 ```
 
 ## Installation
 
 ```bash
 # Dev machine (macOS / Linux)
-uv venv && uv pip install typer ultralytics opencv-python-headless numpy
+uv venv && uv pip install typer ultralytics opencv-python-headless numpy fastapi uvicorn pydantic-settings websockets
+cd frontend && npm install && npm run build
 
-# Raspberry Pi (system packages)
-sudo pip install ultralytics[extra] --break-system-packages
+# Raspberry Pi
+sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-system-packages
 ```
 
 ## Documentation
@@ -86,6 +89,6 @@ sudo pip install ultralytics[extra] --break-system-packages
 |---|---|
 | [Raspberry Pi setup](rpi.md) | OS installation, dependencies, camera, autostart |
 | [Dataset preparation](dataset.md) | Photo capture, Roboflow, annotation, augmentation |
-| [Model training](training.md) | YOLOv8 training, parameters, evaluation, export |
-| [Running on the robot](inference.md) | Model deployment, detection, tank integration |
+| [Model training](training.md) | YOLO training, parameters, evaluation, export |
+| [Running on the robot](inference.md) | Web panel, deployment, detection, tank integration |
 | [Infrastructure](infrastructure.md) | Hosts, SSH, GPIO, hardware |

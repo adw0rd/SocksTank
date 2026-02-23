@@ -2,37 +2,46 @@
 
 Deploying the trained model to Raspberry Pi and running sock detection from the camera.
 
-## Copying the model to RPi
+## Deploying to RPi
 
-After training, copy the best model (`best.pt`) to the robot:
-
-```bash
-scp best.pt rpi:~/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/Code/Server/
-```
-
-Or, if training was done on the GPU server:
+The entire project is copied to the robot via rsync:
 
 ```bash
-ssh gpu-server
-scp ~/work/test20250807_yolov8/RESULT/weights/best.pt rpi:~/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/Code/Server/
+rsync -avz --exclude .venv --exclude frontend/node_modules --exclude __pycache__ --exclude .git \
+  ~/work/SocksTank/ rpi4:~/sockstank/
 ```
 
-## Running detection
+## Web control panel (recommended)
 
-On the Raspberry Pi:
+The main way to interact with the robot is through the web panel:
 
 ```bash
-cd ~/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/Code/Server/
-sudo ./main.py detect --model best.pt --conf 0.5
+ssh rpi4
+cd ~/sockstank
+sudo -E nohup python main.py serve --model models/yolo11_best.pt --conf 0.5 > /tmp/sockstank.log 2>&1 &
 ```
 
-`sudo` is required for camera and GPIO access.
+Open in browser: `http://rpi4:8080`
+
+The web panel includes: live video with YOLO detection, motor/servo/LED controls, telemetry (distance, IR sensors, CPU temperature).
+
+`sudo -E` is required for camera and GPIO access (`-E` flag inherits user's PYTHONPATH).
+
+## Running detection (legacy)
+
+Record video with detection to a file:
+
+```bash
+ssh rpi4
+cd ~/sockstank
+sudo -E python main.py detect --model models/yolo8_best.pt --conf 0.5
+```
 
 ### Parameters
 
 | Parameter | Default | Description |
 |---|---|---|
-| `--model` | `best.pt` | Path to the trained model |
+| `--model` | `models/yolo8_best.pt` | Path to the trained model |
 | `--output` | `detect.mp4` | Output video file |
 | `--conf` | `0.5` | Confidence threshold (0.0–1.0). Detections below the threshold are ignored |
 | `--frames` | `300` | Maximum number of frames to record |
@@ -60,7 +69,7 @@ sudo ./main.py detect --model best_ncnn_model --conf 0.5
 The `detect.mp4` video file is saved in the current directory on the RPi. Copy it to your computer:
 
 ```bash
-scp rpi:~/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/Code/Server/detect.mp4 .
+scp rpi4:~/sockstank/detect.mp4 .
 ```
 
 Open with any video player (VLC, mpv, etc.).
@@ -73,7 +82,7 @@ The robot is controlled via `car.py` from the Freenove kit. It supports several 
 - **mode_infrared** — line following: IR sensors track a line on the floor. When an object is detected at 5–12 cm — it's grabbed with the claw
 - **mode_clamp** — claw control: raise, lower, grab
 
-For fully autonomous operation (find socks + drive to them + grab) the detection from `camera_detect.py` needs to be combined with controls from `car.py` — this is the next development stage.
+The web panel (`main.py serve`) already combines detection with controls — you can drive the robot through the browser while seeing detection results in real time. Fully autonomous mode (find + drive + grab without human input) is the next development stage.
 
 ---
 
