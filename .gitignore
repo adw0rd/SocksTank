@@ -2,8 +2,8 @@
 docs/credentials.md
 dataset/
 images/
-*.pt
 *.mp4
+!models/*.pt
 
 # Frontend
 frontend/node_modules/
