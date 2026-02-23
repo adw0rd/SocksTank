@@ -1,0 +1,13 @@
+train: dataset/train/images
+val: dataset/valid/images
+test: dataset/test/images
+
+nc: 1
+names: ['sock']
+
+roboflow:
+  workspace: socks-axfcs
+  project: socks1
+  version: 2
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/socks-axfcs/socks1/dataset/2

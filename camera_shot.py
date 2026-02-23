@@ -5,9 +5,7 @@ from libcamera import Transform
 
 cam = Picamera2()
 
-config = cam.create_still_configuration(
-    main={"size": (1920, 1080)}, transform=Transform(vflip=True)
-)
+config = cam.create_still_configuration(main={"size": (1920, 1080)}, transform=Transform(vflip=True))
 cam.configure(config)
 
 cam.start()

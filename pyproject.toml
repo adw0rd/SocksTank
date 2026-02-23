@@ -1,0 +1,19 @@
+[project]
+name = "sockstank"
+version = "0.1.0"
+description = "Робот-танк для поиска носков с компьютерным зрением (YOLO)"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+    "typer>=0.9",
+    "ultralytics",
+    "opencv-python-headless",
+    "numpy",
+]
+
+[project.optional-dependencies]
+dev = ["pre-commit", "black", "flake8"]
+
+[tool.black]
+line-length = 140
