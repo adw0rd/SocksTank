@@ -1,0 +1,89 @@
+"""WebSocket endpoint — команды управления + телеметрия."""
+
+import asyncio
+import json
+import logging
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
+from server.schemas import TelemetryMessage
+
+log = logging.getLogger(__name__)
+
+router = APIRouter(tags=["websocket"])
+
+# Ссылки, устанавливаются при старте приложения
+_hardware = None
+_camera_manager = None
+
+
+def set_dependencies(hardware, camera_manager):
+    global _hardware, _camera_manager
+    _hardware = hardware
+    _camera_manager = camera_manager
+
+
+def _handle_command(data: dict):
+    """Обработка команды от клиента."""
+    cmd = data.get("cmd", "")
+    params = data.get("params", {})
+
+    if cmd == "motor":
+        _hardware.set_motor(params.get("left", 0), params.get("right", 0))
+    elif cmd == "servo":
+        _hardware.set_servo(params.get("channel", 0), params.get("angle", 90))
+    elif cmd == "led":
+        if "effect" in params:
+            _hardware.led_effect(params["effect"])
+        else:
+            _hardware.set_led(params.get("r", 0), params.get("g", 0), params.get("b", 0))
+    elif cmd == "stop":
+        _hardware.stop_all()
+    elif cmd == "mode":
+        _hardware.mode = params.get("mode", "manual")
+    else:
+        log.warning("Неизвестная команда: %s", cmd)
+
+
+def _get_telemetry() -> str:
+    """Формирует JSON телеметрии."""
+    msg = TelemetryMessage(
+        distance_cm=_hardware.get_distance(),
+        ir_sensors=_hardware.get_infrared(),
+        fps=_camera_manager.fps if _camera_manager else 0,
+        detections=_camera_manager.detections if _camera_manager else [],
+        mode=_hardware.mode,
+        cpu_temp=_hardware.get_cpu_temp(),
+    )
+    return msg.model_dump_json()
+
+
+@router.websocket("/ws/control")
+async def websocket_control(ws: WebSocket):
+    """WebSocket: команды от клиента, телеметрия от сервера."""
+    await ws.accept()
+    log.info("WebSocket клиент подключён")
+
+    async def send_telemetry():
+        """Отправка телеметрии каждые 200ms."""
+        try:
+            while True:
+                await ws.send_text(_get_telemetry())
+                await asyncio.sleep(0.2)
+        except (WebSocketDisconnect, RuntimeError):
+            pass
+
+    telemetry_task = asyncio.create_task(send_telemetry())
+
+    try:
+        while True:
+            text = await ws.receive_text()
+            try:
+                data = json.loads(text)
+                _handle_command(data)
+            except (json.JSONDecodeError, Exception) as e:
+                log.warning("Ошибка обработки команды: %s", e)
+    except WebSocketDisconnect:
+        log.info("WebSocket клиент отключён")
+    finally:
+        telemetry_task.cancel()

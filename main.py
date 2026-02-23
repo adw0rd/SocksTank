@@ -144,5 +144,38 @@ def shot(
         cam.stop()
 
 
+@app.command()
+def serve(
+    model: str = typer.Option("best.pt", help="Путь к модели YOLO"),
+    conf: float = typer.Option(0.5, help="Порог уверенности"),
+    host: str = typer.Option("0.0.0.0", help="Хост"),
+    port: int = typer.Option(8080, help="Порт"),
+    mock: bool = typer.Option(False, help="Mock-режим (без GPIO/камеры)"),
+    freenove_path: str = typer.Option(
+        "~/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/Code/Server",
+        help="Путь к модулям Freenove",
+    ),
+):
+    """Веб-сервер управления роботом."""
+    import logging
+    import uvicorn
+
+    from server.config import settings
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+
+    # Применяем CLI-параметры к настройкам
+    settings.model_path = model
+    settings.confidence = conf
+    settings.host = host
+    settings.port = port
+    settings.mock = mock
+    settings.freenove_path = freenove_path
+
+    from server.app import create_app
+
+    uvicorn.run(create_app(), host=host, port=port)
+
+
 if __name__ == "__main__":
     app()
