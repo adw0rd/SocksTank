@@ -8,6 +8,7 @@ import { LedControl } from './components/LedControl'
 import { ModeSelector } from './components/ModeSelector'
 import { SensorDisplay } from './components/SensorDisplay'
 import { ConfigPanel } from './components/ConfigPanel'
+import { InferencePanel } from './components/InferencePanel'
 
 export default function App() {
   const { telemetry, status, send } = useWebSocket()
@@ -39,6 +40,7 @@ export default function App() {
           <ServoControl send={send} />
           <LedControl send={send} />
           <ModeSelector send={send} telemetry={telemetry} />
+          <InferencePanel telemetry={telemetry} />
           <ConfigPanel />
         </div>
       </div>
