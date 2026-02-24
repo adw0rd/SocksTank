@@ -9,12 +9,12 @@ Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tan
 <br clear="left">
 
 * **Raspberry Pi setup**
-    * [Hardware requirements & OS installation](docs/en/rpi.md)
-    * [Installing dependencies](docs/en/rpi.md#installing-dependencies)
-    * [Camera setup](docs/en/rpi.md#camera-setup)
-    * [Autostart & static IP](docs/en/rpi.md#autostart-setup)
-    * [Overclocking](docs/en/rpi.md#overclocking-optional)
-    * [Installing ultralytics (YOLO)](docs/en/rpi.md#installing-ultralytics-yolo)
+    * [Hardware requirements & OS installation](docs/en/rpi4.md)
+    * [Installing dependencies](docs/en/rpi4.md#installing-dependencies)
+    * [Camera setup](docs/en/rpi4.md#camera-setup)
+    * [Autostart & static IP](docs/en/rpi4.md#autostart-setup)
+    * [Overclocking](docs/en/rpi4.md#overclocking-optional)
+    * [Installing ultralytics (YOLO)](docs/en/rpi4.md#installing-ultralytics-yolo)
 * **Dataset preparation**
     * [Capturing photos](docs/en/dataset.md#capturing-photos)
     * [Uploading to Roboflow & annotation](docs/en/dataset.md#uploading-to-roboflow)
@@ -37,12 +37,12 @@ Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tan
 Построен поверх [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi). Если вы уже собрали Freenove Tank, самое время перейти к следующему этапу — обучить собственную модель и запустить её на Raspberry Pi.
 
 * **Настройка Raspberry Pi**
-    * [Требования к железу и установка ОС](docs/ru/rpi.md)
-    * [Установка зависимостей](docs/ru/rpi.md#установка-зависимостей)
-    * [Настройка камеры](docs/ru/rpi.md#настройка-камеры)
-    * [Автозапуск и статический IP](docs/ru/rpi.md#настройка-автозапуска)
-    * [Разгон](docs/ru/rpi.md#разгон-опционально)
-    * [Установка ultralytics (YOLO)](docs/ru/rpi.md#установка-ultralytics-yolo)
+    * [Требования к железу и установка ОС](docs/ru/rpi4.md)
+    * [Установка зависимостей](docs/ru/rpi4.md#установка-зависимостей)
+    * [Настройка камеры](docs/ru/rpi4.md#настройка-камеры)
+    * [Автозапуск и статический IP](docs/ru/rpi4.md#настройка-автозапуска)
+    * [Разгон](docs/ru/rpi4.md#разгон-опционально)
+    * [Установка ultralytics (YOLO)](docs/ru/rpi4.md#установка-ultralytics-yolo)
 * **Подготовка датасета**
     * [Съёмка фотографий](docs/ru/dataset.md#съёмка-фотографий)
     * [Загрузка в Roboflow и аннотирование](docs/ru/dataset.md#загрузка-в-roboflow)
