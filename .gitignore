@@ -1,6 +1,7 @@
 # SocksTank
 docs/credentials.md
 .worktrees/
+gpu_servers.json
 dataset/
 images/
 *.mp4
