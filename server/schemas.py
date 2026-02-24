@@ -16,6 +16,10 @@ class TelemetryMessage(BaseModel):
     detections: list[dict] = []
     mode: str = "manual"
     cpu_temp: float = 0.0
+    inference_mode: str = "auto"
+    inference_backend: str = "local"
+    inference_ms: float = 0.0
+    inference_error: str | None = None
 
 
 class ConfigResponse(BaseModel):
@@ -41,3 +45,27 @@ class StatusResponse(BaseModel):
     motor_right: int
     distance_cm: float
     ir_sensors: list[int]
+
+
+class GPUServerSchema(BaseModel):
+    host: str
+    port: int = 8090
+    username: str
+    auth_type: str = "key"  # "key" | "password"
+    password: str | None = None
+    key_path: str | None = None
+    status: str = "offline"
+    gpu: str | None = None
+
+
+class GPUServerCreate(BaseModel):
+    host: str
+    port: int = 8090
+    username: str
+    auth_type: str = "key"
+    password: str | None = None
+    key_path: str | None = None
+
+
+class InferenceModeUpdate(BaseModel):
+    mode: str  # "auto" | "local" | "remote"

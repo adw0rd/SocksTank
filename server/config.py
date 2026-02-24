@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8080
     telemetry_hz: float = 5.0
+    inference_mode: str = "auto"  # "auto" | "local" | "remote"
 
     model_config = {"env_prefix": "SOCKSTANK_"}
 
