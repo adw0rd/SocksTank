@@ -1,5 +1,6 @@
 # SocksTank
 docs/credentials.md
+.worktrees/
 dataset/
 images/
 *.mp4
