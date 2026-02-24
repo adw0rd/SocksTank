@@ -15,9 +15,9 @@ log = logging.getLogger(__name__)
 class CameraManager:
     """Фоновый захват кадров + YOLO-инференс → JPEG для MJPEG-стрима."""
 
-    def __init__(self, camera, model=None):
+    def __init__(self, camera, inference_router=None):
         self._camera = camera
-        self._model = model
+        self._inference = inference_router
         self._lock = threading.Lock()
         self._frame_jpeg: bytes | None = None
         self._running = False
@@ -33,6 +33,18 @@ class CameraManager:
     def detections(self) -> list[dict]:
         with self._lock:
             return list(self._detections)
+
+    @property
+    def inference_ms(self) -> float:
+        return self._inference.inference_ms if self._inference else 0
+
+    @property
+    def inference_backend(self) -> str:
+        return self._inference.active_backend if self._inference else "local"
+
+    @property
+    def inference_error(self) -> str | None:
+        return self._inference.error if self._inference else None
 
     def start(self):
         """Запускает камеру и фоновый поток обработки."""
@@ -88,27 +100,10 @@ class CameraManager:
                 time.sleep(0.5)
 
     def _run_yolo(self, frame: np.ndarray) -> list[dict]:
-        """Запускает YOLO-инференс и возвращает список детекций."""
-        if self._model is None:
+        """Запускает инференс (local или remote) и возвращает список детекций."""
+        if self._inference is None:
             return []
-
-        results = self._model(frame, conf=settings.confidence, verbose=False)
-        result = results[0]
-
-        detections = []
-        names = result.names
-        for box in result.boxes:
-            cls_id = int(box.cls[0])
-            conf = float(box.conf[0])
-            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int).tolist()
-            detections.append(
-                {
-                    "class": names[cls_id],
-                    "confidence": round(conf, 3),
-                    "bbox": [x1, y1, x2, y2],
-                }
-            )
-        return detections
+        return self._inference.infer(frame, settings.confidence)
 
     def _draw_detections(self, frame: np.ndarray, detections: list[dict]) -> np.ndarray:
         """Рисует bounding boxes и подписи на кадре."""

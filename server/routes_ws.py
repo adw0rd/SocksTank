@@ -47,6 +47,8 @@ def _handle_command(data: dict):
 
 def _get_telemetry() -> str:
     """Формирует JSON телеметрии."""
+    from server.config import settings
+
     msg = TelemetryMessage(
         distance_cm=_hardware.get_distance(),
         ir_sensors=_hardware.get_infrared(),
@@ -54,6 +56,10 @@ def _get_telemetry() -> str:
         detections=_camera_manager.detections if _camera_manager else [],
         mode=_hardware.mode,
         cpu_temp=_hardware.get_cpu_temp(),
+        inference_mode=settings.inference_mode,
+        inference_backend=_camera_manager.inference_backend if _camera_manager else "local",
+        inference_ms=_camera_manager.inference_ms if _camera_manager else 0,
+        inference_error=_camera_manager.inference_error if _camera_manager else None,
     )
     return msg.model_dump_json()
 
