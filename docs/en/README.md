@@ -87,7 +87,8 @@ sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-syst
 
 | Section | Description |
 |---|---|
-| [Raspberry Pi setup](rpi4.md) | OS installation, dependencies, camera, autostart |
+| [RPi 4 setup](rpi4.md) | OS installation, dependencies, camera, autostart |
+| [RPi 5 setup](rpi5.md) | Specifications, power, differences from RPi 4 |
 | [Dataset preparation](dataset.md) | Photo capture, Roboflow, annotation, augmentation |
 | [Model training](training.md) | YOLO training, parameters, evaluation, export |
 | [Running on the robot](inference.md) | Web panel, deployment, detection, tank integration |
