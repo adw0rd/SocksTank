@@ -25,19 +25,23 @@ OS: Debian bookworm **64-bit**, Python 3.11 (aarch64), torch 2.8.0+cpu
 ## RPi 5 Model B (Cortex-A76 2.4 GHz, 8 GB RAM)
 
 OS: Debian trixie **64-bit**, Python 3.13.5 (aarch64), torch 2.10.0+cpu
-Охлаждение: нет (открытая плата)
+Охлаждение: активное (PWM fan)
 Питание: лабораторный БП 5.1V через GPIO
 
-| Модель | Формат | Mean (ms) | Min (ms) | Max (ms) | FPS |
-|---|---|---|---|---|---|
-| YOLOv11n | NCNN | 68 | 68 | 69 | **14.6** |
-| YOLOv11n | ONNX | 146 | 143 | 153 | **6.8** |
-| YOLOv11n | PyTorch | 288 | 285 | 298 | **3.5** |
+| Модель | Формат | Потоки | Mean (ms) | Min (ms) | Max (ms) | FPS |
+|---|---|---|---|---|---|---|
+| YOLOv11n | NCNN (native API) | 1 | 161 | 149 | 178 | **6.2** |
+| YOLOv11n | PyTorch | 4 | 288 | 285 | 298 | **3.5** |
+| YOLOv11n | ONNX | auto | 331 | 276 | 426 | **3.0** |
 
-Температура при бенчмарке: 48→64°C (без радиатора), throttled=0x0.
-Питание: EXT5V=5.06-5.08V, VDD_CORE до 2.0A при нагрузке.
+> ⚠️ NCNN pip wheel (1.0.20260114) для Python 3.13 aarch64 имеет баг: OpenMP multi-threading
+> даёт деградацию (4 потока медленнее 1). Используем 1 поток — он самый быстрый.
+> ncnn собран из исходников с `-DNCNN_OPENMP=ON`, но проблема в Python binding.
 
-Дата замера: 2026-02-25
+Температура при бенчмарке: 68→75°C (active cooler), throttled=0x0.
+Питание: EXT5V=5.03-5.08V, VDD_CORE до 2.0A при нагрузке.
+
+Дата замера: 2026-02-25 (обновлено)
 
 ### Старые замеры (32-bit OS, 1 ядро, литий)
 
@@ -93,9 +97,9 @@ OS: Ubuntu, Python 3.13.3, torch + CUDA
 | RPi 4 | PyTorch | 879 | **1.1** | — |
 | RPi 4 | NCNN | 409 | **2.4** | 2.2x |
 | RPi 4 | ONNX | — | **крэш** | — |
+| RPi 5 | NCNN (1 thread) | 161 | **6.2** | **5.6x** |
 | RPi 5 | PyTorch | 288 | **3.5** | 3.2x |
-| RPi 5 | ONNX | 146 | **6.8** | 6.2x |
-| RPi 5 | NCNN | 68 | **14.6** | **13.3x** |
+| RPi 5 | ONNX | 331 | **3.0** | 2.7x |
 | blackops | PyTorch CUDA | 3.2 | **314.8** | **286x** |
 | GPU remote (HTTP) | PyTorch CUDA | _TODO_* | — | — |
 
@@ -110,10 +114,10 @@ OS: Ubuntu, Python 3.13.3, torch + CUDA
 
 ### Выводы
 
-- **RPi 5 с NCNN — 14.6 FPS** — пригоден для реального времени
-- RPi 5 быстрее RPi 4 в **6.1x** (NCNN) благодаря Cortex-A76 + 64-bit ОС + 4 ядра
+- **RPi 5 с NCNN (1 thread) — 6.2 FPS** — лучший результат на RPi
+- NCNN multi-threading деградирует из-за бага в Python binding (4 потока медленнее 1)
 - ONNX работает на RPi 5, но крашит RPi 4 (баг onnxruntime GPU discovery)
-- blackops GPU быстрее RPi 5 NCNN в **21.6x** (314.8 vs 14.6 FPS)
+- blackops GPU быстрее RPi 5 в **51x** (314.8 vs 6.2 FPS)
 - RPi 5 **требует стабильный 5.1V** (LM2596 или лаб. БП), Freenove DC/DC не хватает
 
 Дата замеров: 2026-02-25
