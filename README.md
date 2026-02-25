@@ -2,19 +2,15 @@
 
 <img align="left" width="200px" src="assets/SocksTank.jpeg">
 
-**SocksTank** is a Raspberry Pi 4B-based robot tank that hunts for socks around the apartment using computer vision (YOLO) and picks them up with a claw. Includes a web control panel with live video, motor/servo controls, and real-time telemetry.
+**SocksTank** is a Raspberry Pi-based robot tank that hunts for socks around the apartment using computer vision (YOLO) and picks them up with a claw. Includes a web control panel with live video, motor/servo controls, and real-time telemetry.
 
 Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi). If you've already assembled the Freenove Tank, it's time for the next step — train your own model and run it on a Raspberry Pi.
 
 <br clear="left">
 
 * **Raspberry Pi setup**
-    * [Hardware requirements & OS installation](docs/en/rpi4.md)
-    * [Installing dependencies](docs/en/rpi4.md#installing-dependencies)
-    * [Camera setup](docs/en/rpi4.md#camera-setup)
-    * [Autostart & static IP](docs/en/rpi4.md#autostart-setup)
-    * [Overclocking](docs/en/rpi4.md#overclocking-optional)
-    * [Installing ultralytics (YOLO)](docs/en/rpi4.md#installing-ultralytics-yolo)
+    * [RPi 5 setup (recommended)](docs/en/rpi5.md)
+    * [RPi 4 setup (legacy)](docs/en/rpi4.md)
 * **Dataset preparation**
     * [Capturing photos](docs/en/dataset.md#capturing-photos)
     * [Uploading to Roboflow & annotation](docs/en/dataset.md#uploading-to-roboflow)
@@ -32,17 +28,13 @@ Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tan
 
 ---
 
-**SocksTank** — робот-танк на базе Raspberry Pi 4B, который ищет носки по квартире с помощью компьютерного зрения (YOLO) и собирает их клешнёй. Включает веб-панель управления с живым видео, управлением моторами/сервоприводами и телеметрией в реальном времени.
+**SocksTank** — робот-танк на базе Raspberry Pi, который ищет носки по квартире с помощью компьютерного зрения (YOLO) и собирает их клешнёй. Включает веб-панель управления с живым видео, управлением моторами/сервоприводами и телеметрией в реальном времени.
 
 Построен поверх [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi). Если вы уже собрали Freenove Tank, самое время перейти к следующему этапу — обучить собственную модель и запустить её на Raspberry Pi.
 
 * **Настройка Raspberry Pi**
-    * [Требования к железу и установка ОС](docs/ru/rpi4.md)
-    * [Установка зависимостей](docs/ru/rpi4.md#установка-зависимостей)
-    * [Настройка камеры](docs/ru/rpi4.md#настройка-камеры)
-    * [Автозапуск и статический IP](docs/ru/rpi4.md#настройка-автозапуска)
-    * [Разгон](docs/ru/rpi4.md#разгон-опционально)
-    * [Установка ultralytics (YOLO)](docs/ru/rpi4.md#установка-ultralytics-yolo)
+    * [Настройка RPi 5 (рекомендуется)](docs/ru/rpi5.md)
+    * [Настройка RPi 4 (legacy)](docs/ru/rpi4.md)
 * **Подготовка датасета**
     * [Съёмка фотографий](docs/ru/dataset.md#съёмка-фотографий)
     * [Загрузка в Roboflow и аннотирование](docs/ru/dataset.md#загрузка-в-roboflow)

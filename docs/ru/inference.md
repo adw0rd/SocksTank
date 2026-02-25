@@ -8,7 +8,7 @@
 
 ```bash
 rsync -avz --exclude .venv --exclude frontend/node_modules --exclude __pycache__ --exclude .git \
-  ~/work/SocksTank/ rpi4:~/sockstank/
+  ~/work/SocksTank/ rpi5:~/sockstank/
 ```
 
 ## Веб-панель управления (рекомендуемый способ)
@@ -16,12 +16,12 @@ rsync -avz --exclude .venv --exclude frontend/node_modules --exclude __pycache__
 Основной способ работы с роботом — через веб-панель:
 
 ```bash
-ssh rpi4
+ssh rpi5
 cd ~/sockstank
-sudo -E nohup python main.py serve --model models/yolo11_best.pt --conf 0.5 > /tmp/sockstank.log 2>&1 &
+sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 > /tmp/sockstank.log 2>&1 &
 ```
 
-Открыть в браузере: `http://rpi4:8080`
+Открыть в браузере: `http://rpi5:8080`
 
 Веб-панель включает: живое видео с YOLO-детекцией, управление моторами, сервоприводами, LED, телеметрию (дистанция, ИК-сенсоры, температура CPU).
 
@@ -32,7 +32,7 @@ sudo -E nohup python main.py serve --model models/yolo11_best.pt --conf 0.5 > /t
 Запись видео с детекцией в файл:
 
 ```bash
-ssh rpi4
+ssh rpi5
 cd ~/sockstank
 sudo -E python main.py detect --model models/yolo8_best.pt --conf 0.5
 ```
@@ -69,7 +69,7 @@ sudo ./main.py detect --model best_ncnn_model --conf 0.5
 Видеофайл `detect.mp4` сохраняется в текущей директории на RPi. Скопировать на свой компьютер:
 
 ```bash
-scp rpi4:~/sockstank/detect.mp4 .
+scp rpi5:~/sockstank/detect.mp4 .
 ```
 
 Открыть любым видеоплеером (VLC, mpv и т.д.).

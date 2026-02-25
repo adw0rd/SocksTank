@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    model_path: str = "models/yolo11_best.pt"
+    model_path: str = "models/yolo11_best_ncnn_model"
     confidence: float = 0.5
     resolution_w: int = 640
     resolution_h: int = 480

@@ -8,7 +8,7 @@ The entire project is copied to the robot via rsync:
 
 ```bash
 rsync -avz --exclude .venv --exclude frontend/node_modules --exclude __pycache__ --exclude .git \
-  ~/work/SocksTank/ rpi4:~/sockstank/
+  ~/work/SocksTank/ rpi5:~/sockstank/
 ```
 
 ## Web control panel (recommended)
@@ -16,12 +16,12 @@ rsync -avz --exclude .venv --exclude frontend/node_modules --exclude __pycache__
 The main way to interact with the robot is through the web panel:
 
 ```bash
-ssh rpi4
+ssh rpi5
 cd ~/sockstank
-sudo -E nohup python main.py serve --model models/yolo11_best.pt --conf 0.5 > /tmp/sockstank.log 2>&1 &
+sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 > /tmp/sockstank.log 2>&1 &
 ```
 
-Open in browser: `http://rpi4:8080`
+Open in browser: `http://rpi5:8080`
 
 The web panel includes: live video with YOLO detection, motor/servo/LED controls, telemetry (distance, IR sensors, CPU temperature).
 
@@ -32,9 +32,9 @@ The web panel includes: live video with YOLO detection, motor/servo/LED controls
 Record video with detection to a file:
 
 ```bash
-ssh rpi4
+ssh rpi5
 cd ~/sockstank
-sudo -E python main.py detect --model models/yolo8_best.pt --conf 0.5
+sudo -E python main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
 ```
 
 ### Parameters
@@ -69,7 +69,7 @@ sudo ./main.py detect --model best_ncnn_model --conf 0.5
 The `detect.mp4` video file is saved in the current directory on the RPi. Copy it to your computer:
 
 ```bash
-scp rpi4:~/sockstank/detect.mp4 .
+scp rpi5:~/sockstank/detect.mp4 .
 ```
 
 Open with any video player (VLC, mpv, etc.).

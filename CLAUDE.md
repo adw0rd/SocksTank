@@ -27,8 +27,10 @@ frontend/          # Vite + React + TypeScript (веб-панель)
 │   └── lib/types.ts    # TypeScript интерфейсы
 └── dist/               # Собранный бандл [.gitignore]
 models/            # Обученные модели YOLO
-├── yolo8_best.pt  # YOLOv8n (100 эпох, mAP50=0.995, mAP50-95=0.885)
-└── yolo11_best.pt # YOLOv11n (100 эпох, mAP50=0.995, mAP50-95=0.96)
+├── yolo11_best_ncnn_model/  # YOLOv11n NCNN (дефолт для RPi, 14.6 FPS на RPi 5)
+├── yolo11_best.pt           # YOLOv11n PyTorch (для GPU и разработки)
+├── yolo11_best.onnx         # YOLOv11n ONNX (универсальный)
+└── yolo8_best.pt            # YOLOv8n PyTorch (старая модель)
 legacy/            # Старые скрипты (bench, camera_detect, camera_shot, train)
 data.yaml          # Конфиг датасета (1 класс: sock, Roboflow v2, 961 изображение)
 dataset/           # Приватный датасет (train/valid/test) [.gitignore]
@@ -71,7 +73,7 @@ sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-syst
 ./main.py serve --mock
 
 # Веб-панель управления (RPi, реальное железо)
-sudo -E python main.py serve --model models/yolo8_best.pt --conf 0.5
+sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 
 # Тренировка (на GPU-сервере или dev-машине)
 ./main.py train --device 0 --epochs 100
@@ -80,7 +82,7 @@ sudo -E python main.py serve --model models/yolo8_best.pt --conf 0.5
 ./main.py bench
 
 # Детекция носков с камеры RPi (требует sudo)
-sudo ./main.py detect --model models/yolo8_best.pt --conf 0.5
+sudo ./main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
 
 # Сбор фото для датасета
 sudo ./main.py shot --count 200 --output-dir images
@@ -105,7 +107,8 @@ sudo ./main.py shot --count 200 --output-dir images
 
 | Хост | Назначение |
 |---|---|
-| **rpi4** | Робот-танк (RPi 4B, Debian bookworm) |
+| **rpi4** | Робот-танк legacy (RPi 4B, Debian bookworm) |
+| **rpi5** | Робот-танк основной (RPi 5, Debian trixie 64-bit) |
 | **blackops** | GPU-сервер для тренировки (RTX 4070 SUPER) |
 | **rpi5** | Raspberry Pi 5 |
 
@@ -131,19 +134,20 @@ python -c "from ultralytics import YOLO; YOLO('yolo11n.pt').train(data='data.yam
 
 | Модель | Файл | mAP50 | mAP50-95 | Размер |
 |---|---|---|---|---|
-| YOLOv8n | `models/yolo8_best.pt` | 0.995 | 0.885 | 6.0 MB |
-| YOLOv11n | `models/yolo11_best.pt` | 0.995 | 0.96 | 5.2 MB |
+| YOLOv11n | `models/yolo11_best_ncnn_model/` | 0.995 | 0.96 | 10.4 MB | **RPi (продакшен)** |
+| YOLOv11n | `models/yolo11_best.pt` | 0.995 | 0.96 | 5.2 MB | GPU, разработка |
+| YOLOv8n | `models/yolo8_best.pt` | 0.995 | 0.885 | 6.0 MB | Старая модель |
 
 ## Deploy на робот
 
 ```bash
 # Копировать проект на RPi
 rsync -avz --exclude .venv --exclude frontend/node_modules --exclude __pycache__ --exclude .git \
-  ~/work/SocksTank/ rpi4:~/sockstank/
+  ~/work/SocksTank/ rpi5:~/sockstank/
 
 # Запуск на RPi
-ssh rpi4
+ssh rpi5
 cd ~/sockstank
-sudo -E nohup python main.py serve --model models/yolo11_best.pt --conf 0.5 > /tmp/sockstank.log 2>&1 &
-# Открыть http://rpi4:8080
+sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 > /tmp/sockstank.log 2>&1 &
+# Открыть http://rpi5:8080
 ```

@@ -1,6 +1,6 @@
 # Тренировка модели
 
-Обучение модели YOLOv8 для распознавания носков. Тренировка требует GPU — на CPU она займёт слишком много времени.
+Обучение модели YOLO для распознавания носков. Тренировка требует GPU — на CPU она займёт слишком много времени.
 
 ## Где тренировать
 
@@ -118,39 +118,96 @@ runs/detect/train/
 
 ## Экспорт модели
 
-Для запуска на Raspberry Pi модель можно экспортировать в формат **ncnn** — он оптимизирован для ARM-процессоров:
+После тренировки `.pt` модель нужно экспортировать в формат для деплоя на RPi.
+
+### Рекомендуемый формат: NCNN
+
+**NCNN** (Tencent) — оптимизирован для ARM-процессоров. На RPi 5 даёт **14.6 FPS** (vs 3.5 FPS PyTorch).
+
+| Формат | RPi 5 FPS | Рекомендация |
+|---|---|---|
+| **NCNN** | **14.6** | ✅ Для продакшена на RPi |
+| ONNX | 6.8 | Универсальный, но медленнее |
+| PyTorch (.pt) | 3.5 | Для разработки и GPU |
+
+### Пайплайн: обучение → экспорт → деплой
 
 ```bash
-yolo export model=best.pt format=ncnn imgsz=640
+# 1. Обучить модель (на GPU-сервере)
+ssh blackops
+cd ~/work/test20250807_yolov8
+python -c "
+from ultralytics import YOLO
+model = YOLO('yolo11n.pt')
+model.train(data='data.yaml', epochs=100, batch=16, device=0)
+"
+# Результат: runs/detect/train/weights/best.pt
+
+# 2. Экспортировать в NCNN (на dev-машине или GPU-сервере)
+python -c "
+from ultralytics import YOLO
+model = YOLO('runs/detect/train/weights/best.pt')
+model.export(format='ncnn')
+"
+# Результат: runs/detect/train/weights/best_ncnn_model/
+#   ├── model.ncnn.param   (граф модели, ~22 KB)
+#   ├── model.ncnn.bin     (веса, ~10 MB)
+#   └── metadata.yaml      (метаданные ultralytics)
+
+# 3. Скопировать на RPi
+scp -r runs/detect/train/weights/best_ncnn_model rpi5:~/sockstank/models/yolo11_best_ncnn_model
+
+# 4. Запустить SocksTank (NCNN — дефолт)
+ssh rpi5
+cd ~/sockstank
+sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 ```
 
-Или через Python:
+### Экспорт через CLI
+
+```bash
+# NCNN (рекомендуется для RPi)
+yolo export model=best.pt format=ncnn imgsz=640
+
+# ONNX (универсальный)
+yolo export model=best.pt format=onnx imgsz=640
+```
+
+### Экспорт через Python
 
 ```python
 from ultralytics import YOLO
 
 model = YOLO("best.pt")
-model.export(format="ncnn")
+
+# NCNN
+model.export(format="ncnn")  # → best_ncnn_model/
+
+# ONNX
+model.export(format="onnx")  # → best.onnx
 ```
 
-### Таблица аргументов экспорта
+### Аргументы экспорта
 
 | Аргумент | Тип | По умолчанию | Описание |
 |---|---|---|---|
-| `format` | str | `torchscript` | Формат экспорта: `onnx`, `torchscript`, `engine` (TensorRT), `ncnn` и др. |
+| `format` | str | `torchscript` | Формат: `ncnn`, `onnx`, `torchscript`, `engine` (TensorRT) |
 | `imgsz` | int/tuple | `640` | Размер входного изображения |
-| `half` | bool | `False` | FP16-квантизация (уменьшает размер, ускоряет инференс) |
-| `int8` | bool | `False` | INT8-квантизация (максимальное сжатие, для edge-устройств) |
-| `optimize` | bool | `False` | Оптимизация для мобильных устройств (TorchScript). Несовместимо с ncnn и CUDA |
-| `dynamic` | bool | `False` | Динамические размеры входа (ONNX, TensorRT, OpenVINO) |
-| `simplify` | bool | `True` | Упрощение графа модели (ONNX) |
-| `nms` | bool | `False` | Добавить NMS в экспортированную модель |
-| `batch` | int | `1` | Размер батча для инференса |
-| `device` | str | `None` | Устройство: `0` (GPU), `cpu`, `mps`, `dla:0` (Jetson) |
-| `data` | str | `coco8.yaml` | Путь к датасету (для INT8-калибровки) |
-| `workspace` | float/None | `None` | Макс. размер workspace (ГиБ) для TensorRT |
-| `opset` | int | `None` | Версия ONNX opset |
-| `fraction` | float | `1.0` | Доля датасета для INT8-калибровки |
+| `half` | bool | `False` | FP16-квантизация |
+| `int8` | bool | `False` | INT8-квантизация (для edge-устройств) |
+| `simplify` | bool | `True` | Упрощение графа (ONNX) |
+| `dynamic` | bool | `False` | Динамические размеры входа (ONNX, TensorRT) |
+| `device` | str | `None` | Устройство: `0` (GPU), `cpu`, `mps` |
+| `data` | str | `coco8.yaml` | Датасет для INT8-калибровки |
+
+### Текущие модели в проекте
+
+| Модель | Формат | Файл | Размер | Назначение |
+|---|---|---|---|---|
+| YOLOv11n | PyTorch | `models/yolo11_best.pt` | 5.2 MB | GPU, разработка |
+| YOLOv11n | NCNN | `models/yolo11_best_ncnn_model/` | 10.4 MB | **RPi (продакшен)** |
+| YOLOv11n | ONNX | `models/yolo11_best.onnx` | 10.1 MB | Универсальный |
+| YOLOv8n | PyTorch | `models/yolo8_best.pt` | 6.0 MB | Старая модель |
 
 ---
 
