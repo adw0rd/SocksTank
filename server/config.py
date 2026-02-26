@@ -16,6 +16,16 @@ class Settings(BaseSettings):
     telemetry_hz: float = 5.0
     inference_mode: str = "auto"  # "auto" | "local" | "remote"
 
+    # Плавный старт CPU (предотвращение краша питания на RPi)
+    cpu_warmup: bool = True
+    cpu_warmup_stages: str = "1,2,3,4"  # Стадии (кол-во ядер)
+    cpu_warmup_samples: int = 3  # Итераций на стадию
+    cpu_warmup_pause_s: float = 2.0  # Пауза между стадиями (секунды)
+
+    # C++ ncnn wrapper (обход OMP бага в Python ncnn)
+    ncnn_cpp: bool = False  # Использовать C++ ncnn wrapper вместо ultralytics
+    ncnn_threads: int = 2  # Кол-во OMP потоков для C++ ncnn
+
     model_config = {"env_prefix": "SOCKSTANK_"}
 
 

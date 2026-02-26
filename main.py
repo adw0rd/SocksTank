@@ -155,6 +155,8 @@ def serve(
         "~/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/Code/Server",
         help="Путь к модулям Freenove",
     ),
+    ncnn_cpp: bool = typer.Option(False, help="Использовать C++ ncnn wrapper"),
+    ncnn_threads: int = typer.Option(2, help="OMP потоков для C++ ncnn"),
 ):
     """Веб-сервер управления роботом."""
     import logging
@@ -171,6 +173,8 @@ def serve(
     settings.port = port
     settings.mock = mock
     settings.freenove_path = freenove_path
+    settings.ncnn_cpp = ncnn_cpp
+    settings.ncnn_threads = ncnn_threads
 
     from server.app import create_app
 

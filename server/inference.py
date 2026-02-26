@@ -1,5 +1,6 @@
 """InferenceRouter — переключение между локальным и удалённым инференсом."""
 
+import os
 import time
 import logging
 import threading
@@ -7,17 +8,58 @@ import threading
 import cv2
 import numpy as np
 import httpx
+import yaml
 
 from server.config import settings
 
 log = logging.getLogger(__name__)
 
 
-class InferenceRouter:
-    """Роутер инференса: local YOLO или remote HTTP POST."""
+def _load_class_names(model_dir: str) -> dict[int, str]:
+    """Загрузить имена классов из metadata.yaml рядом с моделью."""
+    meta_path = os.path.join(model_dir, "metadata.yaml")
+    if not os.path.exists(meta_path):
+        log.warning("metadata.yaml не найден: %s — используем дефолтные имена", meta_path)
+        return {0: "sock"}
+    with open(meta_path) as f:
+        meta = yaml.safe_load(f)
+    names = meta.get("names", {0: "sock"})
+    # metadata.yaml хранит ключи как int, но на всякий случай
+    return {int(k): v for k, v in names.items()}
 
-    def __init__(self, model=None):
+
+def _try_load_cpp_detector(model_dir: str, num_threads: int):
+    """Попытка загрузить C++ ncnn wrapper. Возвращает (detector, class_names) или (None, None)."""
+    try:
+        from ncnn_wrapper import NCNNDetector
+    except ImportError:
+        log.info("C++ ncnn_wrapper не найден — используем ultralytics")
+        return None, None
+
+    param_path = os.path.join(model_dir, "model.ncnn.param")
+    bin_path = os.path.join(model_dir, "model.ncnn.bin")
+
+    if not os.path.exists(param_path) or not os.path.exists(bin_path):
+        log.warning("NCNN файлы модели не найдены в %s", model_dir)
+        return None, None
+
+    detector = NCNNDetector()
+    if not detector.load(param_path, bin_path, num_threads):
+        log.error("Не удалось загрузить C++ ncnn модель из %s", model_dir)
+        return None, None
+
+    class_names = _load_class_names(model_dir)
+    log.info("C++ ncnn wrapper загружен: %s (%d потоков, классы: %s)", model_dir, num_threads, class_names)
+    return detector, class_names
+
+
+class InferenceRouter:
+    """Роутер инференса: local YOLO / C++ ncnn / remote HTTP POST."""
+
+    def __init__(self, model=None, cpp_detector=None, class_names=None):
         self._model = model
+        self._cpp_detector = cpp_detector
+        self._class_names: dict[int, str] = class_names or {}
         self._mode = settings.inference_mode  # "auto" | "local" | "remote"
         self._remote_url: str | None = None  # "http://host:port"
         self._active_backend = "local"
@@ -75,9 +117,41 @@ class InferenceRouter:
         return self._remote_url is not None
 
     def _infer_local(self, frame: np.ndarray, confidence: float) -> list[dict]:
-        """Локальный YOLO-инференс."""
-        self._active_backend = "local"
+        """Локальный инференс: C++ ncnn wrapper или ultralytics YOLO."""
         self._error = None
+
+        # C++ ncnn wrapper (приоритет, если доступен)
+        if self._cpp_detector is not None:
+            return self._infer_cpp(frame, confidence)
+
+        # Fallback: ultralytics YOLO
+        return self._infer_ultralytics(frame, confidence)
+
+    def _infer_cpp(self, frame: np.ndarray, confidence: float) -> list[dict]:
+        """Инференс через C++ ncnn wrapper."""
+        self._active_backend = "local:ncnn-cpp"
+
+        # C++ wrapper ожидает RGB uint8 (HWC) — frame уже в RGB от picamera2/mock
+        raw_dets = self._cpp_detector.detect(frame, confidence)
+        self._inference_ms = self._cpp_detector.last_inference_ms()
+
+        detections = []
+        for det in raw_dets:
+            cls_id = det["class_id"]
+            cls_name = self._class_names.get(cls_id, f"class_{cls_id}")
+            bbox = list(det["bbox"])
+            detections.append(
+                {
+                    "class": cls_name,
+                    "confidence": round(det["confidence"], 3),
+                    "bbox": bbox,
+                }
+            )
+        return detections
+
+    def _infer_ultralytics(self, frame: np.ndarray, confidence: float) -> list[dict]:
+        """Инференс через ultralytics YOLO."""
+        self._active_backend = "local"
 
         if self._model is None:
             self._inference_ms = 0

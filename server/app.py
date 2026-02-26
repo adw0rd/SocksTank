@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from server.config import settings
 from server.camera import CameraManager
 from server.hardware import HardwareController
-from server.inference import InferenceRouter
+from server.inference import InferenceRouter, _try_load_cpp_detector
 from server.gpu_manager import GPUServerManager
 from server.freenove_bridge import load_camera
 from server.routes_video import router as video_router, set_camera_manager
@@ -29,21 +29,41 @@ async def lifespan(app: FastAPI):
     """Инициализация и завершение ресурсов."""
     # Загрузка YOLO-модели
     model = None
-    if os.path.exists(settings.model_path):
+    cpp_detector = None
+    class_names = None
+
+    if not os.path.exists(settings.model_path):
+        log.warning("Модель не найдена: %s — стрим без детекции", settings.model_path)
+    elif settings.ncnn_cpp:
+        # Попытка загрузить C++ ncnn wrapper (приоритет)
+        cpp_detector, class_names = _try_load_cpp_detector(settings.model_path, settings.ncnn_threads)
+        if cpp_detector is None:
+            # Fallback на ultralytics если C++ wrapper не загрузился
+            log.warning("C++ ncnn wrapper недоступен — fallback на ultralytics")
+            from ultralytics import YOLO
+
+            model = YOLO(settings.model_path)
+            log.info("YOLO модель загружена (fallback): %s", settings.model_path)
+    else:
         from ultralytics import YOLO
 
         model = YOLO(settings.model_path)
         log.info("YOLO модель загружена: %s", settings.model_path)
-    else:
-        log.warning("Модель не найдена: %s — стрим без детекции", settings.model_path)
 
     # Инициализация InferenceRouter
-    inference_router = InferenceRouter(model)
+    inference_router = InferenceRouter(model, cpp_detector, class_names)
 
     # Инициализация GPUServerManager
     gpu_manager = GPUServerManager()
     gpu_manager.load()
     gpu_manager.start_health_loop(inference_router)
+
+    # Плавный старт CPU (предотвращение краша питания на RPi)
+    warmup_model = model or cpp_detector
+    if warmup_model and not settings.mock and settings.cpu_warmup:
+        from server.cpu_warmup import gradual_warmup
+
+        gradual_warmup(warmup_model, settings)
 
     # Инициализация камеры и менеджера
     camera = load_camera()
