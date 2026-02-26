@@ -1,10 +1,12 @@
-# Настройка Raspberry Pi
+# Настройка Raspberry Pi 4 (legacy)
 
-Руководство по подготовке Raspberry Pi для работы робота-танка SocksTank.
+> **Примечание:** Эта документация для RPi 4B (legacy). Основной платформой является **RPi 5** — см. [rpi5.md](rpi5.md).
+
+Руководство по подготовке Raspberry Pi 4B для работы робота-танка SocksTank.
 
 ## Требования к железу
 
-- **Raspberry Pi 4B** (рекомендуется, 4 ГБ RAM) или **Raspberry Pi 5**
+- **Raspberry Pi 4B** (4 ГБ RAM) — legacy, для новых сборок рекомендуется **RPi 5**
 - **SD-карта** 32 ГБ+ (Class 10 / A2)
 - **Камера ov5647** (OmniVision) — входит в комплект Freenove Tank Kit
 - **Freenove Tank Robot Kit** — собранный по инструкции из комплекта

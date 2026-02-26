@@ -108,7 +108,7 @@ OS: Ubuntu, Python 3.13.3, torch + CUDA
 
 ### Характеристики
 
-| | RPi 4 Model B | RPi 5 Model B | blackops |
+| | RPi 4 Model B (legacy) | RPi 5 Model B | blackops |
 |---|---|---|---|
 | CPU | Cortex-A72 4x1.8 GHz | Cortex-A76 4x2.4 GHz | Ryzen (desktop) |
 | GPU | — | — | RTX 4070 SUPER |

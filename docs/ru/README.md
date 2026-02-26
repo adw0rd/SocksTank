@@ -2,7 +2,7 @@
 
 <img align="left" width="200px" src="../../assets/SocksTank.jpeg">
 
-**SocksTank** — робот-танк на базе Raspberry Pi 4B, который ищет носки по квартире с помощью компьютерного зрения (YOLO) и собирает их клешнёй. Включает веб-панель управления с живым видео и телеметрией.
+**SocksTank** — робот-танк на базе Raspberry Pi 5 (ранее RPi 4B, legacy), который ищет носки по квартире с помощью компьютерного зрения (YOLO) и собирает их клешнёй. Включает веб-панель управления с живым видео и телеметрией.
 
 Построен поверх [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi).
 
@@ -12,7 +12,7 @@
 
 ### Железо
 
-- **Raspberry Pi 4B** (или RPi 5) с блоком питания и SD-картой (32 ГБ+)
+- **Raspberry Pi 5** (рекомендуется) или RPi 4B (legacy), с блоком питания и SD-картой (32 ГБ+)
 - **Freenove Tank Robot Kit** ([GitHub](https://github.com/Freenove/Freenove_Tank_Robot_Kit_for_Raspberry_Pi))
 - **Камера ov5647** (OmniVision, входит в комплект Freenove)
 - **GPU-сервер** для тренировки модели (NVIDIA, или Apple Silicon, или облако)

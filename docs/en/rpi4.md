@@ -1,10 +1,12 @@
-# Raspberry Pi Setup
+# Raspberry Pi 4 Setup (legacy)
 
-Guide for preparing a Raspberry Pi to run the SocksTank robot.
+> **Note:** This documentation is for RPi 4B (legacy). The primary platform is **RPi 5** — see [rpi5.md](rpi5.md).
+
+Guide for preparing a Raspberry Pi 4B to run the SocksTank robot.
 
 ## Hardware requirements
 
-- **Raspberry Pi 4B** (recommended, 4 GB RAM) or **Raspberry Pi 5**
+- **Raspberry Pi 4B** (4 GB RAM) — legacy, for new builds **RPi 5** is recommended
 - **SD card** 32 GB+ (Class 10 / A2)
 - **ov5647 camera** (OmniVision) — included in the Freenove Tank Kit
 - **Freenove Tank Robot Kit** — assembled following the included instructions

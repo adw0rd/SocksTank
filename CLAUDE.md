@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-SocksTank — робот-танк на базе Raspberry Pi 4B, который ищет носки по квартире с помощью компьютерного зрения (YOLO) и собирает их клешнёй. Построен поверх [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi).
+SocksTank — робот-танк на базе Raspberry Pi 5 (ранее RPi 4B, legacy), который ищет носки по квартире с помощью компьютерного зрения (YOLO) и собирает их клешнёй. Построен поверх [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi).
 
 ## Project Structure
 
@@ -12,6 +12,7 @@ server/            # FastAPI backend (веб-панель управления)
 ├── app.py         # FastAPI app factory, lifespan, mount static
 ├── config.py      # Pydantic Settings
 ├── camera.py      # CameraManager: picamera2 + YOLO → MJPEG
+├── cpu_warmup.py  # Плавный старт CPU (поэтапная загрузка ядер для RPi 5)
 ├── hardware.py    # HardwareController: Motor/Servo/Led/Ultrasonic/Infrared
 ├── freenove_bridge.py  # Импорт Freenove модулей + mock fallback
 ├── mock.py        # Mock-классы для macOS
@@ -27,10 +28,12 @@ frontend/          # Vite + React + TypeScript (веб-панель)
 │   └── lib/types.ts    # TypeScript интерфейсы
 └── dist/               # Собранный бандл [.gitignore]
 models/            # Обученные модели YOLO
-├── yolo11_best_ncnn_model/  # YOLOv11n NCNN (дефолт для RPi, 14.6 FPS на RPi 5)
+├── yolo11_best_ncnn_model/  # YOLOv11n NCNN FP32 (дефолт, 11.2 FPS Python / 12.8 FPS C++ на RPi 5)
 ├── yolo11_best.pt           # YOLOv11n PyTorch (для GPU и разработки)
 ├── yolo11_best.onnx         # YOLOv11n ONNX (универсальный)
+├── yolo11_best_ncnn_int8_model/  # YOLOv11n NCNN INT8 (2.6 MB, квантизованная)
 └── yolo8_best.pt            # YOLOv8n PyTorch (старая модель)
+ncnn_wrapper/      # C++ ncnn обёртка с OMP (pybind11, обход бага Python ncnn)
 legacy/            # Старые скрипты (bench, camera_detect, camera_shot, train)
 data.yaml          # Конфиг датасета (1 класс: sock, Roboflow v2, 961 изображение)
 dataset/           # Приватный датасет (train/valid/test) [.gitignore]
@@ -72,8 +75,11 @@ sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-syst
 # Веб-панель управления (macOS, mock-режим)
 ./main.py serve --mock
 
-# Веб-панель управления (RPi, реальное железо)
+# Веб-панель управления (RPi, реальное железо, плавный старт по умолчанию)
 sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
+
+# С C++ ncnn wrapper (обход OMP бага, 12.8 FPS)
+sudo -E python main.py serve --model models/yolo11_best_ncnn_model --ncnn-cpp --ncnn-threads 2
 
 # Тренировка (на GPU-сервере или dev-машине)
 ./main.py train --device 0 --epochs 100
@@ -107,10 +113,9 @@ sudo ./main.py shot --count 200 --output-dir images
 
 | Хост | Назначение |
 |---|---|
-| **rpi4** (legacy) | Робот-танк (RPi 4B, Debian bookworm) |
-| **rpi5** | Робот-танк основной (RPi 5, Debian trixie 64-bit) |
+| **rpi5** | Робот-танк основной (RPi 5, Debian 13 trixie 64-bit, Python 3.13) |
+| **rpi4** (legacy) | Робот-танк старый (RPi 4B, Debian 12 bookworm 64-bit, Python 3.11) |
 | **blackops** | GPU-сервер для тренировки (RTX 4070 SUPER) |
-| **rpi5** | Raspberry Pi 5 |
 
 ## Training
 
@@ -134,7 +139,8 @@ python -c "from ultralytics import YOLO; YOLO('yolo11n.pt').train(data='data.yam
 
 | Модель | Файл | mAP50 | mAP50-95 | Размер |
 |---|---|---|---|---|
-| YOLOv11n | `models/yolo11_best_ncnn_model/` | 0.995 | 0.96 | 10.4 MB | **RPi (продакшен)** |
+| YOLOv11n | `models/yolo11_best_ncnn_model/` | 0.995 | 0.96 | 9.9 MB | **RPi продакшен (FP32)** |
+| YOLOv11n | `models/yolo11_best_ncnn_int8_model/` | ~0.98 | ~0.94 | 2.6 MB | **RPi INT8 (квантизованная)** |
 | YOLOv11n | `models/yolo11_best.pt` | 0.995 | 0.96 | 5.2 MB | GPU, разработка |
 | YOLOv8n | `models/yolo8_best.pt` | 0.995 | 0.885 | 6.0 MB | Старая модель |
 
