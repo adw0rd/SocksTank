@@ -157,12 +157,12 @@ psu_max_current=5000
 | NCNN C++ (2 OMP) | 2 | **78** | 77 | 83 | **12.8** | **11.6x** |
 | NCNN Python | 4 (плавный старт) | 89 | 87 | 97 | **11.2** | **10.2x** |
 | NCNN Python | 3 (taskset) | 90 | 87 | 99 | **11.1** | **10.1x** |
-| NCNN INT8 | — | — | — | — | **TODO** | — |
+| NCNN INT8 (Python, 1 поток) | 1 | 117.5 | 117.2 | 118.0 | **8.5** | **7.7x** |
 
 Температура: 38→47°C. Throttled=0x0, EXT5V=5.22-5.23V.
 
 > C++ ncnn с реальным OpenMP = 12.8 FPS. Python binding имеет OMP баг (всегда 1 поток).
-> INT8 квантизованная модель готова (2.6 MB vs 9.9 MB FP32), ожидается 1.5-2x прирост.
+> INT8: +6% на 1 потоке (117.5ms vs 124.5ms FP32), модель 2.6 MB (75% меньше). Больший прирост с C++ wrapper.
 
 #### LM2596 (2x18650, автономное питание)
 
@@ -200,7 +200,7 @@ psu_max_current=5000
 - [x] Замерить YOLO инференс на 4 ядрах (PyTorch 3.5 FPS, NCNN 14.6 FPS, ONNX 6.8 FPS)
 - [x] Установить DC-DC конвертер (XL6019E1, 5.2V, 4 ядра стабильно, 11.2 FPS)
 - [x] Замерить диск (microSD: запись 73.5 MB/s, чтение 94.5 MB/s)
-- [ ] Настроить config.txt (PWM, камера, питание)
+- [x] Настроить config.txt (PWM, камера, питание, gpu_mem, disable-bt)
 - [ ] Подключить камеру (кабель 22→15 pin заказан)
 - [x] Установить SocksTank зависимости (fastapi, uvicorn, pydantic-settings)
 - [x] Протестировать SocksTank serve --mock (3.4 FPS)

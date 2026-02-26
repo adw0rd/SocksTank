@@ -1,0 +1,58 @@
+# =============================================================================
+# RPi 5 config.txt для SocksTank
+# Файл: /boot/firmware/config.txt
+# Применить: sudo cp scripts/rpi5_config.txt /boot/firmware/config.txt && sudo reboot
+# =============================================================================
+
+# --- Стандартные настройки RPi 5 ---
+# (эти обычно уже есть в дефолтном config.txt)
+
+[all]
+# Включить RP1 чип (I2C, SPI, UART)
+dtparam=i2c_arm=on
+dtparam=spi=on
+
+# Аудио (не нужно для танка, но не мешает)
+dtparam=audio=on
+
+# --- Камера OV5647 (Freenove Tank Kit) ---
+# RPi 5: разъём cam0 (22-pin FPC), нужен переходник 22→15 pin
+dtoverlay=ov5647,cam0
+
+# Выделить память для камеры (CMA)
+dtoverlay=cma,cma-256
+
+# --- PWM для сервоприводов ---
+# Freenove Tank Board использует GPIO 12 (PWM0) и GPIO 13 (PWM1)
+# для управления сервоприводами клешни и подъёмного механизма
+dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,func2=4
+
+# --- Питание ---
+# Разрешить потребление до 5A через GPIO (для XL6019E1 buck-boost)
+usb_max_current_enable=1
+psu_max_current=5000
+
+# --- Производительность ---
+# Не разгоняем (стабильность важнее на батарейном питании)
+# arm_freq=2400  # дефолт 2.4 GHz уже максимум для A76
+
+# Отключить Bluetooth (экономия энергии, не нужен для танка)
+dtoverlay=disable-bt
+
+# Отключить Wi-Fi power management (стабильность SSH)
+# Применяется через /etc/NetworkManager, но флаг тоже помогает
+dtparam=pwr_led_trigger=default-on
+
+# --- GPU / Display ---
+# Headless режим — экран не нужен
+# Уменьшить GPU memory для headless (больше RAM для YOLO)
+gpu_mem=16
+
+# Отключить HDMI (экономия ~20-50mA)
+# Раскомментировать если точно не нужен дисплей:
+# hdmi_blanking=2
+
+[cm5]
+dtoverlay=dwc2,dr_mode=host
+
+[all]
