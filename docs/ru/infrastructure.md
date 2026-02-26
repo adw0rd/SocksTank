@@ -2,7 +2,7 @@
 
 ## Хосты
 
-### rpi4 (робот)
+### rpi4 (legacy)
 
 - **Назначение**: робот-танк (Raspberry Pi 4B)
 - **OS**: Debian 12 (bookworm), aarch64

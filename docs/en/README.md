@@ -26,7 +26,7 @@ Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tan
 ## Quick Start
 
 1. **Assemble the tank** — Freenove Tank Robot Kit (instructions included)
-2. **Set up RPi** — [rpi4.md](rpi4.md)
+2. **Set up RPi** — [rpi4.md (legacy)](rpi4.md)
 3. **Collect dataset** — [dataset.md](dataset.md)
 4. **Train model** — [training.md](training.md)
 5. **Run detection** — [inference.md](inference.md)
@@ -87,8 +87,8 @@ sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-syst
 
 | Section | Description |
 |---|---|
-| [RPi 4 setup](rpi4.md) | OS installation, dependencies, camera, autostart |
-| [RPi 5 setup](rpi5.md) | Specifications, power, differences from RPi 4 |
+| [RPi 4 setup (legacy)](rpi4.md) | OS installation, dependencies, camera, autostart |
+| [RPi 5 setup](rpi5.md) | Specifications, power, differences from RPi 4 (legacy) |
 | [Dataset preparation](dataset.md) | Photo capture, Roboflow, annotation, augmentation |
 | [Model training](training.md) | YOLO training, parameters, evaluation, export |
 | [Running on the robot](inference.md) | Web panel, deployment, detection, tank integration |

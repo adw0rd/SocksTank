@@ -6,13 +6,13 @@
 
 | Хост | Диск | Запись | Чтение |
 |---|---|---|---|
-| **rpi4** | SanDisk 3.2Gen1 114.6 GB (USB) | 60.7 MB/s | 151 MB/s |
+| **rpi4** (legacy) | SanDisk 3.2Gen1 114.6 GB (USB) | 60.7 MB/s | 151 MB/s |
 | **rpi5** | microSD 117 GB (новая, 64-bit OS) | 73.5 MB/s | 94.5 MB/s |
 | **blackops** | Samsung 990 PRO 1TB (NVMe) | 4.4 GB/s | 15.2 GB/s* |
 
 > *blackops: аномально высокая скорость чтения — данные закешировались в RAM.
 
-## rpi4
+## rpi4 (legacy)
 
 - **Диск:** SanDisk 3.2Gen1 114.6 GB (USB flash)
 - **Тест:** 256 MB

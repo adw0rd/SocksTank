@@ -2,7 +2,7 @@
 
 ## Hosts
 
-### rpi4 (robot)
+### rpi4 (legacy)
 
 - **Purpose**: robot tank (Raspberry Pi 4B)
 - **OS**: Debian 12 (bookworm), aarch64

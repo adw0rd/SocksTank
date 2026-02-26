@@ -18,7 +18,7 @@ Guide for preparing RPi 5 for the SocksTank robot.
 | Serial | 9aad3f08b599e338 |
 | IP | 192.168.0.158 (static) |
 
-## Differences from RPi 4
+## Differences from RPi 4 (legacy)
 
 | | RPi 4 Model B | RPi 5 Model B |
 |---|---|---|

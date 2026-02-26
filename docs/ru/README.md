@@ -26,7 +26,7 @@
 ## Quick Start
 
 1. **Собрать танк** — Freenove Tank Robot Kit (инструкция в комплекте)
-2. **Настроить RPi** — [rpi4.md](rpi4.md)
+2. **Настроить RPi** — [rpi4.md (legacy)](rpi4.md)
 3. **Собрать датасет** — [dataset.md](dataset.md)
 4. **Обучить модель** — [training.md](training.md)
 5. **Запустить детекцию** — [inference.md](inference.md)
@@ -87,8 +87,8 @@ sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-syst
 
 | Раздел | Описание |
 |---|---|
-| [Настройка RPi 4](rpi4.md) | Установка ОС, зависимости, камера, автозапуск |
-| [Настройка RPi 5](rpi5.md) | Характеристики, питание, отличия от RPi 4 |
+| [Настройка RPi 4 (legacy)](rpi4.md) | Установка ОС, зависимости, камера, автозапуск |
+| [Настройка RPi 5](rpi5.md) | Характеристики, питание, отличия от RPi 4 (legacy) |
 | [Подготовка датасета](dataset.md) | Съёмка фото, Roboflow, аннотации, аугментация |
 | [Тренировка модели](training.md) | Обучение YOLO, параметры, оценка, экспорт |
 | [Запуск на роботе](inference.md) | Веб-панель, деплой, детекция, интеграция с танком |

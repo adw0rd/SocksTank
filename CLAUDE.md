@@ -107,7 +107,7 @@ sudo ./main.py shot --count 200 --output-dir images
 
 | Хост | Назначение |
 |---|---|
-| **rpi4** | Робот-танк legacy (RPi 4B, Debian bookworm) |
+| **rpi4** (legacy) | Робот-танк (RPi 4B, Debian bookworm) |
 | **rpi5** | Робот-танк основной (RPi 5, Debian trixie 64-bit) |
 | **blackops** | GPU-сервер для тренировки (RTX 4070 SUPER) |
 | **rpi5** | Raspberry Pi 5 |

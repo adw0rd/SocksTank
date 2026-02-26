@@ -3,7 +3,7 @@
 Замеры скорости инференса YOLO на разных устройствах и форматах модели.
 Входные данные: случайный кадр 640x480 RGB. Замер: 20-30 кадров после 3-5 warmup итераций.
 
-## RPi 4 Model B (Cortex-A72 1.8 GHz, 3.3 GB RAM)
+## RPi 4 Model B (legacy) (Cortex-A72 1.8 GHz, 3.3 GB RAM)
 
 OS: Debian bookworm **64-bit**, Python 3.11 (aarch64), torch 2.8.0+cpu
 Охлаждение: heatsink case (пассивное + активное)
@@ -15,7 +15,7 @@ OS: Debian bookworm **64-bit**, Python 3.11 (aarch64), torch 2.8.0+cpu
 | YOLOv11n | NCNN | 409 | 402 | 440 | **2.4** |
 | YOLOv11n | ONNX | ❌ | — | — | **крэш** |
 
-> ⚠️ ONNX (onnxruntime 1.24.2): rpi4 зависает при загрузке модели.
+> ⚠️ ONNX (onnxruntime 1.24.2): rpi4 (legacy) зависает при загрузке модели.
 > GPU device discovery в onnxruntime вызывает kernel hang. Не использовать до фикса.
 
 Температура при бенчмарке: 44→49°C (heatsink case), throttled=0x0.
@@ -121,7 +121,7 @@ OS: Ubuntu, Python 3.13.3, torch + CUDA
 
 | Устройство | Запись | Чтение |
 |---|---|---|
-| RPi 4 | 60.7 MB/s | 151 MB/s |
+| RPi 4 (legacy) | 60.7 MB/s | 151 MB/s |
 | RPi 5 | 73.5 MB/s | 94.5 MB/s |
 | blackops | 4.4 GB/s | 15.2 GB/s* |
 
@@ -131,9 +131,9 @@ OS: Ubuntu, Python 3.13.3, torch + CUDA
 
 | Устройство | Формат | Mean (ms) | FPS | vs RPi 4 PyTorch |
 |---|---|---|---|---|
-| RPi 4 | PyTorch | 879 | **1.1** | — |
-| RPi 4 | NCNN | 409 | **2.4** | 2.2x |
-| RPi 4 | ONNX | — | **крэш** | — |
+| RPi 4 (legacy) | PyTorch | 879 | **1.1** | — |
+| RPi 4 (legacy) | NCNN | 409 | **2.4** | 2.2x |
+| RPi 4 (legacy) | ONNX | — | **крэш** | — |
 | RPi 5 (XL6019E1, C++) | NCNN C++ (2 OMP threads) | 78 | **12.8** | **11.6x** |
 | RPi 5 (XL6019E1, 4 cores) | NCNN Python (плавный старт) | 89 | **11.2** | **10.2x** |
 | RPi 5 (XL6019E1, 3 cores) | NCNN (taskset) | 90 | **11.1** | **10.1x** |
@@ -151,7 +151,7 @@ OS: Ubuntu, Python 3.13.3, torch + CUDA
 
 | Устройство | Охлаждение | Idle | Нагрузка | Throttled |
 |---|---|---|---|---|
-| RPi 4 | Heatsink case | ~40°C | 44→49°C | 0x0 |
+| RPi 4 (legacy) | Heatsink case | ~40°C | 44→49°C | 0x0 |
 | RPi 5 (XL6019E1) | Active cooler | ~38°C | 38→47°C | 0x0 |
 | RPi 5 (LM2596) | Active cooler | ~37°C | 37→60°C | 0x0 |
 
@@ -172,7 +172,7 @@ INT8 квантизация: `ncnn2table` (100 калибровочных изо
 - **RPi 5 C++ NCNN 2 OMP threads — 12.8 FPS** — абсолютный рекорд (XL6019E1)
 - **RPi 5 Python NCNN 4 cores — 11.2 FPS** — лучший результат через Python (XL6019E1, плавный старт)
 - NCNN Python binding (pip) имеет OMP баг: всегда 1 поток. C++ ncnn — полноценный OMP
-- ONNX работает на RPi 5, но крашит RPi 4 (баг onnxruntime GPU discovery)
+- ONNX работает на RPi 5, но крашит RPi 4 (legacy) (баг onnxruntime GPU discovery)
 - blackops GPU быстрее RPi 5 в **25x** (314.8 vs 12.8 FPS)
 - XL6019E1 (5A, buck-boost) держит 4 ядра с плавным стартом; LM2596 (3A) — максимум 2 ядра
 - RPi 5 **требует стабильный 5.1V** (LM2596 или лаб. БП), Freenove DC/DC не хватает

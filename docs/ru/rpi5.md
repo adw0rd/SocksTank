@@ -17,7 +17,7 @@
 | Revision | d04170 |
 | IP | 192.168.0.158 (DHCP, hostname rpi5) |
 
-## Отличия от RPi 4
+## Отличия от RPi 4 (legacy)
 
 | | RPi 4 Model B | RPi 5 Model B |
 |---|---|---|
@@ -134,7 +134,7 @@ usb_max_current_enable=1
 psu_max_current=5000
 ```
 
-### Отличие от RPi 4
+### Отличие от RPi 4 (legacy)
 
 - **pigpiod** не нужен на RPi 5 (используется встроенный GPIO)
 - **Камера**: на RPi 5 разъёмы cam0/cam1 с 22-pin FPC (не 15-pin CSI как на RPi 4). Необходим переходник или кабель 22→15 pin.
