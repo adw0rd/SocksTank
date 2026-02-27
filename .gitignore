@@ -1,5 +1,6 @@
 # SocksTank
 docs/credentials.md
+.claude/
 .worktrees/
 gpu_servers.json
 dataset/
