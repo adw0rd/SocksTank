@@ -56,7 +56,7 @@ std::vector<Detection> NCNNDetector::detect(const uint8_t* data, int height,
 
     // Run inference
     ncnn::Extractor ex = net_.create_extractor();
-    ex.set_num_threads(num_threads_);
+    // num_threads задаётся через net_.opt.num_threads (set в load/set_num_threads)
     ex.input("in0", input);
 
     ncnn::Mat output;

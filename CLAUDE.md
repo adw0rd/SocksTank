@@ -28,12 +28,12 @@ frontend/          # Vite + React + TypeScript (веб-панель)
 │   └── lib/types.ts    # TypeScript интерфейсы
 └── dist/               # Собранный бандл [.gitignore]
 models/            # Обученные модели YOLO
-├── yolo11_best_ncnn_model/  # YOLOv11n NCNN FP32 (дефолт, 11.2 FPS Python / 12.8 FPS C++ на RPi 5)
+├── yolo11_best_ncnn_model/  # YOLOv11n NCNN FP32 (дефолт, 12.8–16.0 FPS pip ncnn + OMP workaround на RPi 5)
 ├── yolo11_best.pt           # YOLOv11n PyTorch (для GPU и разработки)
 ├── yolo11_best.onnx         # YOLOv11n ONNX (универсальный)
 ├── yolo11_best_ncnn_int8_model/  # YOLOv11n NCNN INT8 (2.6 MB, квантизованная)
 └── yolo8_best.pt            # YOLOv8n PyTorch (старая модель)
-ncnn_wrapper/      # C++ ncnn обёртка с OMP (pybind11, обход бага Python ncnn)
+ncnn_wrapper/      # C++ ncnn обёртка (legacy, не нужна — pip ncnn + OMP workaround быстрее)
 legacy/            # Старые скрипты (bench, camera_detect, camera_shot, train)
 data.yaml          # Конфиг датасета (1 класс: sock, Roboflow v2, 961 изображение)
 dataset/           # Приватный датасет (train/valid/test) [.gitignore]
@@ -78,8 +78,8 @@ sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-syst
 # Веб-панель управления (RPi, реальное железо, плавный старт по умолчанию)
 sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 
-# С C++ ncnn wrapper (обход OMP бага, 12.8 FPS)
-sudo -E python main.py serve --model models/yolo11_best_ncnn_model --ncnn-cpp --ncnn-threads 2
+# С pip ncnn native + OMP workaround (12.8–16.0 FPS)
+sudo -E python main.py serve --model models/yolo11_best_ncnn_model --ncnn-cpp --ncnn-threads 4
 
 # Тренировка (на GPU-сервере или dev-машине)
 ./main.py train --device 0 --epochs 100

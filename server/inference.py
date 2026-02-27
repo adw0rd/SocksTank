@@ -28,12 +28,12 @@ def _load_class_names(model_dir: str) -> dict[int, str]:
     return {int(k): v for k, v in names.items()}
 
 
-def _try_load_cpp_detector(model_dir: str, num_threads: int):
-    """Попытка загрузить C++ ncnn wrapper. Возвращает (detector, class_names) или (None, None)."""
+def _try_load_ncnn_native(model_dir: str, num_threads: int):
+    """Загрузить модель через pip ncnn API с OMP workaround. Возвращает (NcnnNativeDetector, class_names) или (None, None)."""
     try:
-        from ncnn_wrapper import NCNNDetector
+        import ncnn as ncnn_lib  # noqa: F401
     except ImportError:
-        log.info("C++ ncnn_wrapper не найден — используем ultralytics")
+        log.info("pip ncnn не найден — используем ultralytics")
         return None, None
 
     param_path = os.path.join(model_dir, "model.ncnn.param")
@@ -43,21 +43,143 @@ def _try_load_cpp_detector(model_dir: str, num_threads: int):
         log.warning("NCNN файлы модели не найдены в %s", model_dir)
         return None, None
 
-    detector = NCNNDetector()
-    if not detector.load(param_path, bin_path, num_threads):
-        log.error("Не удалось загрузить C++ ncnn модель из %s", model_dir)
-        return None, None
-
+    detector = NcnnNativeDetector(param_path, bin_path, num_threads)
     class_names = _load_class_names(model_dir)
-    log.info("C++ ncnn wrapper загружен: %s (%d потоков, классы: %s)", model_dir, num_threads, class_names)
+    log.info("pip ncnn native загружен: %s (%d OMP потоков, классы: %s)", model_dir, num_threads, class_names)
     return detector, class_names
 
 
+class NcnnNativeDetector:
+    """Обёртка над pip ncnn с OMP workaround и preprocess/postprocess.
+
+    pip ncnn (aarch64) имеет баг: get_omp_num_threads() всегда 1.
+    Но set_omp_num_threads(N) перед каждым инференсом РАБОТАЕТ.
+    Результат: 16 FPS на 4 потоках (vs 8.5 FPS на 1 потоке).
+    """
+
+    INPUT_SIZE = 640
+
+    def __init__(self, param_path: str, bin_path: str, num_threads: int = 2):
+        import ncnn as ncnn_lib
+
+        self._ncnn = ncnn_lib
+        self._num_threads = num_threads
+        self._inference_ms = 0.0
+
+        self._net = ncnn_lib.Net()
+        self._net.opt.num_threads = num_threads
+        self._net.opt.use_vulkan_compute = False
+        self._net.opt.use_fp16_packed = True
+        self._net.opt.use_fp16_storage = True
+        self._net.load_param(param_path)
+        self._net.load_model(bin_path)
+
+    def detect(self, frame: np.ndarray, conf_threshold: float = 0.5, nms_threshold: float = 0.45) -> list[dict]:
+        """Детекция на кадре (H, W, 3) uint8 RGB."""
+        h, w = frame.shape[:2]
+        mat_in, scale, pad_w, pad_h = self._preprocess(frame)
+
+        # OMP workaround: set перед каждым инференсом
+        self._ncnn.set_omp_num_threads(self._num_threads)
+
+        t0 = time.monotonic()
+        ex = self._net.create_extractor()
+        ex.input("in0", mat_in)
+        _, out = ex.extract("out0")
+        self._inference_ms = (time.monotonic() - t0) * 1000
+
+        return self._postprocess(out, scale, pad_w, pad_h, w, h, conf_threshold, nms_threshold)
+
+    def last_inference_ms(self) -> float:
+        return self._inference_ms
+
+    def set_num_threads(self, n: int):
+        self._num_threads = n
+
+    def _preprocess(self, frame: np.ndarray):
+        """Letterbox resize + normalize для ncnn."""
+        h, w = frame.shape[:2]
+        scale = min(self.INPUT_SIZE / w, self.INPUT_SIZE / h)
+        new_w = int(round(w * scale))
+        new_h = int(round(h * scale))
+        pad_w = (self.INPUT_SIZE - new_w) // 2
+        pad_h = (self.INPUT_SIZE - new_h) // 2
+
+        # Letterbox через OpenCV (быстрее ncnn copy_make_border)
+        resized = cv2.resize(frame, (new_w, new_h))
+        padded = np.full((self.INPUT_SIZE, self.INPUT_SIZE, 3), 114, dtype=np.uint8)
+        padded[pad_h : pad_h + new_h, pad_w : pad_w + new_w] = resized  # noqa: E203
+
+        mat = self._ncnn.Mat.from_pixels(padded, self._ncnn.Mat.PixelType.PIXEL_RGB, self.INPUT_SIZE, self.INPUT_SIZE)
+        norm_vals = [1.0 / 255.0, 1.0 / 255.0, 1.0 / 255.0]
+        mat.substract_mean_normalize([], norm_vals)
+
+        return mat, scale, pad_w, pad_h
+
+    def _postprocess(self, out, scale, pad_w, pad_h, orig_w, orig_h, conf_thresh, nms_thresh):
+        """Декодирование выхода YOLO ncnn: [5, 8400] → list[dict]."""
+        # out: w=8400 h=5 c=1 → транспонируем в (8400, 5)
+        data = np.array(out)
+        if data.shape[0] == 5:
+            data = data.T  # (5, 8400) → (8400, 5)
+
+        dets = []
+        for i in range(data.shape[0]):
+            cx, cy, bw, bh = data[i, :4]
+            score = data[i, 4]
+            if score < conf_thresh:
+                continue
+            x1 = (cx - bw / 2 - pad_w) / scale
+            y1 = (cy - bh / 2 - pad_h) / scale
+            x2 = (cx + bw / 2 - pad_w) / scale
+            y2 = (cy + bh / 2 - pad_h) / scale
+            x1 = max(0, min(int(x1), orig_w))
+            y1 = max(0, min(int(y1), orig_h))
+            x2 = max(0, min(int(x2), orig_w))
+            y2 = max(0, min(int(y2), orig_h))
+            dets.append({"class_id": 0, "confidence": float(score), "bbox": (x1, y1, x2, y2)})
+
+        # NMS
+        if len(dets) > 1:
+            dets = self._nms(dets, nms_thresh)
+        return dets
+
+    @staticmethod
+    def _nms(dets: list[dict], threshold: float) -> list[dict]:
+        """Non-maximum suppression."""
+        dets.sort(key=lambda d: d["confidence"], reverse=True)
+        keep = []
+        suppressed = [False] * len(dets)
+        for i in range(len(dets)):
+            if suppressed[i]:
+                continue
+            keep.append(dets[i])
+            for j in range(i + 1, len(dets)):
+                if suppressed[j]:
+                    continue
+                if NcnnNativeDetector._iou(dets[i]["bbox"], dets[j]["bbox"]) > threshold:
+                    suppressed[j] = True
+        return keep
+
+    @staticmethod
+    def _iou(a, b) -> float:
+        ix1 = max(a[0], b[0])
+        iy1 = max(a[1], b[1])
+        ix2 = min(a[2], b[2])
+        iy2 = min(a[3], b[3])
+        inter = max(0, ix2 - ix1) * max(0, iy2 - iy1)
+        area_a = (a[2] - a[0]) * (a[3] - a[1])
+        area_b = (b[2] - b[0]) * (b[3] - b[1])
+        union = area_a + area_b - inter
+        return inter / union if union > 0 else 0.0
+
+
 class InferenceRouter:
-    """Роутер инференса: local YOLO / C++ ncnn / remote HTTP POST."""
+    """Роутер инференса: local YOLO / ncnn native / remote HTTP POST."""
 
     def __init__(self, model=None, cpp_detector=None, class_names=None):
         self._model = model
+        # cpp_detector теперь может быть NcnnNativeDetector (pip ncnn) или NCNNDetector (C++ wrapper)
         self._cpp_detector = cpp_detector
         self._class_names: dict[int, str] = class_names or {}
         self._mode = settings.inference_mode  # "auto" | "local" | "remote"
@@ -128,8 +250,8 @@ class InferenceRouter:
         return self._infer_ultralytics(frame, confidence)
 
     def _infer_cpp(self, frame: np.ndarray, confidence: float) -> list[dict]:
-        """Инференс через C++ ncnn wrapper."""
-        self._active_backend = "local:ncnn-cpp"
+        """Инференс через ncnn native (pip ncnn или C++ wrapper)."""
+        self._active_backend = "local:ncnn-native"
 
         # C++ wrapper ожидает RGB uint8 (HWC) — frame уже в RGB от picamera2/mock
         raw_dets = self._cpp_detector.detect(frame, confidence)

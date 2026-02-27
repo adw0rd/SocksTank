@@ -29,7 +29,9 @@ static py::list detect_numpy(NCNNDetector& self, py::array_t<uint8_t> image,
     }
 
     // Ensure contiguous C-order array
-    if (!buf.is_c_contiguous()) {
+    if (buf.strides[2] != sizeof(uint8_t) ||
+        buf.strides[1] != channels * sizeof(uint8_t) ||
+        buf.strides[0] != width * channels * sizeof(uint8_t)) {
         throw std::runtime_error("Array must be contiguous (C-order)");
     }
 

@@ -1,4 +1,9 @@
-# ncnn_wrapper — C++ NCNN обёртка для SocksTank
+# ncnn_wrapper — C++ NCNN обёртка для SocksTank (LEGACY)
+
+> **НЕАКТУАЛЬНО**: Обнаружен OMP workaround для pip ncnn: `ncnn.set_omp_num_threads(N)` перед
+> каждым инференсом обходит баг. pip ncnn 4 OMP потока = **62ms / 16.0 FPS** (чистый инференс).
+> C++ wrapper не нужен — pip wheel быстрее сборки из исходников в 6x.
+> Рекомендуется: `NcnnNativeDetector` в `server/inference.py`.
 
 C++ обёртка NCNN-инференса с pybind11 биндингами для Python. Заменяет Python ncnn binding, который имеет баг с OMP потоками на aarch64 (`get_omp_num_threads()` всегда возвращает 1).
 
@@ -77,7 +82,8 @@ SOCKSTANK_NCNN_CPP=true SOCKSTANK_NCNN_THREADS=2 python main.py serve
 
 | Backend | Потоки | Время | FPS |
 |---------|--------|-------|-----|
+| **pip ncnn + OMP workaround** | **4 OMP** | **62–78ms** | **12.8–16.0** |
 | C++ ncnn (этот wrapper) | 2 OMP | ~78ms | ~12.8 |
-| Python ncnn (баг) | 1 OMP | ~130ms | ~7.7 |
+| Python ncnn (без workaround) | 1 OMP | ~130ms | ~7.7 |
 | ultralytics NCNN | 4 cores | ~89ms | ~11.2 |
 | ultralytics PyTorch | 1 core | ~288ms | ~3.5 |

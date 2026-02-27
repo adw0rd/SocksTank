@@ -150,19 +150,27 @@ psu_max_current=5000
 
 ### Инференс YOLO (64-bit ОС, active cooler)
 
-#### XL6019E1 (2x18650, автономное питание, рекомендуется)
+#### pip ncnn native + OMP workaround (лаб. БП 5.1V)
+
+| Формат | OMP потоки | Mean (ms) | Инференс (ms) | FPS | vs RPi 4 |
+|---|---|---|---|---|---|
+| **pip ncnn (чистый)** | **4** | **62** | 62 | **16.0** | **14.5x** |
+| pip ncnn (с preproc) | 4 | 78 | 64 | **12.8** | **11.6x** |
+| pip ncnn (с preproc) | 2 | 92 | 77 | **10.9** | **9.9x** |
+| pip ncnn (с preproc) | 1 | 133 | 119 | **7.5** | **6.8x** |
+
+> **OMP workaround**: `ncnn.set_omp_num_threads(N)` перед каждым инференсом обходит баг.
+> `get_omp_num_threads()` возвращает 1 (баг), но `set` работает. Реализовано в `NcnnNativeDetector`.
+
+#### XL6019E1 (2x18650, автономное питание)
 
 | Формат | Ядра | Mean (ms) | Min (ms) | Max (ms) | FPS | vs RPi 4 |
 |---|---|---|---|---|---|---|
-| NCNN C++ (2 OMP) | 2 | **78** | 77 | 83 | **12.8** | **11.6x** |
-| NCNN Python | 4 (плавный старт) | 89 | 87 | 97 | **11.2** | **10.2x** |
-| NCNN Python | 3 (taskset) | 90 | 87 | 99 | **11.1** | **10.1x** |
+| NCNN ultralytics | 4 (плавный старт) | 89 | 87 | 97 | **11.2** | **10.2x** |
+| NCNN ultralytics | 3 (taskset) | 90 | 87 | 99 | **11.1** | **10.1x** |
 | NCNN INT8 (Python, 1 поток) | 1 | 117.5 | 117.2 | 118.0 | **8.5** | **7.7x** |
 
 Температура: 38→47°C. Throttled=0x0, EXT5V=5.22-5.23V.
-
-> C++ ncnn с реальным OpenMP = 12.8 FPS. Python binding имеет OMP баг (всегда 1 поток).
-> INT8: +6% на 1 потоке (117.5ms vs 124.5ms FP32), модель 2.6 MB (75% меньше). Больший прирост с C++ wrapper.
 
 #### LM2596 (2x18650, автономное питание)
 
@@ -182,7 +190,7 @@ psu_max_current=5000
 | PyTorch | 4 | 288 | 285 | 298 | **3.5** | **3.2x** |
 | ONNX | auto | 331 | 276 | 426 | **3.0** | **2.7x** |
 
-> ⚠️ NCNN 4 потока медленнее 1 — баг в Python binding OpenMP. Используем 1 поток.
+> Замеры без OMP workaround. С `ncnn.set_omp_num_threads(N)` — см. секцию "pip ncnn native" выше.
 
 Температура: 68→75°C (active cooler), throttled=0x0.
 

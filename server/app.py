@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from server.config import settings
 from server.camera import CameraManager
 from server.hardware import HardwareController
-from server.inference import InferenceRouter, _try_load_cpp_detector
+from server.inference import InferenceRouter, _try_load_ncnn_native
 from server.gpu_manager import GPUServerManager
 from server.freenove_bridge import load_camera
 from server.routes_video import router as video_router, set_camera_manager
@@ -35,11 +35,10 @@ async def lifespan(app: FastAPI):
     if not os.path.exists(settings.model_path):
         log.warning("Модель не найдена: %s — стрим без детекции", settings.model_path)
     elif settings.ncnn_cpp:
-        # Попытка загрузить C++ ncnn wrapper (приоритет)
-        cpp_detector, class_names = _try_load_cpp_detector(settings.model_path, settings.ncnn_threads)
+        # Попытка загрузить pip ncnn native (приоритет — 16 FPS vs 3.5 FPS ultralytics)
+        cpp_detector, class_names = _try_load_ncnn_native(settings.model_path, settings.ncnn_threads)
         if cpp_detector is None:
-            # Fallback на ultralytics если C++ wrapper не загрузился
-            log.warning("C++ ncnn wrapper недоступен — fallback на ultralytics")
+            log.warning("pip ncnn недоступен — fallback на ultralytics")
             from ultralytics import YOLO
 
             model = YOLO(settings.model_path)

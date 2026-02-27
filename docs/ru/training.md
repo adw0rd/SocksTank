@@ -122,12 +122,12 @@ runs/detect/train/
 
 ### Рекомендуемый формат: NCNN
 
-**NCNN** (Tencent) — оптимизирован для ARM-процессоров. На RPi 5 даёт **12.8 FPS** (C++, 2 OMP threads) / **11.2 FPS** (Python, 4 ядра) vs 3.5 FPS PyTorch.
+**NCNN** (Tencent) — оптимизирован для ARM-процессоров. На RPi 5 даёт **16.0 FPS** (чистый инференс) / **12.8 FPS** (с препроцессингом) через pip ncnn + OMP workaround vs 3.5 FPS PyTorch.
 
 | Формат | RPi 5 FPS | Рекомендация |
 |---|---|---|
-| **NCNN (C++)** | **12.8** | ✅ Для продакшена на RPi (ncnn_wrapper) |
-| **NCNN (Python)** | **11.2** | ✅ Для продакшена (ultralytics) |
+| **pip ncnn native (4 OMP)** | **12.8–16.0** | ✅ Для продакшена на RPi (`NcnnNativeDetector`) |
+| NCNN (ultralytics) | 11.2 | Альтернатива (без OMP workaround) |
 | ONNX | 3.0 | Медленнее, крашит RPi 4 (legacy) |
 | PyTorch (.pt) | 3.5 | Для разработки и GPU |
 

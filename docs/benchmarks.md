@@ -28,28 +28,30 @@ OS: Debian trixie **64-bit**, Python 3.13.5 (aarch64), torch 2.10.0+cpu
 Охлаждение: активное (PWM fan)
 Питание: LM2596 DC-DC (2x18650→5.1V) через GPIO, или лаб. БП 5.1V
 
-### XL6019E1 (автономное питание, 2x18650→5.2V, рекомендуется)
+### pip ncnn native + OMP workaround (лаб. БП 5.1V, рекомендуется)
+
+| Модель | Формат | OMP потоки | Mean (ms) | Инференс (ms) | FPS |
+|---|---|---|---|---|---|
+| YOLOv11n | **pip ncnn native** | **4** | **78** | 64 | **12.8** |
+| YOLOv11n | pip ncnn native | 2 | 92 | 77 | **10.9** |
+| YOLOv11n | pip ncnn native | 1 | 133 | 119 | **7.5** |
+| YOLOv11n | pip ncnn (чистый, без preproc) | 4 | **62** | 62 | **16.0** |
+
+> **OMP workaround**: `ncnn.set_omp_num_threads(N)` перед каждым инференсом обходит баг pip ncnn.
+> `get_omp_num_threads()` возвращает 1 (баг), но `set` работает!
+> Preprocess (letterbox + normalize) занимает ~14ms.
+
+### XL6019E1 (автономное питание, 2x18650→5.2V)
 
 | Модель | Формат | Ядра | Mean (ms) | Min (ms) | Max (ms) | FPS |
 |---|---|---|---|---|---|---|
-| YOLOv11n | **NCNN** | **4 (плавный старт)** | **89** | 87 | 97 | **11.2** |
-| YOLOv11n | NCNN | 3 (taskset) | 90 | 87 | 99 | **11.1** |
+| YOLOv11n | NCNN (ultralytics) | 4 (плавный старт) | 89 | 87 | 97 | **11.2** |
+| YOLOv11n | NCNN (ultralytics) | 3 (taskset) | 90 | 87 | 99 | **11.1** |
 
 EXT5V=5.22-5.23V, VDD_CORE=1.48-1.58A, throttled=0x0, температура 38→47°C.
 
 > ⚠️ Требуется **плавный старт** (загрузка модели на 1 ядре → постепенный переход на 4).
 > Прямой запуск на 4 ядрах вызывает крэш из-за пикового броска тока.
-
-### C++ ncnn напрямую (XL6019E1, без Python)
-
-| Модель | Потоки | Mean (ms) | Min (ms) | Max (ms) | FPS |
-|---|---|---|---|---|---|
-| YOLOv11n | 1 | 119 | 118 | 123 | **8.4** |
-| YOLOv11n | **2** | **78** | 77 | 83 | **12.8** |
-| YOLOv11n | 4 | — | — | — | **крэш** (пиковый ток) |
-
-> C++ с реальным OpenMP multi-threading. Python binding (pip ncnn) имеет баг: OMP всегда 1 поток.
-> 2 потока C++ = 12.8 FPS — на 15% быстрее Python (11.2 FPS).
 
 ### LM2596 (автономное питание, 2x18650→5.1V)
 
@@ -71,9 +73,8 @@ EXT5V=5.06-5.10V, VDD_CORE до 1.89A (2 ядра), throttled=0x0.
 | YOLOv11n | PyTorch | 4 | 288 | 285 | 298 | **3.5** |
 | YOLOv11n | ONNX | auto | 331 | 276 | 426 | **3.0** |
 
-> ⚠️ NCNN pip wheel (1.0.20260114) для Python 3.13 aarch64 имеет баг: OpenMP multi-threading
-> даёт деградацию (4 потока медленнее 1). Используем 1 поток — он самый быстрый.
-> ncnn собран из исходников с `-DNCNN_OPENMP=ON`, но проблема в Python binding.
+> Замеры через ultralytics YOLO wrapper (без OMP workaround).
+> С OMP workaround (`ncnn.set_omp_num_threads`) — см. секцию "pip ncnn native" выше.
 
 Температура при бенчмарке: 68→75°C (active cooler), throttled=0x0.
 Питание: EXT5V=5.03-5.08V, VDD_CORE до 2.0A при нагрузке.
@@ -134,18 +135,18 @@ OS: Ubuntu, Python 3.13.3, torch + CUDA
 | RPi 4 (legacy) | PyTorch | 879 | **1.1** | — |
 | RPi 4 (legacy) | NCNN | 409 | **2.4** | 2.2x |
 | RPi 4 (legacy) | ONNX | — | **крэш** | — |
-| RPi 5 (XL6019E1, C++) | NCNN C++ (2 OMP threads) | 78 | **12.8** | **11.6x** |
-| RPi 5 (XL6019E1, 4 cores) | NCNN Python (плавный старт) | 89 | **11.2** | **10.2x** |
-| RPi 5 (XL6019E1, 3 cores) | NCNN (taskset) | 90 | **11.1** | **10.1x** |
-| RPi 5 (LM2596, 2 cores) | NCNN (taskset) | 90 | **11.1** | **10.1x** |
-| RPi 5 (LM2596, 1 core) | NCNN (taskset) | 130 | **7.7** | **7.0x** |
-| RPi 5 (лаб. БП) | NCNN (1 thread) | 161 | **6.2** | **5.6x** |
+| **RPi 5 (pip ncnn, 4 OMP)** | **pip ncnn native (чистый)** | **62** | **16.0** | **14.5x** |
+| RPi 5 (pip ncnn, 4 OMP) | pip ncnn native (с preproc) | 78 | **12.8** | **11.6x** |
+| RPi 5 (pip ncnn, 2 OMP) | pip ncnn native (с preproc) | 92 | **10.9** | **9.9x** |
+| RPi 5 (XL6019E1, 4 cores) | NCNN ultralytics (плавный старт) | 89 | **11.2** | **10.2x** |
+| RPi 5 (LM2596, 2 cores) | NCNN ultralytics (taskset) | 90 | **11.1** | **10.1x** |
+| RPi 5 (лаб. БП) | NCNN (1 thread) | 133 | **7.5** | **6.8x** |
 | RPi 5 | PyTorch | 288 | **3.5** | 3.2x |
 | RPi 5 | ONNX | 331 | **3.0** | 2.7x |
 | blackops | PyTorch CUDA | 3.2 | **314.8** | **286x** |
-| GPU remote (HTTP) | PyTorch CUDA | _TODO_* | — | — |
 
-\* с учётом сетевого overhead (~10-15ms roundtrip по Wi-Fi)
+> **pip ncnn native** = pip ncnn (1.0.20260114) + OMP workaround (`set_omp_num_threads`).
+> Реализовано в `NcnnNativeDetector` (`server/inference.py`).
 
 ### Температура при нагрузке
 
@@ -172,17 +173,17 @@ INT8 квантизация: `ncnn2table` (100 калибровочных изо
 | FP32 | 124.5 | 8.0 | 9.9 MB | — |
 | **INT8** | **117.5** | **8.5** | **2.6 MB** | **1.06x** |
 
-Прирост ~6% на 1 потоке (OMP баг в Python). Ожидается больший прирост с C++ ncnn wrapper (multi-thread INT8).
+Прирост ~6% на 1 потоке. TODO: забенчить INT8 с OMP workaround на 4 потоках.
 
 ### Выводы
 
-- **RPi 5 C++ NCNN 2 OMP threads — 12.8 FPS** — абсолютный рекорд (XL6019E1)
-- **RPi 5 Python NCNN 4 cores — 11.2 FPS** — лучший результат через Python (XL6019E1, плавный старт)
-- NCNN Python binding (pip) имеет OMP баг: всегда 1 поток. C++ ncnn — полноценный OMP
+- **RPi 5 pip ncnn 4 OMP threads — 16.0 FPS (чистый) / 12.8 FPS (с preproc)** — абсолютный рекорд
+- **OMP workaround работает**: `ncnn.set_omp_num_threads(N)` обходит баг `get_omp_num_threads()=1`
+- C++ ncnn wrapper не нужен — pip ncnn native быстрее (сборка ncnn из исходников в 6x медленнее pip wheel)
 - ONNX работает на RPi 5, но крашит RPi 4 (legacy) (баг onnxruntime GPU discovery)
 - blackops GPU быстрее RPi 5 в **25x** (314.8 vs 12.8 FPS)
 - XL6019E1 (5A, buck-boost) держит 4 ядра с плавным стартом; LM2596 (3A) — максимум 2 ядра
-- RPi 5 **требует стабильный 5.1V** (LM2596 или лаб. БП), Freenove DC/DC не хватает
-- **INT8 квантизация**: +6% на 1 OMP потоке (117.5ms vs 124.5ms), размер модели 2.6 MB (75% меньше). Больший прирост ожидается с C++ wrapper (multi-thread)
+- RPi 5 **требует стабильный 5.1V+** через GPIO, Freenove DC/DC не хватает
+- **INT8 квантизация**: +6% на 1 OMP потоке (117.5ms vs 124.5ms), размер модели 2.6 MB (75% меньше)
 
-Дата замеров: 2026-02-26 (обновлено)
+Дата замеров: 2026-02-27 (обновлено)
