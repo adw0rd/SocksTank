@@ -138,7 +138,7 @@ cd ~/sockstank
 # Basic run
 sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 
-# With NcnnNativeDetector (12.8–16.0 FPS on RPi 5)
+# With NcnnNativeDetector (14.9–15.8 FPS on RPi 5)
 sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 --ncnn-cpp --ncnn-threads 4
 
 # In background (recommended)

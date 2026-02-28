@@ -39,7 +39,7 @@ main.py              # CLI точка входа (typer): train, bench, detect, 
 server/              # FastAPI backend (веб-панель управления)
 frontend/            # Vite + React + TypeScript (веб-панель)
 models/              # Обученные модели YOLO
-├── yolo11_best_ncnn_model/  # YOLOv11n NCNN FP32 (RPi продакшен, 12.8 FPS)
+├── yolo11_best_ncnn_model/  # YOLOv11n NCNN FP32 (RPi продакшен, 14.9 FPS)
 ├── yolo11_best.pt           # YOLOv11n PyTorch (GPU, разработка)
 └── yolo8_best.pt            # YOLOv8n PyTorch (старая модель)
 legacy/              # Старые скрипты (bench, camera_detect, camera_shot, train)

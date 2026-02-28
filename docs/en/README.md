@@ -39,7 +39,7 @@ main.py              # CLI entry point (typer): train, bench, detect, shot, serv
 server/              # FastAPI backend (web control panel)
 frontend/            # Vite + React + TypeScript (web panel)
 models/              # Trained YOLO models
-├── yolo11_best_ncnn_model/  # YOLOv11n NCNN FP32 (RPi production, 12.8 FPS)
+├── yolo11_best_ncnn_model/  # YOLOv11n NCNN FP32 (RPi production, 14.9 FPS)
 ├── yolo11_best.pt           # YOLOv11n PyTorch (GPU, development)
 └── yolo8_best.pt            # YOLOv8n PyTorch (old model)
 legacy/              # Old scripts (bench, camera_detect, camera_shot, train)

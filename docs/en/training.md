@@ -122,11 +122,11 @@ After training, the `.pt` model should be exported to a deployment format for RP
 
 ### Recommended format: NCNN
 
-**NCNN** (Tencent) is optimized for ARM processors. On RPi 5 it delivers **16.0 FPS** (pure inference) / **12.8 FPS** (with preprocessing) via pip ncnn + OMP workaround, vs 3.5 FPS for PyTorch.
+**NCNN** (Tencent) is optimized for ARM processors. On RPi 5 it delivers **15.8 FPS** (pure inference) / **14.9 FPS** (with preprocessing) via pip ncnn + OMP workaround, vs 3.5 FPS for PyTorch.
 
 | Format | RPi 5 FPS | Recommendation |
 |---|---|---|
-| **pip ncnn native (4 OMP)** | **12.8–16.0** | ✅ Production on RPi (`NcnnNativeDetector`) |
+| **pip ncnn native (4 OMP)** | **14.9–15.8** | ✅ Production on RPi (`NcnnNativeDetector`) |
 | NCNN (ultralytics) | 11.2 | Alternative (without OMP workaround) |
 | ONNX | 3.0 | Slower, crashes on RPi 4 (legacy) |
 | PyTorch (.pt) | 3.5 | Development and GPU only |

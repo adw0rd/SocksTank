@@ -33,7 +33,7 @@ Guide for preparing RPi 5 for the SocksTank robot.
 | Camera | cam0 (15-pin CSI) | cam0 or cam1 (22-pin FPC) |
 | Disk (write) | 60.7 MB/s (USB SanDisk) | 64.3 MB/s (microSD) |
 | Disk (read) | 151 MB/s (USB SanDisk) | 90.6 MB/s (microSD) |
-| YOLO FPS (NCNN) | 2.4 FPS (1 thread) | **12.8 FPS** (4 OMP threads) |
+| YOLO FPS (NCNN) | 2.4 FPS (1 thread) | **14.9 FPS** (4 OMP threads, with preproc) |
 
 ## Power
 
@@ -51,6 +51,10 @@ Temperature under load (YOLO inference, 4 cores): 38→47°C (XL6019E1), 37→60
 
 The original has a Raspberry Pi logo, clones are functionally identical.
 
+Alternative: **Argon THRML 30 mm** style blower cooler for Raspberry Pi 5. It is more compact and can be useful when vertical clearance is limited inside a chassis. This is not the default recommendation yet, but it looks like a practical low-profile option to test.
+
+![Argon THRML 30 mm style cooler](../../assets/cooler-argon-thrml.jpg)
+
 ![Active Cooler installed on RPi 5](../../assets/cooler-installed.jpg)
 
 ![Original Active Cooler (Raspberry Pi logo)](../../assets/cooler-original.jpg)
@@ -60,6 +64,8 @@ The original has a Raspberry Pi logo, clones are functionally identical.
 Where to buy:
 - AliExpress: [example](https://ali.click/b7k211d). Search: «Raspberry Pi 5 active cooler» or «RPi 5 heatsink fan PWM»
 - Ozon (Russia): [original](https://ozon.ru/t/6dwBhuE), [cooler](https://ozon.ru/t/hoNZF6l), [clone 1](https://ozon.ru/t/hoNZFqO), [clone 2](https://ozon.ru/t/6dwBNmn)
+- Ozon (Russia, low-profile alternative): [Argon THRML 30 mm style cooler](https://ozon.ru/t/DukWou1)
+- AliExpress (low-profile alternative): [Argon THRML 30 mm style cooler](https://ali.click/uae311m)
 
 ## OS Installation
 
@@ -135,8 +141,8 @@ Key numbers (YOLOv11n, pip ncnn native + OMP workaround):
 
 | Configuration | FPS | vs RPi 4 |
 |---|---|---|
-| 4 OMP threads (pure inference) | **16.0** | 14.5x |
-| 4 OMP threads (with preproc) | **12.8** | 11.6x |
+| 4 OMP threads (pure inference) | **15.8** | 14.4x |
+| 4 OMP threads (with preproc) | **14.9** | 13.5x |
 | XL6019E1, 4 cores (battery) | **11.2** | 10.2x |
 | LM2596, 2 cores (battery) | **11.1** | 10.1x |
 

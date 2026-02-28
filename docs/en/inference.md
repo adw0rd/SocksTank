@@ -59,7 +59,7 @@ sudo ./main.py detect --model models/yolo11_best_ncnn_model --conf 0.5  # NCNN f
 
 ## Remote Inference (GPU Server)
 
-Inference can be offloaded to a remote GPU server (e.g., blackops with RTX 4070 SUPER — 314.8 FPS vs 12.8 FPS on RPi 5). The robot sends frames over HTTP, the server returns detections.
+Inference can be offloaded to a remote GPU server (e.g., blackops with RTX 4070 SUPER — 314.8 FPS vs 14.9 FPS on RPi 5). The robot sends frames over HTTP, the server returns detections.
 
 ### Inference Modes
 

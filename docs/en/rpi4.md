@@ -2,7 +2,7 @@
 
 > **Note:** RPi 4B is a legacy platform. The primary platform is **RPi 5** — see [rpi5.md](rpi5.md).
 >
-> Reason for migration: RPi 4 is too slow for real-time detection. YOLO inference on RPi 4: **2.4 FPS** (NCNN, 1 thread) vs **12.8 FPS** on RPi 5 (NCNN, 4 OMP threads) — a **5x** difference. PyTorch is even worse: 1.1 FPS. The sock-finding task requires at least 10 FPS, which RPi 4 cannot deliver.
+> Reason for migration: RPi 4 is too slow for real-time detection. YOLO inference on RPi 4: **2.4 FPS** (NCNN, 1 thread) vs **14.9 FPS** on RPi 5 (pip ncnn native, 4 OMP threads, with preprocessing) — more than a **6x** difference. PyTorch is even worse: 1.1 FPS. The sock-finding task requires at least 10 FPS, which RPi 4 cannot deliver.
 
 Guide for preparing a Raspberry Pi 4B to run the SocksTank robot.
 

@@ -32,14 +32,14 @@ Power: LM2596 DC-DC (2x18650→5.1V) via GPIO, or lab PSU 5.1V
 
 | Model | Format | OMP threads | Mean (ms) | Inference (ms) | FPS |
 |---|---|---|---|---|---|
-| YOLOv11n | **pip ncnn native** | **4** | **78** | 64 | **12.8** |
-| YOLOv11n | pip ncnn native | 2 | 92 | 77 | **10.9** |
-| YOLOv11n | pip ncnn native | 1 | 133 | 119 | **7.5** |
-| YOLOv11n | pip ncnn (pure, no preproc) | 4 | **62** | 62 | **16.0** |
+| YOLOv11n | **pip ncnn native** | **4** | **67.2** | 63.4 | **14.9** |
+| YOLOv11n | pip ncnn native | 2 | 81.0 | 77.6 | **12.3** |
+| YOLOv11n | pip ncnn native | 1 | 122.7 | 119.2 | **8.1** |
+| YOLOv11n | pip ncnn (pure, no preproc) | 4 | **63.4** | 63.4 | **15.8** |
 
-> **OMP workaround**: `ncnn.set_omp_num_threads(N)` before each inference bypasses pip ncnn bug.
+> **OMP workaround**: `ncnn.set_omp_num_threads(N)` before each inference bypasses the pip ncnn bug.
 > `get_omp_num_threads()` returns 1 (bug), but `set` works!
-> Preprocess (letterbox + normalize) takes ~14ms.
+> Preprocess (letterbox + normalize) now adds only ~3.8ms on top of pure inference.
 
 ### XL6019E1 (battery powered, 2x18650→5.2V)
 
@@ -79,7 +79,7 @@ EXT5V=5.06-5.10V, VDD_CORE up to 1.89A (2 cores), throttled=0x0.
 Temperature during benchmark: 68→75°C (active cooler), throttled=0x0.
 Power: EXT5V=5.03-5.08V, VDD_CORE up to 2.0A under load.
 
-Measured: 2026-02-25 (updated)
+Historical baseline measured: 2026-02-25
 
 ### Old measurements (32-bit OS, 1 core, battery)
 
@@ -152,12 +152,12 @@ Measured: 2026-02-25
 | RPi 4 (legacy) | PyTorch | 879 | **1.1** | — |
 | RPi 4 (legacy) | NCNN | 409 | **2.4** | 2.2x |
 | RPi 4 (legacy) | ONNX | — | **crash** | — |
-| **RPi 5 (pip ncnn, 4 OMP)** | **pip ncnn native (pure)** | **62** | **16.0** | **14.5x** |
-| RPi 5 (pip ncnn, 4 OMP) | pip ncnn native (with preproc) | 78 | **12.8** | **11.6x** |
-| RPi 5 (pip ncnn, 2 OMP) | pip ncnn native (with preproc) | 92 | **10.9** | **9.9x** |
+| **RPi 5 (pip ncnn, 4 OMP)** | **pip ncnn native (pure)** | **63.4** | **15.8** | **14.4x** |
+| RPi 5 (pip ncnn, 4 OMP) | pip ncnn native (with preproc) | 67.2 | **14.9** | **13.5x** |
+| RPi 5 (pip ncnn, 2 OMP) | pip ncnn native (with preproc) | 81.0 | **12.3** | **11.2x** |
 | RPi 5 (XL6019E1, 4 cores) | NCNN ultralytics (gradual start) | 89 | **11.2** | **10.2x** |
 | RPi 5 (LM2596, 2 cores) | NCNN ultralytics (taskset) | 90 | **11.1** | **10.1x** |
-| RPi 5 (lab PSU) | NCNN (1 thread) | 133 | **7.5** | **6.8x** |
+| RPi 5 (lab PSU) | NCNN (1 thread) | 122.7 | **8.1** | **7.4x** |
 | RPi 5 | PyTorch | 288 | **3.5** | 3.2x |
 | RPi 5 | ONNX | 331 | **3.0** | 2.7x |
 | blackops | PyTorch CUDA | 3.2 | **314.8** | **286x** |
@@ -192,18 +192,18 @@ INT8 quantization: `ncnn2table` (100 calibration images from train) → `ncnn2in
 | INT8 | 1 | 126.9 | 112.3 | **7.9** | **1.05x** |
 | FP32 | 2 | 92.0 | 77.4 | **10.9** | — |
 | INT8 | 2 | 92.2 | 77.4 | **10.8** | 1.00x |
-| **FP32** | **4** | **78.3** | **63.3** | **12.8** | — |
+| **FP32** | **4** | **67.2** | **63.4** | **14.9** | — |
 | INT8 | 4 | 82.9 | 68.0 | **12.1** | 0.94x |
 
-INT8 is faster only on 1 thread (+5%). On 2-4 threads FP32 is faster — INT8 dequantize overhead negates the gain with parallelization. INT8 advantage: model size 2.6 MB (75% smaller).
+INT8 is faster only on 1 thread (+5%). On 2-4 threads, FP32 is faster because INT8 dequantization overhead offsets the gain from parallelization. INT8's main advantage is model size: 2.6 MB (75% smaller).
 
 ### Conclusions
 
-- **RPi 5 pip ncnn 4 OMP threads — 16.0 FPS (pure) / 12.8 FPS (with preproc)** — absolute record
+- **RPi 5 pip ncnn 4 OMP threads — 15.8 FPS (pure) / 14.9 FPS (with preproc)** — current best measured result
 - **OMP workaround works**: `ncnn.set_omp_num_threads(N)` bypasses `get_omp_num_threads()=1` bug
 - C++ ncnn wrapper not needed — pip ncnn native is faster (building ncnn from source is 6x slower than pip wheel)
 - ONNX works on RPi 5 but crashes RPi 4 (legacy) (onnxruntime GPU discovery bug)
-- blackops GPU is **25x** faster than RPi 5 (314.8 vs 12.8 FPS)
+- blackops GPU is **21x** faster than RPi 5 (314.8 vs 14.9 FPS)
 - XL6019E1 (5A, buck-boost) handles 4 cores with gradual start; LM2596 (3A) — max 2 cores
 - RPi 5 **requires stable 5.1V+** via GPIO, Freenove DC/DC is insufficient
 - **INT8 quantization**: +6% on 1 OMP thread (117.5ms vs 124.5ms), model size 2.6 MB (75% smaller)

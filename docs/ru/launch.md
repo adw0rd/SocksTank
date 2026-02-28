@@ -138,7 +138,7 @@ cd ~/sockstank
 # Простой запуск
 sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 
-# С NcnnNativeDetector (12.8–16.0 FPS на RPi 5)
+# С NcnnNativeDetector (14.9–15.8 FPS на RPi 5)
 sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 --ncnn-cpp --ncnn-threads 4
 
 # В фоне (рекомендуется)
