@@ -28,7 +28,7 @@ rsync -avz --exclude .venv --exclude frontend/node_modules --exclude __pycache__
 ```bash
 ssh rpi5
 cd ~/sockstank
-sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 > /tmp/sockstank.log 2>&1 &
+sudo -E nohup python3 main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 > /tmp/sockstank.log 2>&1 &
 ```
 
 Открыть в браузере: `http://rpi5:8080`
@@ -44,7 +44,7 @@ sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 
 ```bash
 ssh rpi5
 cd ~/sockstank
-sudo -E python main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
+sudo -E python3 main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
 ```
 
 ### Параметры
@@ -107,7 +107,7 @@ sudo ./main.py detect --model models/yolo11_best_ncnn_model --conf 0.5  # NCNN �
 ```bash
 # На GPU-сервере (blackops)
 cd ~/work/SocksTank
-python -m server.inference_server --port 8090  # автоматически выберет models/yolo11_best.pt на GPU/dev-хостах
+python3 -m server.inference_server --port 8090  # на Linux использовать python3; автоматически выберет models/yolo11_best.pt на GPU/dev-хостах
 ```
 
 ### API

@@ -69,10 +69,10 @@ print(f"Inference: {det.last_inference_ms():.1f} ms")
 
 ```bash
 # Run with C++ ncnn wrapper
-python main.py serve --model models/yolo11_best_ncnn_model --ncnn-cpp --ncnn-threads 2
+python3 main.py serve --model models/yolo11_best_ncnn_model --ncnn-cpp --ncnn-threads 2
 
 # Or via environment variables
-SOCKSTANK_NCNN_CPP=true SOCKSTANK_NCNN_THREADS=2 python main.py serve
+SOCKSTANK_NCNN_CPP=true SOCKSTANK_NCNN_THREADS=2 python3 main.py serve
 ```
 
 If the C++ wrapper is not found, the server automatically falls back to ultralytics.

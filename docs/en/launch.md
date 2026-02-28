@@ -140,13 +140,13 @@ python3 -m pip install "typer>=0.9" ultralytics opencv-python-headless numpy "fa
 cd ~/sockstank
 
 # Basic run
-sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
+sudo -E python3 main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 
 # With NcnnNativeDetector (14.9–15.8 FPS on RPi 5)
-sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 --ncnn-cpp --ncnn-threads 4
+sudo -E python3 main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 --ncnn-cpp --ncnn-threads 4
 
 # In background (recommended)
-sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 > /tmp/sockstank.log 2>&1 &
+sudo -E nohup python3 main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 > /tmp/sockstank.log 2>&1 &
 ```
 
 Open: **http://rpi5:8080**
@@ -178,7 +178,7 @@ Logs: `tail -f /tmp/sockstank.log`
 All parameters can be set via environment variables with `SOCKSTANK_` prefix:
 
 ```bash
-SOCKSTANK_MODEL_PATH="models/yolo11_best_ncnn_model" SOCKSTANK_MOCK=true python main.py serve
+SOCKSTANK_MODEL_PATH="models/yolo11_best_ncnn_model" SOCKSTANK_MOCK=true python3 main.py serve
 ```
 
 ## Updating frontend on RPi
@@ -201,7 +201,7 @@ Details: [inference.md — Remote Inference](inference.md#remote-inference-gpu-s
 
 ```bash
 # On GPU server (blackops)
-python -m server.inference_server --port 8090  # auto-selects models/yolo11_best.pt on GPU/dev hosts
+python3 -m server.inference_server --port 8090  # use python3 on Linux; auto-selects models/yolo11_best.pt on GPU/dev hosts
 ```
 
 In web panel: **Inference → + Add GPU Server** → enter host, port, SSH key → **Save**.

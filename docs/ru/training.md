@@ -161,7 +161,7 @@ scp -r runs/detect/train/weights/best_ncnn_model rpi5:~/sockstank/models/yolo11_
 # 4. Запустить SocksTank (NCNN — дефолт)
 ssh rpi5
 cd ~/sockstank
-sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
+sudo -E python3 main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 ```
 
 ### Экспорт через CLI

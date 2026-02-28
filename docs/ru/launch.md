@@ -140,13 +140,13 @@ python3 -m pip install "typer>=0.9" ultralytics opencv-python-headless numpy "fa
 cd ~/sockstank
 
 # Простой запуск
-sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
+sudo -E python3 main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 
 # С NcnnNativeDetector (14.9–15.8 FPS на RPi 5)
-sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 --ncnn-cpp --ncnn-threads 4
+sudo -E python3 main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 --ncnn-cpp --ncnn-threads 4
 
 # В фоне (рекомендуется)
-sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 > /tmp/sockstank.log 2>&1 &
+sudo -E nohup python3 main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 > /tmp/sockstank.log 2>&1 &
 ```
 
 Открыть: **http://rpi5:8080**
@@ -178,7 +178,7 @@ sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 
 Все параметры можно задать через переменные окружения с префиксом `SOCKSTANK_`:
 
 ```bash
-SOCKSTANK_MODEL_PATH="models/yolo11_best_ncnn_model" SOCKSTANK_MOCK=true python main.py serve
+SOCKSTANK_MODEL_PATH="models/yolo11_best_ncnn_model" SOCKSTANK_MOCK=true python3 main.py serve
 ```
 
 ## Обновление фронтенда на RPi
@@ -201,7 +201,7 @@ rsync -avz frontend/dist/ rpi5:~/sockstank/frontend/dist/
 
 ```bash
 # На GPU-сервере (blackops)
-python -m server.inference_server --port 8090  # автоматически выберет models/yolo11_best.pt на GPU/dev-хостах
+python3 -m server.inference_server --port 8090  # на Linux использовать python3; автоматически выберет models/yolo11_best.pt на GPU/dev-хостах
 ```
 
 В веб-панели: **Inference → + Add GPU Server** → ввести хост, порт, SSH-ключ → **Save**.

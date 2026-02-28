@@ -60,7 +60,7 @@ assets/              # Project images
 ./main.py serve --mock
 
 # Web control panel (RPi, real hardware)
-sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
+sudo -E python3 main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 
 # Train model (on GPU server or dev machine)
 ./main.py train --device 0 --epochs 100
@@ -69,10 +69,10 @@ sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 ./main.py bench
 
 # Detect socks from RPi camera (legacy)
-sudo -E python main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
+sudo -E python3 main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
 
 # Capture photos for dataset
-sudo -E python main.py shot --count 200 --output-dir images
+sudo -E python3 main.py shot --count 200 --output-dir images
 ```
 
 ## Installation

@@ -130,10 +130,10 @@ class GPUServerManager:
             time.sleep(0.5)
 
             # Start inference_server
-            cmd = f"cd ~/sockstank && " f"nohup python -m server.inference_server " f"--port {server.port} " f"> /tmp/inference.log 2>&1 &"
+            cmd = "cd ~/sockstank && " "nohup python3 -m server.inference_server " f"--port {server.port} " "> /tmp/inference.log 2>&1 &"
+            log.info("Starting remote inference server on %s with command: %s", host, cmd)
             stdin, stdout, stderr = ssh.exec_command(cmd)
             stdout.channel.recv_exit_status()
-            ssh.close()
 
             # Wait for startup (up to 30 seconds)
             url = f"http://{server.host}:{server.port}/health"
@@ -146,6 +146,7 @@ class GPUServerManager:
                         with self._lock:
                             server.status = "online"
                             server.gpu = data.get("gpu")
+                        ssh.close()
                         log.info("Inference server started on %s:%d", host, server.port)
                         return {"ok": True, **data}
                 except Exception:
@@ -153,7 +154,20 @@ class GPUServerManager:
 
             with self._lock:
                 server.status = "offline"
-            return {"ok": False, "error": "Startup timed out (30 seconds)"}
+            try:
+                _stdin, log_stdout, _stderr = ssh.exec_command("tail -n 20 /tmp/inference.log 2>/dev/null || true")
+                startup_log = log_stdout.read().decode().strip()
+            except Exception:
+                startup_log = ""
+            finally:
+                ssh.close()
+
+            hint = "Use python3 on the remote host; many Linux systems do not provide a 'python' binary."
+            if startup_log:
+                log.warning("Remote inference server on %s failed to start. Last log lines: %s", host, startup_log)
+                return {"ok": False, "error": f"Startup timed out (30 seconds). {hint} Last log: {startup_log}"}
+            log.warning("Remote inference server on %s failed to start. %s", host, hint)
+            return {"ok": False, "error": f"Startup timed out (30 seconds). {hint}"}
 
         except Exception as e:
             with self._lock:

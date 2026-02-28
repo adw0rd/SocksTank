@@ -28,7 +28,7 @@ The main way to interact with the robot is through the web panel:
 ```bash
 ssh rpi5
 cd ~/sockstank
-sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 > /tmp/sockstank.log 2>&1 &
+sudo -E nohup python3 main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 > /tmp/sockstank.log 2>&1 &
 ```
 
 Open in browser: `http://rpi5:8080`
@@ -44,7 +44,7 @@ Record video with detection to a file:
 ```bash
 ssh rpi5
 cd ~/sockstank
-sudo -E python main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
+sudo -E python3 main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
 ```
 
 ### Parameters
@@ -107,7 +107,7 @@ Server configuration is saved in `gpu_servers.json` (in `.gitignore`).
 ```bash
 # On the GPU server (blackops)
 cd ~/work/SocksTank
-python -m server.inference_server --port 8090  # auto-selects models/yolo11_best.pt on GPU/dev hosts
+python3 -m server.inference_server --port 8090  # use python3 on Linux; auto-selects models/yolo11_best.pt on GPU/dev hosts
 ```
 
 ### API

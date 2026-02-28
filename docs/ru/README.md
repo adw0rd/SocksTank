@@ -60,7 +60,7 @@ assets/              # Изображения проекта
 ./main.py serve --mock
 
 # Веб-панель управления (RPi, реальное железо)
-sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
+sudo -E python3 main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 
 # Тренировка модели (на GPU-сервере или dev-машине)
 ./main.py train --device 0 --epochs 100
@@ -69,10 +69,10 @@ sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 ./main.py bench
 
 # Детекция носков с камеры RPi (legacy)
-sudo -E python main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
+sudo -E python3 main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
 
 # Сбор фото для датасета
-sudo -E python main.py shot --count 200 --output-dir images
+sudo -E python3 main.py shot --count 200 --output-dir images
 ```
 
 ## Установка
