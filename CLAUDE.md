@@ -59,14 +59,14 @@ assets/            # Изображения проекта
 ## Setup
 
 ```bash
-# Dev-машина (macOS)
-uv venv && uv pip install typer ultralytics opencv-python-headless numpy fastapi uvicorn pydantic-settings websockets
+# Dev-машина (macOS / Linux)
+uv venv && uv pip install -e .
 
 # Frontend (один раз)
 cd frontend && npm install && npm run build
 
 # Raspberry Pi
-sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-system-packages
+sudo pip install . --break-system-packages
 ```
 
 ## Running (CLI)

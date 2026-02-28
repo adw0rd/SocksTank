@@ -77,11 +77,11 @@ sudo -E python main.py shot --count 200 --output-dir images
 
 ```bash
 # Dev-машина (macOS / Linux)
-uv venv && uv pip install typer ultralytics opencv-python-headless numpy fastapi uvicorn pydantic-settings websockets
+uv venv && uv pip install -e .
 cd frontend && npm install && npm run build
 
 # Raspberry Pi
-sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-system-packages
+sudo pip install . --break-system-packages
 ```
 
 ## Документация

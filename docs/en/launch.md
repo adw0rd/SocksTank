@@ -9,12 +9,11 @@ How to build the frontend, run the backend, and deploy SocksTank on the robot.
 ```bash
 cd ~/work/SocksTank
 
-# Python (via uv)
+# Python (via uv, recommended)
 uv venv && uv pip install -e .
 
 # Or via pip
-pip install typer ultralytics opencv-python-headless numpy \
-  fastapi uvicorn pydantic-settings websockets httpx paramiko pyyaml
+pip install -e .
 ```
 
 ### 2. Build frontend

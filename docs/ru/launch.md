@@ -9,12 +9,11 @@
 ```bash
 cd ~/work/SocksTank
 
-# Python (через uv)
+# Python (через uv, рекомендуется)
 uv venv && uv pip install -e .
 
 # Или через pip
-pip install typer ultralytics opencv-python-headless numpy \
-  fastapi uvicorn pydantic-settings websockets httpx paramiko pyyaml
+pip install -e .
 ```
 
 ### 2. Сборка фронтенда
