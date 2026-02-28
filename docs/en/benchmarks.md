@@ -40,6 +40,8 @@ Power: LM2596 DC-DC (2x18650→5.1V) via GPIO, or lab PSU 5.1V
 > **OMP workaround**: `ncnn.set_omp_num_threads(N)` before each inference bypasses the pip ncnn bug.
 > `get_omp_num_threads()` returns 1 (bug), but `set` works!
 > Preprocess (letterbox + normalize) now adds only ~3.8ms on top of pure inference.
+> These numbers are the authoritative RPi benchmark path because they use the same runtime as production: `NcnnNativeDetector` in `server/inference.py`.
+> Do not use the `ultralytics` NCNN wrapper as the main performance reference on RPi: it does not match the production path and can under-report FPS or reject some NCNN layouts such as the `*_ncnn_int8_model` directory name.
 
 ### XL6019E1 (battery powered, 2x18650→5.2V)
 

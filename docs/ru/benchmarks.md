@@ -40,6 +40,8 @@ OS: Debian trixie **64-bit**, Python 3.13.5 (aarch64), torch 2.10.0+cpu
 > **OMP workaround**: `ncnn.set_omp_num_threads(N)` перед каждым инференсом обходит баг pip ncnn.
 > `get_omp_num_threads()` возвращает 1 (баг), но `set` работает!
 > Препроцессинг (letterbox + normalize) теперь добавляет только ~3.8ms к чистому инференсу.
+> Именно эти числа являются основным RPi benchmark path, потому что они сняты на том же runtime, что и прод: `NcnnNativeDetector` в `server/inference.py`.
+> `ultralytics` NCNN wrapper не стоит использовать как главный performance reference на RPi: он не совпадает с production path, может занижать FPS и может не принимать некоторые NCNN layout'ы, например каталог с именем `*_ncnn_int8_model`.
 
 ### XL6019E1 (автономное питание, 2x18650→5.2V)
 
