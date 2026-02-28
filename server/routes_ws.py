@@ -38,9 +38,18 @@ def _handle_command(data: dict):
         else:
             _hardware.set_led(params.get("r", 0), params.get("g", 0), params.get("b", 0))
     elif cmd == "stop":
-        _hardware.stop_all()
+        active = params.get("active")
+        if active is None:
+            active = not _hardware.estop
+        if active:
+            _hardware.stop_all()
+        else:
+            _hardware.release_stop()
     elif cmd == "mode":
-        _hardware.mode = params.get("mode", "manual")
+        try:
+            _hardware.mode = params.get("mode", "manual")
+        except ValueError as exc:
+            log.warning("Invalid mode command: %s", exc)
     else:
         log.warning("Unknown command: %s", cmd)
 
@@ -60,6 +69,9 @@ def _get_telemetry() -> str:
         inference_backend=_camera_manager.inference_backend if _camera_manager else "local",
         inference_ms=_camera_manager.inference_ms if _camera_manager else 0,
         inference_error=_camera_manager.inference_error if _camera_manager else None,
+        camera_source=_camera_manager.camera_source if _camera_manager else "camera",
+        ai_state=_camera_manager.ai_state if _camera_manager else "idle",
+        estop=_hardware.estop if _hardware else False,
     )
     return msg.model_dump_json()
 

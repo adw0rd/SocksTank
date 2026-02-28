@@ -57,10 +57,18 @@ class GPUServerManager:
             log.error("Failed to save %s: %s", GPU_SERVERS_FILE, e)
 
     def add_server(
-        self, host: str, port: int, username: str, auth_type: str = "key", password: str | None = None, key_path: str | None = None
+        self,
+        host: str,
+        port: int,
+        username: str,
+        auth_type: str = "key",
+        password: str | None = None,
+        key_path: str | None = None,
+        name: str | None = None,
     ) -> GPUServerSchema:
         """Add a GPU server."""
         server = GPUServerSchema(
+            name=name.strip() if name else None,
             host=host,
             port=port,
             username=username,
@@ -75,6 +83,41 @@ class GPUServerManager:
         self.save()
         log.info("Added GPU server: %s:%d", host, port)
         return server
+
+    def update_server(
+        self,
+        current_host: str,
+        *,
+        host: str,
+        port: int,
+        username: str,
+        auth_type: str = "key",
+        password: str | None = None,
+        key_path: str | None = None,
+        name: str | None = None,
+    ) -> GPUServerSchema | None:
+        """Update an existing GPU server."""
+        existing = self.get_server(current_host)
+        if not existing:
+            return None
+
+        updated = GPUServerSchema(
+            name=name.strip() if name else None,
+            host=host,
+            port=port,
+            username=username,
+            auth_type=auth_type,
+            password=password,
+            key_path=key_path,
+            status="offline",
+            gpu=None,
+        )
+        with self._lock:
+            self._servers = [s for s in self._servers if s.host not in {current_host, host}]
+            self._servers.append(updated)
+        self.save()
+        log.info("Updated GPU server: %s -> %s:%d", current_host, host, port)
+        return updated
 
     def remove_server(self, host: str) -> bool:
         """Remove a GPU server."""

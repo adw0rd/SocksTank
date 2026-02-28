@@ -1,14 +1,19 @@
 import { useState } from 'react'
-import type { WsCommand } from '../lib/types'
+import type { Telemetry, WsCommand } from '../lib/types'
 
 interface Props {
   send: (cmd: WsCommand) => void
+  telemetry: Telemetry | null
 }
 
-export function MotorControl({ send }: Props) {
+export function MotorControl({ send, telemetry }: Props) {
   const [speed, setSpeed] = useState(2000)
+  const aiMode = telemetry?.mode === 'ai'
+  const estop = telemetry?.estop ?? false
+  const locked = aiMode || estop
 
   const move = (left: number, right: number) => {
+    if (locked) return
     send({ cmd: 'motor', params: { left, right } })
   }
 
@@ -21,30 +26,38 @@ export function MotorControl({ send }: Props) {
   })
 
   return (
-    <div style={{ background: '#1a1a2e', borderRadius: 8, padding: 16 }}>
-      <div style={{ color: '#ccc', fontSize: 14, marginBottom: 8 }}>Motor Control</div>
+    <div style={{ padding: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ color: '#cbd3ff', fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+          Motor Control
+        </div>
+        <div style={{ color: estop ? '#ffcf7a' : aiMode ? '#ffb36b' : '#7f88b8', fontSize: 12 }}>
+          {estop ? 'Locked by E-STOP' : aiMode ? 'AI owns drive train' : 'Manual drive'}
+        </div>
+      </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <span style={{ color: '#999', fontSize: 13 }}>Speed: {speed}</span>
+        <span style={{ color: '#aab1d6', fontSize: 13, minWidth: 90 }}>Speed: {speed}</span>
         <input
           type="range" min={500} max={4095} value={speed}
           onChange={(e) => setSpeed(Number(e.target.value))}
           style={{ flex: 1 }}
+          disabled={locked}
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
-        <button style={btnStyle('#455a64')} onClick={() => move(speed, -speed)}>TL</button>
-        <button style={btnStyle('#1976d2')} onClick={() => move(speed, speed)}>FWD</button>
-        <button style={btnStyle('#455a64')} onClick={() => move(-speed, speed)}>TR</button>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, opacity: locked ? 0.55 : 1 }}>
+        <button disabled={locked} style={btnStyle('#32414a')} onClick={() => move(speed, -speed)}>Q / TL</button>
+        <button disabled={locked} style={btnStyle('#2d8cff')} onClick={() => move(speed, speed)}>W / FWD</button>
+        <button disabled={locked} style={btnStyle('#32414a')} onClick={() => move(-speed, speed)}>E / TR</button>
 
-        <button style={btnStyle('#546e7a')} onClick={() => move(-speed, speed)}>LEFT</button>
-        <button style={btnStyle('#e65100')} onClick={stop}>STOP</button>
-        <button style={btnStyle('#546e7a')} onClick={() => move(speed, -speed)}>RIGHT</button>
+        <button disabled={locked} style={btnStyle('#3d5361')} onClick={() => move(-speed, speed)}>A / LEFT</button>
+        <button disabled={locked} style={btnStyle('#f0622d')} onClick={stop}>S / STOP</button>
+        <button disabled={locked} style={btnStyle('#3d5361')} onClick={() => move(speed, -speed)}>D / RIGHT</button>
 
-        <button style={btnStyle('#455a64')} onClick={() => move(-speed, speed)}>BL</button>
-        <button style={btnStyle('#1976d2')} onClick={() => move(-speed, -speed)}>BWD</button>
-        <button style={btnStyle('#455a64')} onClick={() => move(speed, -speed)}>BR</button>
+        <button disabled={locked} style={btnStyle('#32414a')} onClick={() => move(-speed, speed)}>Z / BL</button>
+        <button disabled={locked} style={btnStyle('#2d8cff')} onClick={() => move(-speed, -speed)}>X / BWD</button>
+        <button disabled={locked} style={btnStyle('#32414a')} onClick={() => move(speed, -speed)}>C / BR</button>
       </div>
     </div>
   )

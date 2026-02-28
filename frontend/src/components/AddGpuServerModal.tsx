@@ -1,46 +1,57 @@
 import { useState } from 'react'
+import type { GPUServer } from '../lib/types'
 
 interface Props {
   onClose: () => void
-  onAdded: () => void
+  onSaved: () => void
+  server?: GPUServer | null
 }
 
-export function AddGpuServerModal({ onClose, onAdded }: Props) {
-  const [host, setHost] = useState('')
-  const [port, setPort] = useState(8090)
-  const [username, setUsername] = useState('')
-  const [authType, setAuthType] = useState<'key' | 'password'>('key')
-  const [password, setPassword] = useState('')
-  const [keyPath, setKeyPath] = useState('~/.ssh/id_rsa')
+export function AddGpuServerModal({ onClose, onSaved, server }: Props) {
+  const editing = Boolean(server)
+  const [name, setName] = useState(server?.name ?? '')
+  const [host, setHost] = useState(server?.host ?? '')
+  const [port, setPort] = useState(server?.port ?? 8090)
+  const [username, setUsername] = useState(server?.username ?? '')
+  const [authType, setAuthType] = useState<'key' | 'password'>(server?.auth_type ?? 'key')
+  const [password, setPassword] = useState(server?.password ?? '')
+  const [keyPath, setKeyPath] = useState(server?.key_path ?? '~/.ssh/id_rsa')
   const [testResult, setTestResult] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  const payload = {
+    name: name.trim() || undefined,
+    host,
+    port,
+    username,
+    auth_type: authType,
+    ...(authType === 'password' ? { password } : { key_path: keyPath }),
+  }
+
   const save = () => {
     setSaving(true)
-    fetch('/api/gpu/servers', {
-      method: 'POST',
+    fetch(editing ? `/api/gpu/servers/${server!.host}` : '/api/gpu/servers', {
+      method: editing ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        host, port, username, auth_type: authType,
-        ...(authType === 'password' ? { password } : { key_path: keyPath }),
-      }),
+      body: JSON.stringify(payload),
     })
       .then((r) => r.json())
-      .then(() => onAdded())
+      .then((data) => {
+        if (data.error) {
+          throw new Error(data.error)
+        }
+        onSaved()
+      })
       .catch((e) => setTestResult(`Error: ${e}`))
       .finally(() => setSaving(false))
   }
 
   const test = () => {
     setTestResult('Testing...')
-    // Сначала сохраняем, потом тестируем
-    fetch('/api/gpu/servers', {
-      method: 'POST',
+    fetch(editing ? `/api/gpu/servers/${server!.host}` : '/api/gpu/servers', {
+      method: editing ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        host, port, username, auth_type: authType,
-        ...(authType === 'password' ? { password } : { key_path: keyPath }),
-      }),
+      body: JSON.stringify(payload),
     })
       .then(() => fetch(`/api/gpu/servers/${host}/test`, { method: 'POST' }))
       .then((r) => r.json())
@@ -64,7 +75,14 @@ export function AddGpuServerModal({ onClose, onAdded }: Props) {
         background: '#1a1a2e', borderRadius: 12, padding: 24, width: 360,
         border: '1px solid #252545',
       }}>
-        <div style={{ fontSize: 16, color: '#fff', marginBottom: 16 }}>Add GPU Server</div>
+        <div style={{ fontSize: 16, color: '#fff', marginBottom: 16 }}>{editing ? 'Edit GPU Server' : 'Add GPU Server'}</div>
+
+        <label style={labelStyle}>Name</label>
+        <input
+          value={name} onChange={(e) => setName(e.target.value)}
+          placeholder="Blackops RTX 4070"
+          style={inputStyle}
+        />
 
         <label style={labelStyle}>Host</label>
         <input
@@ -136,7 +154,7 @@ export function AddGpuServerModal({ onClose, onAdded }: Props) {
             Test
           </button>
           <button onClick={save} disabled={!host || !username || saving} style={{ ...actionBtn, background: '#1976d2', flex: 1 }}>
-            {saving ? '...' : 'Save'}
+            {saving ? '...' : editing ? 'Update' : 'Save'}
           </button>
           <button onClick={onClose} style={{ ...actionBtn, background: '#37474f', flex: 0 }}>
             Cancel

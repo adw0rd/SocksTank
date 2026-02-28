@@ -22,14 +22,16 @@ export function ServoControl({ send }: Props) {
   }
 
   return (
-    <div style={{ background: '#1a1a2e', borderRadius: 8, padding: 16 }}>
-      <div style={{ color: '#ccc', fontSize: 14, marginBottom: 8 }}>Servo Control</div>
+    <div style={{ padding: 16 }}>
+      <div style={{ color: '#cbd3ff', fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>
+        Servo Control
+      </div>
 
       {SERVOS.map((s) => (
-        <div key={s.channel} style={{ marginBottom: 10 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#999', fontSize: 13 }}>
+        <div key={s.channel} style={{ marginBottom: 12, background: '#101426', border: '1px solid #232842', borderRadius: 10, padding: '10px 12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aab1d6', fontSize: 13, marginBottom: 6 }}>
             <span>{s.label}</span>
-            <span>{angles[s.channel]}°</span>
+            <span style={{ fontWeight: 700 }}>{angles[s.channel]}°</span>
           </div>
           <input
             type="range" min={s.min} max={s.max} value={angles[s.channel]}

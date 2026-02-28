@@ -1,6 +1,7 @@
 """Load hardware drivers: real (server.drivers) or mock."""
 
 import logging
+from pathlib import Path
 
 from server.config import settings
 
@@ -60,7 +61,12 @@ def load_hardware_modules():
 def load_camera():
     """Load Picamera2 or mock camera."""
     if settings.mock:
-        from server.mock import MockPicamera2
+        from server.mock import MockPicamera2, VideoLoopCamera
+
+        mock_video_path = Path(settings.mock_video_path)
+        if mock_video_path.exists():
+            log.info("Using VideoLoopCamera: %s", mock_video_path)
+            return VideoLoopCamera(str(mock_video_path), size=(settings.resolution_w, settings.resolution_h))
 
         log.info("Using MockPicamera2")
         return MockPicamera2()

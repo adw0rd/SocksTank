@@ -64,13 +64,14 @@ async def lifespan(app: FastAPI):
 
         gradual_warmup(warmup_model, settings)
 
+    # Initialize hardware control
+    hardware = HardwareController()
+
     # Initialize the camera and manager
     camera = load_camera()
     camera_manager = CameraManager(camera, inference_router)
+    camera_manager.set_hardware(hardware)
     camera_manager.start()
-
-    # Initialize hardware control
-    hardware = HardwareController()
 
     # Wire shared dependencies into the routers
     set_camera_manager(camera_manager)

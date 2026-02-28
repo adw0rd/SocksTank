@@ -11,8 +11,6 @@ import subprocess
 import tempfile
 import time
 import tomllib
-import urllib.error
-import urllib.request
 
 import typer
 
@@ -91,7 +89,7 @@ def run_deploy(
             has_systemd=remote_caps["has_systemd"],
             dry_run=dry_run,
         )
-        _wait_for_healthcheck(host, port=port, dry_run=dry_run)
+        _wait_for_healthcheck(target, port=port, dry_run=dry_run)
 
     typer.echo(f"[deploy] Done. Open: http://{host}:{port}")
 
@@ -120,7 +118,7 @@ def run_restart(
         has_systemd=remote_caps["has_systemd"],
         dry_run=dry_run,
     )
-    _wait_for_healthcheck(host, port=port, dry_run=dry_run)
+    _wait_for_healthcheck(target, port=port, dry_run=dry_run)
     typer.echo(f"[restart] Done. Open: http://{host}:{port}")
 
 
@@ -411,24 +409,26 @@ def _show_remote_logs(
     _run_remote(target, f"tail -n {lines}{follow_flag} /tmp/sockstank.log", dry_run=dry_run)
 
 
-def _wait_for_healthcheck(host: str, *, port: int, dry_run: bool) -> None:
-    url = f"http://{host}:{port}/api/status"
+def _wait_for_healthcheck(target: DeployTarget, *, port: int, dry_run: bool) -> None:
+    url = f"http://127.0.0.1:{port}/api/status"
+    display_url = f"http://{target.host}:{port}/api/status"
     if dry_run:
-        typer.echo(f"[dry-run] GET {url}")
+        typer.echo(f"[dry-run] ssh {target.ssh_target} curl -fsS {url}")
         return
 
-    typer.echo(f"[deploy] Waiting for {url}")
+    typer.echo(f"[deploy] Waiting for {display_url}")
     deadline = time.monotonic() + 45
     while time.monotonic() < deadline:
-        try:
-            with urllib.request.urlopen(url, timeout=2) as response:
-                if 200 <= response.status < 500:
-                    typer.echo(f"[deploy] Health check OK ({response.status})")
-                    return
-        except (urllib.error.URLError, TimeoutError):
-            time.sleep(1)
-            continue
-    raise typer.BadParameter(f"Health check failed: {url}")
+        result = _run_remote(
+            target,
+            f"curl -fsS {shlex.quote(url)} >/dev/null 2>&1",
+            check=False,
+        )
+        if result.returncode == 0:
+            typer.echo("[deploy] Health check OK (200)")
+            return
+        time.sleep(1)
+    raise typer.BadParameter(f"Health check failed: {display_url}")
 
 
 def _run_local(cmd: list[str], *, cwd: Path | None = None, dry_run: bool = False) -> subprocess.CompletedProcess[str]:

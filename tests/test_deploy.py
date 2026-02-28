@@ -218,6 +218,17 @@ class LogsTests(unittest.TestCase):
         )
 
 
+class HealthcheckTests(unittest.TestCase):
+    @patch("server.deploy._run_remote")
+    def test_checks_remote_localhost_status(self, run_remote) -> None:
+        target = deploy.DeployTarget("blackops")
+        run_remote.return_value.returncode = 0
+
+        deploy._wait_for_healthcheck(target, port=8080, dry_run=False)
+
+        run_remote.assert_called_once_with(target, "curl -fsS http://127.0.0.1:8080/api/status >/dev/null 2>&1", check=False)
+
+
 class RunDeployTests(unittest.TestCase):
     @patch("server.deploy._wait_for_healthcheck")
     @patch("server.deploy._restart_remote_service")
@@ -255,7 +266,7 @@ class RunDeployTests(unittest.TestCase):
             has_systemd=True,
             dry_run=False,
         )
-        wait_for_healthcheck.assert_called_once_with("rpi5", port=8080, dry_run=False)
+        wait_for_healthcheck.assert_called_once_with(target, port=8080, dry_run=False)
 
 
 class RunRestartTests(unittest.TestCase):
@@ -281,7 +292,7 @@ class RunRestartTests(unittest.TestCase):
             has_systemd=True,
             dry_run=False,
         )
-        wait_for_healthcheck.assert_called_once_with("rpi5", port=8080, dry_run=False)
+        wait_for_healthcheck.assert_called_once_with(target, port=8080, dry_run=False)
 
 
 class RunLogsTests(unittest.TestCase):

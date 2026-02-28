@@ -6,7 +6,7 @@ import threading
 from fastapi import APIRouter
 
 from server.config import settings
-from server.schemas import GPUServerCreate, InferenceModeUpdate
+from server.schemas import GPUServerCreate, GPUServerUpdate, InferenceModeUpdate
 
 log = logging.getLogger(__name__)
 
@@ -59,6 +59,7 @@ async def add_gpu_server(body: GPUServerCreate):
     if not _gpu_manager:
         return {"error": "GPU manager is not initialized"}
     server = _gpu_manager.add_server(
+        name=body.name,
         host=body.host,
         port=body.port,
         username=body.username,
@@ -66,6 +67,26 @@ async def add_gpu_server(body: GPUServerCreate):
         password=body.password,
         key_path=body.key_path,
     )
+    return server.model_dump(exclude_none=True)
+
+
+@router.put("/gpu/servers/{host}")
+async def update_gpu_server(host: str, body: GPUServerUpdate):
+    """Update a GPU server."""
+    if not _gpu_manager:
+        return {"error": "GPU manager is not initialized"}
+    server = _gpu_manager.update_server(
+        current_host=host,
+        name=body.name,
+        host=body.host,
+        port=body.port,
+        username=body.username,
+        auth_type=body.auth_type,
+        password=body.password,
+        key_path=body.key_path,
+    )
+    if server is None:
+        return {"error": f"Server {host} not found"}
     return server.model_dump(exclude_none=True)
 
 

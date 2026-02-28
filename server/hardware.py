@@ -13,6 +13,8 @@ log = logging.getLogger(__name__)
 class HardwareController:
     """Control motors, servos, LEDs, and sensors."""
 
+    VALID_MODES = {"manual", "ultrasonic", "infrared", "ai"}
+
     def __init__(self):
         modules = load_hardware_modules()
         self._motor = modules["motor"]()
@@ -22,6 +24,7 @@ class HardwareController:
         self._infrared = modules["infrared"]()
         self._lock = threading.Lock()
         self._mode = "manual"
+        self._estop = False
         self._motor_left = 0
         self._motor_right = 0
         log.info("HardwareController initialized")
@@ -32,7 +35,12 @@ class HardwareController:
 
     @mode.setter
     def mode(self, value: str):
-        self._mode = value
+        mode = (value or "manual").lower()
+        if mode not in self.VALID_MODES:
+            raise ValueError(f"Invalid mode: {value}")
+        if mode != self._mode:
+            self.stop_motors()
+        self._mode = mode
 
     @property
     def motor_left(self) -> int:
@@ -42,11 +50,18 @@ class HardwareController:
     def motor_right(self) -> int:
         return self._motor_right
 
+    @property
+    def estop(self) -> bool:
+        return self._estop
+
     def set_motor(self, left: int, right: int):
         """Set motor speed. Valid range: -4095..4095."""
         left = max(-4095, min(4095, int(left)))
         right = max(-4095, min(4095, int(right)))
         with self._lock:
+            if self._estop:
+                left = 0
+                right = 0
             self._motor_left = left
             self._motor_right = right
             self._motor.setMotorModel(left, right)
@@ -100,10 +115,19 @@ class HardwareController:
             return 0.0
 
     def stop_all(self):
-        """Stop all controllable subsystems."""
+        """Latch the emergency stop and stop all controllable subsystems."""
+        self._estop = True
         self.stop_motors()
         self.set_led(0, 0, 0)
-        log.info("All systems stopped")
+        log.info("Emergency stop latched")
+
+    def release_stop(self):
+        """Release the emergency stop latch."""
+        if not self._estop:
+            return
+        self._estop = False
+        self.stop_motors()
+        log.info("Emergency stop released")
 
     def close(self):
         """Release hardware resources."""

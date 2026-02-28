@@ -16,6 +16,9 @@ export interface Telemetry {
   inference_backend: string
   inference_ms: number
   inference_error: string | null
+  camera_source: string
+  ai_state: string
+  estop: boolean
 }
 
 export interface WsCommand {
@@ -44,6 +47,7 @@ export interface Status {
 }
 
 export interface GPUServer {
+  name?: string
   host: string
   port: number
   username: string

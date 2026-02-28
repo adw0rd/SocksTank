@@ -1,5 +1,6 @@
 """Mock classes for development on macOS without GPIO or a camera."""
 
+from pathlib import Path
 import time
 import random
 import numpy as np
@@ -79,6 +80,7 @@ class MockPicamera2:
     """Mock Picamera2 that generates test frames for macOS development."""
 
     is_mock = True
+    camera_source = "mock"
 
     def __init__(self):
         self._running = False
@@ -110,3 +112,68 @@ class MockPicamera2:
 
     def close(self):
         self.stop()
+
+
+class VideoLoopCamera:
+    """Video-backed mock camera that loops a local file and behaves like Picamera2."""
+
+    is_mock = False
+    camera_source = "video mock"
+
+    def __init__(self, video_path: str, size: tuple[int, int] = (640, 480)):
+        import cv2
+
+        self._cv2 = cv2
+        self._video_path = str(Path(video_path))
+        self._size = size
+        self._running = False
+        self._cap = None
+        self._last_frame = np.zeros((size[1], size[0], 3), dtype=np.uint8)
+
+    def configure(self, config):
+        pass
+
+    def create_preview_configuration(self, main=None, transform=None):
+        if main and "size" in main:
+            self._size = tuple(main["size"])
+        return {}
+
+    def start(self):
+        self._running = True
+        self._open()
+
+    def stop(self):
+        self._running = False
+        if self._cap is not None:
+            self._cap.release()
+            self._cap = None
+
+    def capture_array(self):
+        if self._cap is None:
+            self._open()
+
+        ok, frame = self._cap.read() if self._cap is not None else (False, None)
+        if not ok or frame is None:
+            self._rewind()
+            ok, frame = self._cap.read() if self._cap is not None else (False, None)
+        if not ok or frame is None:
+            return self._last_frame
+
+        resized = self._cv2.resize(frame, self._size)
+        rgb = self._cv2.cvtColor(resized, self._cv2.COLOR_BGR2RGB)
+        self._last_frame = rgb
+        return rgb
+
+    def close(self):
+        self.stop()
+
+    def _open(self):
+        self._cap = self._cv2.VideoCapture(self._video_path)
+        if self._cap is None or not self._cap.isOpened():
+            raise RuntimeError(f"Failed to open mock video: {self._video_path}")
+
+    def _rewind(self):
+        if self._cap is None:
+            self._open()
+            return
+        self._cap.set(self._cv2.CAP_PROP_POS_FRAMES, 0)

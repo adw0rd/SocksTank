@@ -7,19 +7,68 @@ interface Props {
 
 export function StatusBar({ telemetry, wsStatus }: Props) {
   const wsColor = wsStatus === 'connected' ? '#4caf50' : wsStatus === 'connecting' ? '#ff9800' : '#f44336'
+  const items = [
+    { label: 'WS', value: wsStatus, tone: wsColor },
+    { label: 'E-Stop', value: telemetry?.estop ? 'Latched' : 'Ready', tone: telemetry?.estop ? '#ff9f1c' : '#89d185' },
+    { label: 'Camera', value: telemetry?.camera_source ?? '—' },
+    { label: 'FPS', value: telemetry ? telemetry.fps.toFixed(1) : '—' },
+    { label: 'Mode', value: telemetry?.mode ?? '—' },
+    { label: 'AI', value: telemetry?.ai_state ?? 'idle' },
+    { label: 'Backend', value: telemetry?.inference_backend ?? '—' },
+    { label: 'Latency', value: telemetry ? `${telemetry.inference_ms.toFixed(0)} ms` : '—' },
+    { label: 'Detections', value: String(telemetry?.detections.length ?? 0) },
+  ]
 
   return (
     <div style={{
-      display: 'flex', gap: 16, alignItems: 'center', padding: '8px 16px',
-      background: '#1a1a2e', borderRadius: 8, fontSize: 14, color: '#ccc',
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gap: 10,
+      padding: '12px 14px',
+      fontSize: 13,
     }}>
-      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ width: 10, height: 10, borderRadius: '50%', background: wsColor, display: 'inline-block' }} />
-        WS: {wsStatus}
-      </span>
-      <span>FPS: {telemetry?.fps.toFixed(1) ?? '—'}</span>
-      <span>Mode: {telemetry?.mode ?? '—'}</span>
-      <span>Detections: {telemetry?.detections.length ?? 0}</span>
+      {items.map((item) => (
+        <div
+          key={item.label}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '10px 12px',
+            background: '#101426',
+            border: '1px solid #232842',
+            borderRadius: 10,
+            minWidth: 0,
+          }}
+        >
+          <div style={{ color: '#6e78a8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            {item.label}
+          </div>
+          <div
+            style={{
+              color: item.tone ?? '#e7ebff',
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {item.label === 'WS' && (
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: wsColor,
+                  display: 'inline-block',
+                  marginRight: 6,
+                }}
+              />
+            )}
+            {item.value}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

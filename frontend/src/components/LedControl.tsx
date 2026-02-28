@@ -22,8 +22,10 @@ export function LedControl({ send }: Props) {
   }
 
   return (
-    <div style={{ background: '#1a1a2e', borderRadius: 8, padding: 16 }}>
-      <div style={{ color: '#ccc', fontSize: 14, marginBottom: 8 }}>LED Control</div>
+    <div style={{ padding: 16 }}>
+      <div style={{ color: '#cbd3ff', fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>
+        LED Control
+      </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
         <input
@@ -34,8 +36,8 @@ export function LedControl({ send }: Props) {
         <button
           onClick={applyColor}
           style={{
-            flex: 1, padding: '8px', background: '#1976d2', color: '#fff',
-            border: 'none', borderRadius: 6, cursor: 'pointer',
+            flex: 1, padding: '8px', background: '#2d8cff', color: '#fff',
+            border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700,
           }}
         >
           Apply Color
@@ -48,8 +50,8 @@ export function LedControl({ send }: Props) {
             key={p.effect}
             onClick={() => send({ cmd: 'led', params: { effect: p.effect } })}
             style={{
-              flex: 1, padding: '8px', background: '#37474f', color: '#fff',
-              border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13,
+              flex: 1, padding: '8px', background: '#242b45', color: '#fff',
+              border: '1px solid #343d62', borderRadius: 8, cursor: 'pointer', fontSize: 13,
             }}
           >
             {p.label}

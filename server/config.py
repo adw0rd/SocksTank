@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     camera_fps: int = 10
     pcb_version: int = 1  # PCB Version: 1 (V1.0) or 2 (V2.0)
     mock: bool = False
+    mock_video_path: str = "assets/mock-socks-loop.mp4"
     host: str = "0.0.0.0"
     port: int = 8080
     telemetry_hz: float = 5.0

@@ -20,6 +20,9 @@ class TelemetryMessage(BaseModel):
     inference_backend: str = "local"
     inference_ms: float = 0.0
     inference_error: str | None = None
+    camera_source: str = "camera"
+    ai_state: str = "idle"
+    estop: bool = False
 
 
 class ConfigResponse(BaseModel):
@@ -48,6 +51,7 @@ class StatusResponse(BaseModel):
 
 
 class GPUServerSchema(BaseModel):
+    name: str | None = None
     host: str
     port: int = 8090
     username: str
@@ -59,6 +63,17 @@ class GPUServerSchema(BaseModel):
 
 
 class GPUServerCreate(BaseModel):
+    name: str | None = None
+    host: str
+    port: int = 8090
+    username: str
+    auth_type: str = "key"
+    password: str | None = None
+    key_path: str | None = None
+
+
+class GPUServerUpdate(BaseModel):
+    name: str | None = None
     host: str
     port: int = 8090
     username: str
