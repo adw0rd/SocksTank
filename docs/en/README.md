@@ -30,7 +30,8 @@ Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tan
 2. **Set up RPi 5** — [rpi5.md](rpi5.md) (or [RPi 4, legacy](rpi4.md))
 3. **Collect dataset** — [dataset.md](dataset.md)
 4. **Train model** — [training.md](training.md)
-5. **Run detection** — [inference.md](inference.md)
+5. **Launch and deploy the project** — [launch.md](launch.md)
+6. **Run detection and web control** — [inference.md](inference.md)
 
 ## Project structure
 

@@ -30,7 +30,8 @@
 2. **Настроить RPi 5** — [rpi5.md](rpi5.md) (или [RPi 4, legacy](rpi4.md))
 3. **Собрать датасет** — [dataset.md](dataset.md)
 4. **Обучить модель** — [training.md](training.md)
-5. **Запустить детекцию** — [inference.md](inference.md)
+5. **Запустить и задеплоить проект** — [launch.md](launch.md)
+6. **Запустить детекцию и веб-управление** — [inference.md](inference.md)
 
 ## Структура проекта
 
