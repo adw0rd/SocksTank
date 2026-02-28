@@ -95,6 +95,23 @@ Power: Freenove Tank Board (2x18650).
 > Board shuts down under full load (all 4 cores). See [rpi5-power.md](rpi5-power.md).
 > Solution: XL6019E1 DC-DC buck-boost converter or lab PSU 5.1V/5A via GPIO.
 
+### Overclocking (lab PSU 5.1V)
+
+Tested RPi 5 overclocking with `arm_freq` and `over_voltage` in `/boot/firmware/config.txt`.
+Benchmark: pip ncnn native, 4 OMP threads, 20 frames after 3 warmup.
+
+| Frequency | over_voltage | Inference (ms) | FPS | Throttled | Temp | vs Stock |
+|---|---|---|---|---|---|---|
+| **2400 MHz** (stock) | — | 63.2 | **15.8** | 0x0 | ~55°C | — |
+| **2600 MHz** | 4 | 61.6 | **16.2** | 0x0 | ~58°C | **+2.5%** |
+| **2800 MHz** | 6 | 72.4 | **13.8** | 0x50000 | ~57°C | **-12.7%** |
+
+> 2800 MHz triggers under-voltage throttling (0x50000: bits 16+18) even on lab PSU 5.1V.
+> 2600 MHz works without throttling but only gives +2.5% — not worth the risk.
+> **Conclusion**: stock 2400 MHz is optimal. Overclocking RPi 5 for NCNN inference is not effective.
+
+Measured: 2026-02-28
+
 ## blackops GPU (NVIDIA RTX 4070 SUPER)
 
 OS: Ubuntu, Python 3.13.3, torch + CUDA
@@ -190,5 +207,6 @@ INT8 is faster only on 1 thread (+5%). On 2-4 threads FP32 is faster — INT8 de
 - XL6019E1 (5A, buck-boost) handles 4 cores with gradual start; LM2596 (3A) — max 2 cores
 - RPi 5 **requires stable 5.1V+** via GPIO, Freenove DC/DC is insufficient
 - **INT8 quantization**: +6% on 1 OMP thread (117.5ms vs 124.5ms), model size 2.6 MB (75% smaller)
+- **Overclocking** RPi 5: 2600 MHz gives +2.5%, 2800 MHz causes throttling — stock 2400 MHz is optimal
 
-Measured: 2026-02-27 (updated)
+Measured: 2026-02-28 (updated)
