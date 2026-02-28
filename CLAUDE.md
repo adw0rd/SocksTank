@@ -2,74 +2,74 @@
 
 ## Project Overview
 
-SocksTank — робот-танк на базе Raspberry Pi 5 (ранее RPi 4B, legacy), который ищет носки по квартире с помощью компьютерного зрения (YOLO) и собирает их клешнёй. Построен поверх [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi) (PCB Version V1.0, но поддерживается и V2.0).
+SocksTank — a Raspberry Pi 5-based tank robot (formerly RPi 4B, legacy) that searches for socks around the apartment using computer vision (YOLO) and picks them up with a claw. Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi) (PCB Version V1.0, but V2.0 is also supported).
 
 ## Project Structure
 
 ```
-main.py            # CLI точка входа (typer): train, bench, detect, shot, serve
-server/            # FastAPI backend (веб-панель управления)
+main.py            # CLI entry point (typer): train, bench, detect, shot, serve
+server/            # FastAPI backend (web control panel)
 ├── app.py         # FastAPI app factory, lifespan, mount static
 ├── config.py      # Pydantic Settings
 ├── camera.py      # CameraManager: picamera2 + YOLO → MJPEG
-├── cpu_warmup.py  # Плавный старт CPU (поэтапная загрузка ядер для RPi 5)
+├── cpu_warmup.py  # Gradual CPU warmup (staged core loading for RPi 5)
 ├── hardware.py    # HardwareController: Motor/Servo/Led/Ultrasonic/Infrared
-├── freenove_bridge.py  # Загрузка драйверов (drivers/) или mock fallback
-├── mock.py        # Mock-классы для macOS
-├── drivers/       # Интернализированные драйверы Freenove (PCB v1 + v2)
-│   ├── _detect.py     # Автоопределение RPi версии
-│   ├── motor.py       # Моторы (gpiozero)
-│   ├── servo.py       # Сервоприводы (pigpio/gpiozero/HardwarePWM)
-│   ├── ultrasonic.py  # Ультразвуковой сенсор (gpiozero)
-│   ├── infrared.py    # ИК-сенсоры (gpiozero)
-│   └── led.py         # LED-лента (rpi_ws281x/SPI/noop)
-├── routes_video.py     # MJPEG стрим
-├── routes_ws.py        # WebSocket управление + телеметрия
+├── freenove_bridge.py  # Load drivers (drivers/) or mock fallback
+├── mock.py        # Mock classes for macOS
+├── drivers/       # Internalized Freenove drivers (PCB v1 + v2)
+│   ├── _detect.py     # Auto-detect RPi version
+│   ├── motor.py       # Motors (gpiozero)
+│   ├── servo.py       # Servos (pigpio/gpiozero/HardwarePWM)
+│   ├── ultrasonic.py  # Ultrasonic sensor (gpiozero)
+│   ├── infrared.py    # IR sensors (gpiozero)
+│   └── led.py         # LED strip (rpi_ws281x/SPI/noop)
+├── routes_video.py     # MJPEG stream
+├── routes_ws.py        # WebSocket control + telemetry
 ├── routes_api.py       # REST API (config, status, models)
-└── schemas.py          # Pydantic модели
-frontend/          # Vite + React + TypeScript (веб-панель)
+└── schemas.py          # Pydantic models
+frontend/          # Vite + React + TypeScript (web panel)
 ├── src/
-│   ├── App.tsx         # Layout: видео + панель управления
+│   ├── App.tsx         # Layout: video + control panel
 │   ├── components/     # VideoFeed, MotorControl, ServoControl, LedControl, ...
 │   ├── hooks/          # useWebSocket
-│   └── lib/types.ts    # TypeScript интерфейсы
-└── dist/               # Собранный бандл [.gitignore]
-models/            # Обученные модели YOLO
-├── yolo11_best_ncnn_model/  # YOLOv11n NCNN FP32 (дефолт, 12.8–16.0 FPS pip ncnn + OMP workaround на RPi 5)
-├── yolo11_best.pt           # YOLOv11n PyTorch (для GPU и разработки)
-├── yolo11_best.onnx         # YOLOv11n ONNX (универсальный)
-├── yolo11_best_ncnn_int8_model/  # YOLOv11n NCNN INT8 (2.6 MB, квантизованная)
-└── yolo8_best.pt            # YOLOv8n PyTorch (старая модель)
-ncnn_wrapper/      # C++ ncnn обёртка (legacy, не нужна — pip ncnn + OMP workaround быстрее)
-legacy/            # Старые скрипты (bench, camera_detect, camera_shot, train)
-data.yaml          # Конфиг датасета (1 класс: sock, Roboflow v2, 961 изображение)
-dataset/           # Приватный датасет (train/valid/test) [.gitignore]
-pyproject.toml     # Зависимости проекта (uv/pip)
+│   └── lib/types.ts    # TypeScript interfaces
+└── dist/               # Built bundle [.gitignore]
+models/            # Trained YOLO models
+├── yolo11_best_ncnn_model/  # YOLOv11n NCNN FP32 (default, 12.8–16.0 FPS pip ncnn + OMP workaround on RPi 5)
+├── yolo11_best.pt           # YOLOv11n PyTorch (GPU and development)
+├── yolo11_best.onnx         # YOLOv11n ONNX (universal)
+├── yolo11_best_ncnn_int8_model/  # YOLOv11n NCNN INT8 (2.6 MB, quantized)
+└── yolo8_best.pt            # YOLOv8n PyTorch (old model)
+ncnn_wrapper/      # C++ ncnn wrapper (legacy, not needed — pip ncnn + OMP workaround is faster)
+legacy/            # Old scripts (bench, camera_detect, camera_shot, train)
+data.yaml          # Dataset config (1 class: sock, Roboflow v2, 961 images)
+dataset/           # Private dataset (train/valid/test) [.gitignore]
+pyproject.toml     # Project dependencies (uv/pip)
 docs/
-├── ru/            # Документация (на русском)
+├── ru/            # Documentation (Russian)
 └── en/            # Documentation (English)
-assets/            # Изображения проекта
+assets/            # Project images
 ```
 
 ## Tech Stack
 
-- **Python 3.10+**, менеджер пакетов: **uv**
-- **typer** — CLI-интерфейс
-- **ultralytics** — YOLO v8/v11 (тренировка и инференс)
-- **FastAPI + uvicorn** — веб-сервер управления роботом
-- **React + TypeScript + Vite** — фронтенд веб-панели
-- **picamera2 / libcamera** — камера Raspberry Pi (ставится только на RPi)
-- **gpiozero / pigpio** — моторы, сервоприводы, сенсоры (только RPi)
-- **OpenCV (cv2)** — обработка изображений, запись видео
-- **numpy** — работа с массивами
+- **Python 3.10+**, package manager: **uv**
+- **typer** — CLI interface
+- **ultralytics** — YOLO v8/v11 (training and inference)
+- **FastAPI + uvicorn** — robot control web server
+- **React + TypeScript + Vite** — web panel frontend
+- **picamera2 / libcamera** — Raspberry Pi camera (RPi only)
+- **gpiozero / pigpio** — motors, servos, sensors (RPi only)
+- **OpenCV (cv2)** — image processing, video recording
+- **numpy** — array operations
 
 ## Setup
 
 ```bash
-# Dev-машина (macOS / Linux)
+# Dev machine (macOS / Linux)
 uv venv && uv pip install -e .
 
-# Frontend (один раз)
+# Frontend (once)
 cd frontend && npm install && npm run build
 
 # Raspberry Pi
@@ -79,55 +79,55 @@ sudo pip install . --break-system-packages
 ## Running (CLI)
 
 ```bash
-# Веб-панель управления (macOS, mock-режим)
+# Web control panel (macOS, mock mode)
 ./main.py serve --mock
 
-# Веб-панель управления (RPi, реальное железо, плавный старт по умолчанию)
+# Web control panel (RPi, real hardware, gradual warmup by default)
 sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 
-# С NcnnNativeDetector (pip ncnn + OMP workaround, 12.8–16.0 FPS)
+# With NcnnNativeDetector (pip ncnn + OMP workaround, 12.8–16.0 FPS)
 sudo -E python main.py serve --model models/yolo11_best_ncnn_model --ncnn-cpp --ncnn-threads 4
-# Флаг --ncnn-cpp включает NcnnNativeDetector (server/inference.py), НЕ C++ wrapper
+# --ncnn-cpp enables NcnnNativeDetector (server/inference.py), NOT C++ wrapper
 
-# Тренировка (на GPU-сервере или dev-машине)
+# Training (on GPU server or dev machine)
 ./main.py train --device 0 --epochs 100
 
-# Бенчмарк модели
+# Model benchmark
 ./main.py bench
 
-# Детекция носков с камеры RPi (требует sudo)
+# Sock detection from RPi camera (requires sudo)
 sudo ./main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
 
-# Сбор фото для датасета
+# Capture photos for dataset
 sudo ./main.py shot --count 200 --output-dir images
 ```
 
 ## Code Style
 
-- **black** — форматирование (через pre-commit)
-- **flake8** — линтинг (max-line-length=140, ignore W503)
-- Pre-commit хуки: `.pre-commit-config.yaml`
-- Проверка: `pre-commit run --all-files`
+- **black** — formatting (via pre-commit)
+- **flake8** — linting (max-line-length=140, ignore W503)
+- Pre-commit hooks: `.pre-commit-config.yaml`
+- Check: `pre-commit run --all-files`
 
 ## Key Conventions
 
-- Комментарии и логи в коде — на русском языке
-- Документация — на русском
-- picamera2 не в pyproject.toml (linux-only, ставится вручную на RPi)
+- Code, comments, log messages, commits — in English
+- Documentation — bilingual (docs/ru/ and docs/en/)
+- picamera2 is not in pyproject.toml (linux-only, installed manually on RPi)
 
 ## Infrastructure
 
-Подробности: [docs/ru/infrastructure.md](docs/ru/infrastructure.md), приватные данные: `docs/credentials.md` (не в git).
+Details: [docs/en/infrastructure.md](docs/en/infrastructure.md), private data: `docs/credentials.md` (not in git).
 
-| Хост | Назначение |
+| Host | Purpose |
 |---|---|
-| **rpi5** | Робот-танк основной (RPi 5, Debian 13 trixie 64-bit, Python 3.13) |
-| **rpi4** (legacy) | Робот-танк старый (RPi 4B, Debian 12 bookworm 64-bit, Python 3.11) |
-| **blackops** | GPU-сервер для тренировки (RTX 4070 SUPER) |
+| **rpi5** | Main tank robot (RPi 5, Debian 13 trixie 64-bit, Python 3.13) |
+| **rpi4** (legacy) | Old tank robot (RPi 4B, Debian 12 bookworm 64-bit, Python 3.11) |
+| **blackops** | GPU training server (RTX 4070 SUPER) |
 
 ## Training
 
-Тренировка выполняется на GPU-сервере (blackops):
+Training runs on the GPU server (blackops):
 
 ```bash
 ssh blackops
@@ -136,32 +136,32 @@ source venv/bin/activate
 python -c "from ultralytics import YOLO; YOLO('yolo11n.pt').train(data='data.yaml', epochs=100, batch=16, device=0)"
 ```
 
-Или через CLI локально:
+Or via CLI locally:
 ```bash
 ./main.py train --model yolov8n.pt --data data.yaml --epochs 100 --batch 16 --device 0
 ```
 
-Устройства: `0` (NVIDIA CUDA), `mps` (Apple Silicon), `cpu` (фоллбэк).
+Devices: `0` (NVIDIA CUDA), `mps` (Apple Silicon), `cpu` (fallback).
 
-## Модели
+## Models
 
-| Модель | Файл | mAP50 | mAP50-95 | Размер |
+| Model | File | mAP50 | mAP50-95 | Size |
 |---|---|---|---|---|
-| YOLOv11n | `models/yolo11_best_ncnn_model/` | 0.995 | 0.96 | 9.9 MB | **RPi продакшен (FP32)** |
-| YOLOv11n | `models/yolo11_best_ncnn_int8_model/` | ~0.98 | ~0.94 | 2.6 MB | **RPi INT8 (квантизованная)** |
-| YOLOv11n | `models/yolo11_best.pt` | 0.995 | 0.96 | 5.2 MB | GPU, разработка |
-| YOLOv8n | `models/yolo8_best.pt` | 0.995 | 0.885 | 6.0 MB | Старая модель |
+| YOLOv11n | `models/yolo11_best_ncnn_model/` | 0.995 | 0.96 | 9.9 MB | **RPi production (FP32)** |
+| YOLOv11n | `models/yolo11_best_ncnn_int8_model/` | ~0.98 | ~0.94 | 2.6 MB | **RPi INT8 (quantized)** |
+| YOLOv11n | `models/yolo11_best.pt` | 0.995 | 0.96 | 5.2 MB | GPU, development |
+| YOLOv8n | `models/yolo8_best.pt` | 0.995 | 0.885 | 6.0 MB | Old model |
 
-## Deploy на робот
+## Deploy to Robot
 
 ```bash
-# Копировать проект на RPi
+# Copy project to RPi
 rsync -avz --exclude .venv --exclude frontend/node_modules --exclude __pycache__ --exclude .git \
   ~/work/SocksTank/ rpi5:~/sockstank/
 
-# Запуск на RPi
+# Run on RPi
 ssh rpi5
 cd ~/sockstank
 sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5 > /tmp/sockstank.log 2>&1 &
-# Открыть http://rpi5:8080
+# Open http://rpi5:8080
 ```
