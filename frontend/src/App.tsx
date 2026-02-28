@@ -63,10 +63,11 @@ export default function App() {
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 16,
+          flexWrap: 'wrap',
         }}
       >
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>SocksTank Control Surface</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, minWidth: 0 }}>SocksTank Control Surface</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <div
             style={{
               padding: '8px 12px',
@@ -78,7 +79,12 @@ export default function App() {
               fontWeight: 800,
               letterSpacing: '0.05em',
               textTransform: 'uppercase',
+              maxWidth: 180,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}
+            title={`Camera: ${cameraHeader}`}
           >
             Camera: {cameraHeader}
           </div>
@@ -93,7 +99,7 @@ export default function App() {
               fontWeight: 800,
               letterSpacing: '0.05em',
               textTransform: 'uppercase',
-              maxWidth: 280,
+              maxWidth: 240,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
