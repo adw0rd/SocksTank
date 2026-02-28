@@ -25,7 +25,7 @@ Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tan
 
 ## Quick Start
 
-1. **Assemble the tank** — Freenove Tank Robot Kit (instructions included)
+1. **Assemble the tank** — [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi) ([instructions included](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/blob/main/Tutorial.pdf))
 2. **Set up RPi 5** — [rpi5.md](rpi5.md) (or [RPi 4, legacy](rpi4.md))
 3. **Collect dataset** — [dataset.md](dataset.md)
 4. **Train model** — [training.md](training.md)
@@ -86,12 +86,26 @@ sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-syst
 
 ## Documentation
 
-| Section | Description |
-|---|---|
-| [Running the project](launch.md) | Build frontend, run backend, deploy to RPi |
-| [RPi 5 setup](rpi5.md) | OS installation, power, cooling, benchmarks |
-| [RPi 4 setup (legacy)](rpi4.md) | OS installation, dependencies, camera, autostart |
-| [Dataset preparation](dataset.md) | Photo capture, Roboflow, annotation, augmentation |
-| [Model training](training.md) | YOLO training, parameters, evaluation, export |
-| [Running on the robot](inference.md) | Web panel, deployment, detection, tank integration |
-| [Infrastructure](infrastructure.md) | Hosts, SSH, GPIO, hardware |
+* [**Running the project**](launch.md) — build frontend, run backend, deploy to RPi
+* **Raspberry Pi setup**
+    * [RPi 5 setup (recommended)](rpi5.md)
+    * [RPi 4 setup (legacy)](rpi4.md)
+    * [RPi 5 power supply](rpi5-power.md)
+* **Dataset preparation**
+    * [Capturing photos](dataset.md#capturing-photos)
+    * [Uploading to Roboflow & annotation](dataset.md#uploading-to-roboflow)
+    * [Augmentation](dataset.md#augmentation)
+    * [Exporting the dataset](dataset.md#exporting-the-dataset)
+* **Model training**
+    * [Training (GPU, Apple Silicon, CPU)](training.md#training)
+    * [Evaluating results](training.md#evaluating-results)
+    * [Model export (ncnn for RPi)](training.md#model-export)
+* **Inference & Web Panel**
+    * [Web control panel](inference.md#web-control-panel-recommended)
+    * [Deploying to RPi](inference.md#deploying-to-rpi)
+    * [Remote GPU inference](inference.md#remote-inference-gpu-server)
+    * [Integration with tank controls](inference.md#integration-with-tank-controls)
+* **Benchmarks**
+    * [Inference benchmarks](benchmarks.md)
+    * [Disk benchmarks](disk-benchmarks.md)
+* [**Infrastructure**](infrastructure.md)

@@ -11,7 +11,7 @@
 - **Raspberry Pi 4B** (4 ГБ RAM) — legacy, для новых сборок рекомендуется **RPi 5**
 - **SD-карта** 32 ГБ+ (Class 10 / A2)
 - **Камера ov5647** (OmniVision) — входит в комплект Freenove Tank Kit
-- **Freenove Tank Robot Kit** — собранный по инструкции из комплекта
+- **[Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi)** — собранный по [инструкции из комплекта](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/blob/main/Tutorial.pdf)
 - **Блок питания** 5V/3A (для RPi 4B) или 5V/5A (для RPi 5)
 
 ## Установка ОС

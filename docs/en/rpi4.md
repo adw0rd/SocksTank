@@ -11,7 +11,7 @@ Guide for preparing a Raspberry Pi 4B to run the SocksTank robot.
 - **Raspberry Pi 4B** (4 GB RAM) — legacy, for new builds **RPi 5** is recommended
 - **SD card** 32 GB+ (Class 10 / A2)
 - **ov5647 camera** (OmniVision) — included in the Freenove Tank Kit
-- **Freenove Tank Robot Kit** — assembled following the included instructions
+- **[Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi)** — assembled following the [included instructions](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/blob/main/Tutorial.pdf)
 - **Power supply** 5V/3A (for RPi 4B) or 5V/5A (for RPi 5)
 
 ## OS installation

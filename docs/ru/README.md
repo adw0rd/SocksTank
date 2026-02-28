@@ -25,7 +25,7 @@
 
 ## Quick Start
 
-1. **Собрать танк** — Freenove Tank Robot Kit (инструкция в комплекте)
+1. **Собрать танк** — [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi) ([инструкция в комплекте](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/blob/main/Tutorial.pdf))
 2. **Настроить RPi 5** — [rpi5.md](rpi5.md) (или [RPi 4, legacy](rpi4.md))
 3. **Собрать датасет** — [dataset.md](dataset.md)
 4. **Обучить модель** — [training.md](training.md)
@@ -86,12 +86,26 @@ sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-syst
 
 ## Документация
 
-| Раздел | Описание |
-|---|---|
-| [Запуск проекта](launch.md) | Сборка фронтенда, запуск бэкенда, деплой на RPi |
-| [Настройка RPi 5](rpi5.md) | Установка ОС, питание, охлаждение, бенчмарки |
-| [Настройка RPi 4 (legacy)](rpi4.md) | Установка ОС, зависимости, камера, автозапуск |
-| [Подготовка датасета](dataset.md) | Съёмка фото, Roboflow, аннотации, аугментация |
-| [Тренировка модели](training.md) | Обучение YOLO, параметры, оценка, экспорт |
-| [Запуск на роботе](inference.md) | Веб-панель, деплой, детекция, интеграция с танком |
-| [Инфраструктура](infrastructure.md) | Хосты, SSH, GPIO, аппаратная часть |
+* [**Запуск проекта**](launch.md) — сборка фронтенда, запуск бэкенда, деплой на RPi
+* **Настройка Raspberry Pi**
+    * [Настройка RPi 5 (рекомендуется)](rpi5.md)
+    * [Настройка RPi 4 (legacy)](rpi4.md)
+    * [Питание RPi 5](rpi5-power.md)
+* **Подготовка датасета**
+    * [Съёмка фотографий](dataset.md#съёмка-фотографий)
+    * [Загрузка в Roboflow и аннотирование](dataset.md#загрузка-в-roboflow)
+    * [Аугментация](dataset.md#аугментация)
+    * [Экспорт датасета](dataset.md#экспорт-датасета)
+* **Тренировка модели**
+    * [Тренировка (GPU, Apple Silicon, CPU)](training.md#тренировка)
+    * [Оценка результатов](training.md#оценка-результатов)
+    * [Экспорт модели (ncnn для RPi)](training.md#экспорт-модели)
+* **Инференс и веб-панель**
+    * [Веб-панель управления](inference.md#веб-панель-управления-рекомендуемый-способ)
+    * [Деплой на RPi](inference.md#деплой-на-rpi)
+    * [Удалённый GPU-инференс](inference.md#удалённый-инференс-gpu-сервер)
+    * [Интеграция с управлением танком](inference.md#интеграция-с-управлением-танком)
+* **Бенчмарки**
+    * [Бенчмарки инференса](benchmarks.md)
+    * [Бенчмарки диска](disk-benchmarks.md)
+* [**Инфраструктура**](infrastructure.md)
