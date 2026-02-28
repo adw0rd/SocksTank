@@ -9,8 +9,13 @@ import os
 import sys
 import time
 import platform
+from pathlib import Path
 
 import numpy as np
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 
 def set_affinity(cores: list[int]):
@@ -22,7 +27,7 @@ def set_affinity(cores: list[int]):
 
 def bench_model(model_path: str, label: str, n_warmup: int = 5, n_iter: int = 20):
     """Benchmark a single model."""
-    from ultralytics import YOLO
+    from server.inference import _try_load_ncnn_native
 
     print(f"\n{'=' * 60}")
     print(f"  {label}: {model_path}")
@@ -35,20 +40,24 @@ def bench_model(model_path: str, label: str, n_warmup: int = 5, n_iter: int = 20
     # Stage 1: load on a single core
     set_affinity([0])
     print("  Loading model on 1 core...")
-    model = YOLO(model_path)
+    model, _ = _try_load_ncnn_native(model_path, 1)
+    if model is None:
+        print("  SKIP: failed to load NCNN model")
+        return None
     dummy = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
 
     # Warm up on 1 core
     print(f"  Warmup ({n_warmup} iterations, 1 core)...")
-    for i in range(n_warmup):
-        model(dummy, verbose=False)
+    for _ in range(n_warmup):
+        model.detect(dummy, 0.5)
     time.sleep(1)
 
     # Stage 2: benchmark on 2 cores
     set_affinity([0, 1])
+    model.set_num_threads(2)
     print("  Warmup (3 iterations, 2 cores)...")
-    for i in range(3):
-        model(dummy, verbose=False)
+    for _ in range(3):
+        model.detect(dummy, 0.5)
     time.sleep(1)
 
     # Stage 3: benchmark on different core counts
@@ -56,17 +65,18 @@ def bench_model(model_path: str, label: str, n_warmup: int = 5, n_iter: int = 20
     for n_cores in [1, 2, 3, 4]:
         cores = list(range(n_cores))
         set_affinity(cores)
+        model.set_num_threads(n_cores)
         time.sleep(0.5)
 
         # Warm up for this configuration
         for _ in range(3):
-            model(dummy, verbose=False)
+            model.detect(dummy, 0.5)
 
         # Measure runtime
         times = []
         for _ in range(n_iter):
             t0 = time.monotonic()
-            model(dummy, verbose=False)
+            model.detect(dummy, 0.5)
             times.append((time.monotonic() - t0) * 1000)
 
         avg = sum(times) / len(times)
