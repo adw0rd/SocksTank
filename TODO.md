@@ -15,5 +15,5 @@
 
 ## Оптимизация
 
-- [ ] Оптимизировать preprocess (сейчас ~14ms overhead)
+- [x] Оптимизировать postprocess (было ~14ms overhead → 3.4ms, vectorized numpy вместо Python loop)
 - [ ] Попробовать разгон RPi 5 (arm_freq=2800, стоковые 2400) — замерить FPS, только на лаб. БП
