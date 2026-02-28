@@ -1,6 +1,9 @@
 # SocksTank
 
-<img align="left" width="200px" src="assets/SocksTank.jpeg">
+<p align="center">
+  <img height="336px" src="assets/SocksTank.jpeg" alt="SocksTank robot">
+  <img height="336px" src="assets/freenode_tank.png" alt="Freenove tank base">
+</p>
 
 **SocksTank** is a Raspberry Pi robot tank that finds socks with [YOLO model inference](docs/en/inference.md), drives from a [browser-based control panel](docs/en/inference.md#web-control-panel-recommended), and can run inference either on-device with NCNN or remotely on a [GPU server](docs/en/inference.md#remote-inference-gpu-server).
 
@@ -30,8 +33,6 @@ Highlights:
 - [Run and deploy](docs/en/launch.md)
 - [Web control panel and inference modes](docs/en/inference.md)
 - [RPi benchmark results](docs/en/benchmarks.md)
-
-<br clear="left">
 
 ## Documentation
 
