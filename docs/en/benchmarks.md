@@ -188,14 +188,16 @@ INT8 quantization: `ncnn2table` (100 calibration images from train) → `ncnn2in
 
 | Model | OMP threads | Total (ms) | Inference (ms) | FPS | vs FP32 |
 |---|---|---|---|---|---|
-| FP32 | 1 | 133.2 | 118.6 | **7.5** | — |
-| INT8 | 1 | 126.9 | 112.3 | **7.9** | **1.05x** |
-| FP32 | 2 | 92.0 | 77.4 | **10.9** | — |
-| INT8 | 2 | 92.2 | 77.4 | **10.8** | 1.00x |
-| **FP32** | **4** | **67.2** | **63.4** | **14.9** | — |
-| INT8 | 4 | 82.9 | 68.0 | **12.1** | 0.94x |
+| FP32 | 1 | 122.6 | 118.6 | **8.2** | — |
+| INT8 | 1 | 117.9 | 112.3 | **8.5** | **1.04x** |
+| FP32 | 2 | 84.3 | 77.4 | **11.9** | — |
+| INT8 | 2 | 86.5 | 77.4 | **11.6** | 0.97x |
+| FP32 | 3 | 77.4 | — | **12.9** | — |
+| INT8 | 3 | 82.0 | — | **12.2** | 0.94x |
+| **FP32** | **4** | **70.9** | **63.4** | **14.1** | — |
+| INT8 | 4 | 77.7 | 68.0 | **12.9** | 0.91x |
 
-INT8 is faster only on 1 thread (+5%). On 2-4 threads, FP32 is faster because INT8 dequantization overhead offsets the gain from parallelization. INT8's main advantage is model size: 2.6 MB (75% smaller).
+INT8 is slightly faster only on 1 thread (+4%). From 2 threads and above, FP32 remains faster. INT8's main advantage is still model size: 2.6 MB (75% smaller).
 
 ### Conclusions
 
@@ -206,7 +208,7 @@ INT8 is faster only on 1 thread (+5%). On 2-4 threads, FP32 is faster because IN
 - blackops GPU is **21x** faster than RPi 5 (314.8 vs 14.9 FPS)
 - XL6019E1 (5A, buck-boost) handles 4 cores with gradual start; LM2596 (3A) — max 2 cores
 - RPi 5 **requires stable 5.1V+** via GPIO, Freenove DC/DC is insufficient
-- **INT8 quantization**: +6% on 1 OMP thread (117.5ms vs 124.5ms), model size 2.6 MB (75% smaller)
+- **INT8 quantization**: about +4% on 1 OMP thread (8.5 vs 8.2 FPS), but slower from 2-4 threads; model size stays 2.6 MB (75% smaller)
 - **Overclocking** RPi 5: 2600 MHz gives +2.5%, 2800 MHz causes throttling — stock 2400 MHz is optimal
 
 Measured: 2026-02-28 (updated)
