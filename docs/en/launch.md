@@ -98,7 +98,7 @@ Logs: `tail -f /tmp/sockstank.log`
 | `--mock` | `false` | Mock mode (no GPIO/camera) |
 | `--ncnn-cpp` | `false` | NcnnNativeDetector (pip ncnn + OMP workaround) |
 | `--ncnn-threads` | `2` | OMP threads for ncnn (1–4) |
-| `--freenove-path` | `~/Freenove_.../Code/Server` | Path to Freenove modules |
+| `--pcb-version` | `1` | Freenove PCB version (1 or 2) |
 
 > **Which model to use with `--model`?**
 > - **RPi** (production): `models/yolo11_best_ncnn_model` — NCNN [FP32](benchmarks.md#models), 15 FPS

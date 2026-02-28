@@ -1,7 +1,5 @@
-"""Импорт модулей Freenove с fallback на mock для macOS."""
+"""Load hardware drivers: real (server.drivers) or mock."""
 
-import sys
-import os
 import logging
 
 from server.config import settings
@@ -9,38 +7,32 @@ from server.config import settings
 log = logging.getLogger(__name__)
 
 
-def _try_import_freenove():
-    """Попытка импортировать модули Freenove через sys.path."""
-    path = os.path.expanduser(settings.freenove_path)
-    if not os.path.isdir(path):
-        log.warning("Freenove путь не найден: %s — используем mock", path)
-        return None
-
-    if path not in sys.path:
-        sys.path.insert(0, path)
-
+def _try_import_drivers():
+    """Try to import real drivers from server.drivers."""
     try:
-        from motor import tankMotor
-        from servo import Servo
-        from led import Led
-        from ultrasonic import Ultrasonic
-        from infrared import Infrared
+        from server.drivers.motor import tankMotor
+        from server.drivers.servo import Servo
+        from server.drivers.led import Led
+        from server.drivers.ultrasonic import Ultrasonic
+        from server.drivers.infrared import Infrared
 
-        log.info("Freenove модули загружены из %s", path)
+        pcb = settings.pcb_version
+
+        log.info("Drivers loaded (pcb_version=%d)", pcb)
         return {
             "motor": tankMotor,
-            "servo": Servo,
-            "led": Led,
+            "servo": lambda: Servo(pcb_version=pcb),
+            "led": lambda: Led(pcb_version=pcb),
             "ultrasonic": Ultrasonic,
-            "infrared": Infrared,
+            "infrared": lambda: Infrared(pcb_version=pcb),
         }
     except ImportError as e:
-        log.warning("Не удалось импортировать Freenove: %s — используем mock", e)
+        log.warning("Failed to import drivers: %s — falling back to mock", e)
         return None
 
 
 def _get_mock_modules():
-    """Возвращает mock-классы."""
+    """Return mock classes."""
     from server.mock import MockMotor, MockServo, MockLed, MockUltrasonic, MockInfrared
 
     return {
@@ -53,24 +45,24 @@ def _get_mock_modules():
 
 
 def load_hardware_modules():
-    """Загружает Freenove модули или mock-заглушки."""
+    """Load hardware drivers or mock stubs."""
     if settings.mock:
-        log.info("Mock-режим включён")
+        log.info("Mock mode enabled")
         return _get_mock_modules()
 
-    modules = _try_import_freenove()
+    modules = _try_import_drivers()
     if modules is None:
-        log.info("Fallback на mock-модули")
+        log.info("Falling back to mock modules")
         return _get_mock_modules()
     return modules
 
 
 def load_camera():
-    """Загружает Picamera2 или mock-камеру."""
+    """Load Picamera2 or mock camera."""
     if settings.mock:
         from server.mock import MockPicamera2
 
-        log.info("Используем MockPicamera2")
+        log.info("Using MockPicamera2")
         return MockPicamera2()
 
     try:
@@ -83,10 +75,10 @@ def load_camera():
             transform=Transform(vflip=True),
         )
         cam.configure(config)
-        log.info("Picamera2 настроена: %dx%d", settings.resolution_w, settings.resolution_h)
+        log.info("Picamera2 configured: %dx%d", settings.resolution_w, settings.resolution_h)
         return cam
     except (ImportError, RuntimeError) as e:
-        log.warning("Picamera2 недоступна: %s — используем mock", e)
+        log.warning("Picamera2 unavailable: %s — falling back to mock", e)
         from server.mock import MockPicamera2
 
         return MockPicamera2()

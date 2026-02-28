@@ -98,7 +98,7 @@ sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 
 | `--mock` | `false` | Mock-режим (без GPIO/камеры) |
 | `--ncnn-cpp` | `false` | NcnnNativeDetector (pip ncnn + OMP workaround) |
 | `--ncnn-threads` | `2` | Количество OMP потоков для ncnn (1–4) |
-| `--freenove-path` | `~/Freenove_.../Code/Server` | Путь к модулям Freenove |
+| `--pcb-version` | `1` | PCB версия платы Freenove (1 или 2) |
 
 > **Какую модель указывать в `--model`?**
 > - **RPi** (продакшен): `models/yolo11_best_ncnn_model` — NCNN [FP32](benchmarks.md#модели), 15 FPS

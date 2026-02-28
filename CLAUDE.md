@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-SocksTank — робот-танк на базе Raspberry Pi 5 (ранее RPi 4B, legacy), который ищет носки по квартире с помощью компьютерного зрения (YOLO) и собирает их клешнёй. Построен поверх [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi) (PCB Version V1.0).
+SocksTank — робот-танк на базе Raspberry Pi 5 (ранее RPi 4B, legacy), который ищет носки по квартире с помощью компьютерного зрения (YOLO) и собирает их клешнёй. Построен поверх [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi) (PCB Version V1.0, но поддерживается и V2.0).
 
 ## Project Structure
 
@@ -14,8 +14,15 @@ server/            # FastAPI backend (веб-панель управления)
 ├── camera.py      # CameraManager: picamera2 + YOLO → MJPEG
 ├── cpu_warmup.py  # Плавный старт CPU (поэтапная загрузка ядер для RPi 5)
 ├── hardware.py    # HardwareController: Motor/Servo/Led/Ultrasonic/Infrared
-├── freenove_bridge.py  # Импорт Freenove модулей + mock fallback
+├── freenove_bridge.py  # Загрузка драйверов (drivers/) или mock fallback
 ├── mock.py        # Mock-классы для macOS
+├── drivers/       # Интернализированные драйверы Freenove (PCB v1 + v2)
+│   ├── _detect.py     # Автоопределение RPi версии
+│   ├── motor.py       # Моторы (gpiozero)
+│   ├── servo.py       # Сервоприводы (pigpio/gpiozero/HardwarePWM)
+│   ├── ultrasonic.py  # Ультразвуковой сенсор (gpiozero)
+│   ├── infrared.py    # ИК-сенсоры (gpiozero)
+│   └── led.py         # LED-лента (rpi_ws281x/SPI/noop)
 ├── routes_video.py     # MJPEG стрим
 ├── routes_ws.py        # WebSocket управление + телеметрия
 ├── routes_api.py       # REST API (config, status, models)

@@ -151,10 +151,7 @@ def serve(
     host: str = typer.Option("0.0.0.0", help="Хост"),
     port: int = typer.Option(8080, help="Порт"),
     mock: bool = typer.Option(False, help="Mock-режим (без GPIO/камеры)"),
-    freenove_path: str = typer.Option(
-        "~/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/Code/Server",
-        help="Путь к модулям Freenove",
-    ),
+    pcb_version: int = typer.Option(1, help="PCB версия платы Freenove (1 или 2)"),
     ncnn_cpp: bool = typer.Option(False, help="NcnnNativeDetector (pip ncnn + OMP workaround)"),
     ncnn_threads: int = typer.Option(2, help="OMP потоков для ncnn (1–4)"),
 ):
@@ -166,13 +163,13 @@ def serve(
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
-    # Применяем CLI-параметры к настройкам
+    # Apply CLI parameters to settings
     settings.model_path = model
     settings.confidence = conf
     settings.host = host
     settings.port = port
     settings.mock = mock
-    settings.freenove_path = freenove_path
+    settings.pcb_version = pcb_version
     settings.ncnn_cpp = ncnn_cpp
     settings.ncnn_threads = ncnn_threads
 
