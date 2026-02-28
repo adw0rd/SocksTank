@@ -92,7 +92,7 @@ sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 
 
 | Параметр | По умолчанию | Описание |
 |---|---|---|
-| `--model` | `models/yolo11_best.pt` | Путь к модели (.pt, .onnx, ncnn директория) |
+| `--model` | `models/yolo11_best.pt` | Путь к модели (.pt для GPU/dev, ncnn директория для RPi) |
 | `--conf` | `0.5` | Порог уверенности (0.0–1.0) |
 | `--host` | `0.0.0.0` | Адрес привязки |
 | `--port` | `8080` | HTTP/WebSocket порт |
@@ -127,7 +127,7 @@ rsync -avz frontend/dist/ rpi5:~/sockstank/frontend/dist/
 
 ```bash
 # На GPU-сервере (blackops)
-python -m server.inference_server --model models/yolo11_best.pt --port 8090
+python -m server.inference_server --model models/yolo11_best.pt --port 8090  # .pt для GPU-сервера
 ```
 
 В веб-панели: **Inference → + Add GPU Server** → ввести хост, порт, SSH-ключ → **Save**.

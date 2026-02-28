@@ -41,7 +41,7 @@ sudo -E python main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
 
 | Параметр | По умолчанию | Описание |
 |---|---|---|
-| `--model` | `models/yolo8_best.pt` | Путь к обученной модели |
+| `--model` | `models/yolo11_best.pt` | Путь к модели (.pt для GPU, ncnn директория для RPi) |
 | `--output` | `detect.mp4` | Выходной видеофайл |
 | `--conf` | `0.5` | Порог уверенности (0.0–1.0). Детекции с уверенностью ниже порога игнорируются |
 | `--frames` | `300` | Максимальное количество кадров для записи |
@@ -54,7 +54,7 @@ sudo -E python main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
 Если модель экспортирована в ncnn (см. [тренировка](training.md#экспорт-модели)):
 
 ```bash
-sudo ./main.py detect --model best_ncnn_model --conf 0.5
+sudo ./main.py detect --model models/yolo11_best_ncnn_model --conf 0.5  # NCNN для RPi
 ```
 
 ## Удалённый инференс (GPU-сервер)
@@ -97,7 +97,7 @@ sudo ./main.py detect --model best_ncnn_model --conf 0.5
 ```bash
 # На GPU-сервере (blackops)
 cd ~/work/SocksTank
-python main.py serve --model models/yolo11_best.pt --host 0.0.0.0 --port 8090
+python main.py serve --model models/yolo11_best.pt --host 0.0.0.0 --port 8090  # .pt для GPU-сервера
 ```
 
 ### API

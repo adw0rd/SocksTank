@@ -92,7 +92,7 @@ Logs: `tail -f /tmp/sockstank.log`
 
 | Parameter | Default | Description |
 |---|---|---|
-| `--model` | `models/yolo11_best.pt` | Model path (.pt, .onnx, ncnn directory) |
+| `--model` | `models/yolo11_best.pt` | Model path (.pt for GPU/dev, ncnn directory for RPi) |
 | `--conf` | `0.5` | Confidence threshold (0.0–1.0) |
 | `--host` | `0.0.0.0` | Bind address |
 | `--port` | `8080` | HTTP/WebSocket port |
@@ -127,7 +127,7 @@ Details: [inference.md — Remote Inference](inference.md#remote-inference-gpu-s
 
 ```bash
 # On GPU server (blackops)
-python -m server.inference_server --model models/yolo11_best.pt --port 8090
+python -m server.inference_server --model models/yolo11_best.pt --port 8090  # .pt for GPU server
 ```
 
 In web panel: **Inference → + Add GPU Server** → enter host, port, SSH key → **Save**.

@@ -41,7 +41,7 @@ sudo -E python main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
 
 | Parameter | Default | Description |
 |---|---|---|
-| `--model` | `models/yolo8_best.pt` | Path to the trained model |
+| `--model` | `models/yolo11_best.pt` | Model path (.pt for GPU, ncnn directory for RPi) |
 | `--output` | `detect.mp4` | Output video file |
 | `--conf` | `0.5` | Confidence threshold (0.0–1.0). Detections below the threshold are ignored |
 | `--frames` | `300` | Maximum number of frames to record |
@@ -54,7 +54,7 @@ sudo -E python main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
 If the model was exported to ncnn (see [training](training.md#model-export)):
 
 ```bash
-sudo ./main.py detect --model best_ncnn_model --conf 0.5
+sudo ./main.py detect --model models/yolo11_best_ncnn_model --conf 0.5  # NCNN for RPi
 ```
 
 ## Remote Inference (GPU Server)
@@ -97,7 +97,7 @@ Server configuration is saved in `gpu_servers.json` (in `.gitignore`).
 ```bash
 # On the GPU server (blackops)
 cd ~/work/SocksTank
-python main.py serve --model models/yolo11_best.pt --host 0.0.0.0 --port 8090
+python main.py serve --model models/yolo11_best.pt --host 0.0.0.0 --port 8090  # .pt for GPU server
 ```
 
 ### API
