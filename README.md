@@ -65,3 +65,11 @@ Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tan
     * [Бенчмарки инференса](docs/ru/benchmarks.md)
     * [Бенчмарки диска](docs/ru/disk-benchmarks.md)
 * [**Инфраструктура**](docs/ru/infrastructure.md)
+
+---
+
+## Co-authors
+
+- Mikhail Andreev ([adw0rd](https://github.com/adw0rd))
+- Claude Code
+- OpenAI Codex
