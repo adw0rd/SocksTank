@@ -4,7 +4,17 @@ Deploying the trained model to Raspberry Pi and running sock detection from the 
 
 ## Deploying to RPi
 
-The entire project is copied to the robot via rsync:
+The recommended deployment path is described in [launch.md](launch.md) and uses the built-in CLI:
+
+```bash
+./main.py deploy rpi5
+```
+
+Use this page after deployment to work with the web panel, local detection, and remote GPU inference.
+
+### Manual rsync fallback
+
+If you want to copy the project manually, the fallback flow is:
 
 ```bash
 rsync -avz --exclude .venv --exclude frontend/node_modules --exclude __pycache__ --exclude .git \

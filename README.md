@@ -1,11 +1,18 @@
-# SocksTank
+# SocksTank: Finds Your Socks with YOLO, NCNN, and a Raspberry Pi Robot Tank
 
 <p align="center">
   <img height="336px" src="assets/SocksTank.jpeg" alt="SocksTank robot">
   <img height="336px" src="assets/freenode_tank.png" alt="Freenove tank base">
 </p>
 
-**SocksTank** is a Raspberry Pi robot tank that finds socks with [YOLO model inference](docs/en/inference.md), drives from a [browser-based control panel](docs/en/inference.md#web-control-panel-recommended), and can run inference either on-device with NCNN or remotely on a [GPU server](docs/en/inference.md#remote-inference-gpu-server).
+**SocksTank** is a browser-controlled Raspberry Pi robot that finds socks with [YOLO model inference](docs/en/inference.md), runs locally with NCNN, and can switch to a [remote GPU server](docs/en/inference.md#remote-inference-gpu-server) when needed.
+
+What you can do with it:
+
+- drive the robot from the [web panel](docs/en/inference.md#web-control-panel-recommended) with live video and telemetry
+- run fast on-device inference on [RPi 5 with NCNN](docs/en/benchmarks.md)
+- switch to [remote GPU inference](docs/en/inference.md#remote-inference-gpu-server) when you want more throughput
+- deploy and update the robot from one [CLI workflow](docs/en/launch.md#recommended-deploy-flow-mainpy-deploy)
 
 Why it stands out:
 
@@ -25,14 +32,43 @@ Quick start:
 
 Demo:
 
-- Demo video/GIF will be added here after the camera build is completed.
+- Ready for a future GIF/video drop-in:
+
+```md
+![SocksTank demo](assets/demo.gif)
+```
+
+- Until the camera build is complete, this stays as a placeholder.
 
 Highlights:
 
-- [Quick start path](docs/en/README.md#quick-start)
+- [English docs index](docs/en/README.md)
+- [Russian docs index](docs/ru/README.md)
 - [Run and deploy](docs/en/launch.md)
 - [Web control panel and inference modes](docs/en/inference.md)
 - [RPi benchmark results](docs/en/benchmarks.md)
+
+## Architecture
+
+```text
+Browser UI (React/Vite)
+        |
+        v
+FastAPI backend (REST + WebSocket + static frontend)
+        |
+        +--> Camera + telemetry + hardware control
+        |
+        +--> Inference router
+                |
+                +--> Local PyTorch / NCNN on the host
+                |
+                +--> Remote GPU inference server over HTTP
+```
+
+- **Frontend**: [React + Vite web panel](frontend/src/App.tsx) for live video, controls, sensors, and inference mode management
+- **Backend**: [FastAPI app](server/app.py) that serves the API, WebSocket telemetry, and the built frontend
+- **Inference**: [routing logic](server/inference.py) that switches between local `.pt`, local NCNN, and remote GPU backends
+- **Hardware**: [RPi integration layer](server/hardware.py) for motors, servos, LEDs, and sensors
 
 ## Documentation
 
@@ -74,6 +110,13 @@ Highlights:
 
 **SocksTank** — робот-танк на базе Raspberry Pi, который находит носки с помощью [YOLO-инференса](docs/ru/inference.md), управляется из [веб-панели в браузере](docs/ru/inference.md#веб-панель-управления-рекомендуемый-способ) и может выполнять инференс как локально через NCNN, так и удалённо на [GPU-сервере](docs/ru/inference.md#удалённый-инференс-gpu-сервер).
 
+Что с ним можно делать:
+
+- управлять роботом из [веб-панели](docs/ru/inference.md#веб-панель-управления-рекомендуемый-способ) с живым видео и телеметрией
+- запускать быстрый локальный инференс на [RPi 5 через NCNN](docs/ru/benchmarks.md)
+- переключаться на [удалённый GPU-инференс](docs/ru/inference.md#удалённый-инференс-gpu-сервер), когда нужен больший throughput
+- деплоить и обновлять робота через единый [CLI-сценарий](docs/ru/launch.md#рекомендуемый-сценарий-деплоя-mainpy-deploy)
+
 Чем проект интересен:
 
 - работает на [Raspberry Pi 5](docs/ru/rpi5.md) с реальными [замерами производительности NCNN](docs/ru/benchmarks.md)
@@ -92,14 +135,43 @@ Highlights:
 
 Демо:
 
-- Здесь появится короткое demo video/GIF после завершения сборки камеры.
+- Блок уже подготовлен под будущее demo video/GIF:
+
+```md
+![SocksTank demo](assets/demo.gif)
+```
+
+- Пока сборка камеры не завершена, это placeholder.
 
 Ключевые ссылки:
 
-- [Быстрый старт](docs/ru/README.md#быстрый-старт)
+- [Индекс английской доки](docs/en/README.md)
+- [Индекс русской доки](docs/ru/README.md)
 - [Запуск и деплой](docs/ru/launch.md)
 - [Веб-панель и режимы инференса](docs/ru/inference.md)
 - [Замеры на RPi](docs/ru/benchmarks.md)
+
+## Архитектура
+
+```text
+Browser UI (React/Vite)
+        |
+        v
+FastAPI backend (REST + WebSocket + built frontend)
+        |
+        +--> Camera + telemetry + hardware control
+        |
+        +--> Inference router
+                |
+                +--> Local PyTorch / NCNN on the host
+                |
+                +--> Remote GPU inference server over HTTP
+```
+
+- **Frontend**: [React + Vite веб-панель](frontend/src/App.tsx) для живого видео, управления, сенсоров и выбора режима инференса
+- **Backend**: [FastAPI-приложение](server/app.py), которое обслуживает API, WebSocket-телеметрию и собранный фронтенд
+- **Inference**: [маршрутизация инференса](server/inference.py), которая переключает между локальным `.pt`, локальным NCNN и удалённым GPU backend
+- **Hardware**: [слой интеграции с RPi](server/hardware.py) для моторов, сервоприводов, LED и сенсоров
 
 ## Документация
 

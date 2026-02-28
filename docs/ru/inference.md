@@ -4,7 +4,17 @@
 
 ## Деплой на RPi
 
-Весь проект копируется на робота через rsync:
+Рекомендуемый путь деплоя описан в [launch.md](launch.md) и использует встроенный CLI:
+
+```bash
+./main.py deploy rpi5
+```
+
+Используй эту страницу после деплоя для работы с веб-панелью, локальной детекцией и удалённым GPU-инференсом.
+
+### Ручной fallback через rsync
+
+Если проект нужно копировать вручную, fallback-сценарий такой:
 
 ```bash
 rsync -avz --exclude .venv --exclude frontend/node_modules --exclude __pycache__ --exclude .git \
