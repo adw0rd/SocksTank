@@ -40,8 +40,8 @@ def bench_model(model_path: str, label: str, n_warmup: int = 5, n_iter: int = 20
     # Stage 1: load on a single core
     set_affinity([0])
     print("  Loading model on 1 core...")
-    model, _ = _try_load_ncnn_native(model_path, 1)
-    if model is None:
+    warmup_model, _ = _try_load_ncnn_native(model_path, 1)
+    if warmup_model is None:
         print("  SKIP: failed to load NCNN model")
         return None
     dummy = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
@@ -49,15 +49,14 @@ def bench_model(model_path: str, label: str, n_warmup: int = 5, n_iter: int = 20
     # Warm up on 1 core
     print(f"  Warmup ({n_warmup} iterations, 1 core)...")
     for _ in range(n_warmup):
-        model.detect(dummy, 0.5)
+        warmup_model.detect(dummy, 0.5)
     time.sleep(1)
 
     # Stage 2: benchmark on 2 cores
     set_affinity([0, 1])
-    model.set_num_threads(2)
     print("  Warmup (3 iterations, 2 cores)...")
     for _ in range(3):
-        model.detect(dummy, 0.5)
+        warmup_model.detect(dummy, 0.5)
     time.sleep(1)
 
     # Stage 3: benchmark on different core counts
@@ -65,7 +64,10 @@ def bench_model(model_path: str, label: str, n_warmup: int = 5, n_iter: int = 20
     for n_cores in [1, 2, 3, 4]:
         cores = list(range(n_cores))
         set_affinity(cores)
-        model.set_num_threads(n_cores)
+        model, _ = _try_load_ncnn_native(model_path, n_cores)
+        if model is None:
+            print(f"  SKIP: failed to reload NCNN model for {n_cores} cores")
+            continue
         time.sleep(0.5)
 
         # Warm up for this configuration

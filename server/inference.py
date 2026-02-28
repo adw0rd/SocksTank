@@ -95,7 +95,6 @@ class NcnnNativeDetector:
 
     def set_num_threads(self, n: int):
         self._num_threads = n
-        self._net.opt.num_threads = n
 
     def _preprocess(self, frame: np.ndarray):
         """Apply letterbox resize and normalization for ncnn."""
