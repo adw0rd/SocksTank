@@ -69,7 +69,7 @@ cd frontend && npm run dev
 - локально собирает фронтенд (если не указан `--skip-build`)
 - синхронизирует проект в `~/sockstank` через `rsync`
 - ставит runtime-зависимости на RPi (`uv`, если доступен, иначе `pip`)
-- перезапускает `sockstank.service`, если unit существует, иначе использует fallback через `nohup python3 main.py serve ...`
+- перезапускает `sockstank.service` (через [systemd](#необязательно-один-раз-установить-systemd-unit)), если unit существует, иначе использует fallback через `nohup python3 main.py serve ...`
 - ждёт health check `/api/status` на порту `8080`
 
 Полезные флаги:

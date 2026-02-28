@@ -69,7 +69,7 @@ What it does:
 - builds the frontend locally (unless `--skip-build`)
 - syncs the project to `~/sockstank` via `rsync`
 - installs runtime dependencies on RPi (`uv` if available, otherwise `pip`)
-- restarts `sockstank.service` if present, otherwise falls back to `nohup python3 main.py serve ...`
+- restarts `sockstank.service` (via [systemd](#optional-install-the-systemd-unit-once)) if present, otherwise falls back to `nohup python3 main.py serve ...`
 - waits for `/api/status` health check on port `8080`
 
 Useful flags:
