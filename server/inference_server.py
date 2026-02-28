@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inference Server — YOLO на GPU, принимает JPEG по HTTP."""
+"""Inference server that runs YOLO on a GPU and accepts JPEG over HTTP."""
 
 import time
 import logging
@@ -21,7 +21,7 @@ _model_path = ""
 
 @api.get("/health")
 async def health():
-    """Проверка доступности сервера."""
+    """Return the server health status."""
     gpu_name = "CPU"
     try:
         import torch
@@ -35,7 +35,7 @@ async def health():
 
 @api.get("/models")
 async def list_models():
-    """Список доступных моделей."""
+    """List available models."""
     import os
 
     models = []
@@ -49,20 +49,20 @@ async def list_models():
 
 @api.post("/infer")
 async def infer(request: Request):
-    """Инференс: JPEG -> детекции."""
+    """Run inference for a JPEG request and return detections."""
     if _model is None:
         return JSONResponse({"error": "model not loaded"}, status_code=503)
 
     confidence = float(request.headers.get("X-Confidence", "0.5"))
     jpeg_bytes = await request.body()
 
-    # Декодируем JPEG -> numpy
+    # Decode JPEG bytes into a NumPy image
     arr = np.frombuffer(jpeg_bytes, dtype=np.uint8)
     frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if frame is None:
         return JSONResponse({"error": "invalid JPEG"}, status_code=400)
 
-    # RGB для YOLO (cv2.imdecode даёт BGR)
+    # Convert to RGB for YOLO (cv2.imdecode returns BGR)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
     t0 = time.monotonic()
@@ -89,11 +89,11 @@ async def infer(request: Request):
 
 @app_cli.command()
 def main(
-    model: str | None = typer.Option(None, help="Путь к модели YOLO (если не указан — выбирается автоматически)"),
-    host: str = typer.Option("0.0.0.0", help="Хост"),
-    port: int = typer.Option(8090, help="Порт"),
+    model: str | None = typer.Option(None, help="Path to the YOLO model (auto-selected if omitted)"),
+    host: str = typer.Option("0.0.0.0", help="Host"),
+    port: int = typer.Option(8090, help="Port"),
 ):
-    """Запуск inference-сервера."""
+    """Start the inference server."""
     import uvicorn
     from ultralytics import YOLO
     from server.config import resolve_model_path
@@ -102,9 +102,9 @@ def main(
 
     global _model, _model_path
     _model_path = resolve_model_path(model, runtime_role="gpu-server")
-    log.info("Загрузка модели: %s", _model_path)
+    log.info("Loading model: %s", _model_path)
     _model = YOLO(_model_path)
-    log.info("Модель загружена")
+    log.info("Model loaded")
 
     uvicorn.run(api, host=host, port=port)
 

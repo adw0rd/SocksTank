@@ -1,4 +1,4 @@
-"""WebSocket endpoint — команды управления + телеметрия."""
+"""WebSocket endpoint for control commands and telemetry."""
 
 import asyncio
 import json
@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 
 router = APIRouter(tags=["websocket"])
 
-# Ссылки, устанавливаются при старте приложения
+# References injected during application startup
 _hardware = None
 _camera_manager = None
 
@@ -24,7 +24,7 @@ def set_dependencies(hardware, camera_manager):
 
 
 def _handle_command(data: dict):
-    """Обработка команды от клиента."""
+    """Handle a command received from the client."""
     cmd = data.get("cmd", "")
     params = data.get("params", {})
 
@@ -42,11 +42,11 @@ def _handle_command(data: dict):
     elif cmd == "mode":
         _hardware.mode = params.get("mode", "manual")
     else:
-        log.warning("Неизвестная команда: %s", cmd)
+        log.warning("Unknown command: %s", cmd)
 
 
 def _get_telemetry() -> str:
-    """Формирует JSON телеметрии."""
+    """Build the telemetry payload as JSON."""
     from server.config import settings
 
     msg = TelemetryMessage(
@@ -66,12 +66,12 @@ def _get_telemetry() -> str:
 
 @router.websocket("/ws/control")
 async def websocket_control(ws: WebSocket):
-    """WebSocket: команды от клиента, телеметрия от сервера."""
+    """WebSocket endpoint for client commands and server telemetry."""
     await ws.accept()
-    log.info("WebSocket клиент подключён")
+    log.info("WebSocket client connected")
 
     async def send_telemetry():
-        """Отправка телеметрии каждые 200ms."""
+        """Send telemetry every 200 ms."""
         try:
             while True:
                 await ws.send_text(_get_telemetry())
@@ -88,8 +88,8 @@ async def websocket_control(ws: WebSocket):
                 data = json.loads(text)
                 _handle_command(data)
             except (json.JSONDecodeError, Exception) as e:
-                log.warning("Ошибка обработки команды: %s", e)
+                log.warning("Command handling failed: %s", e)
     except WebSocketDisconnect:
-        log.info("WebSocket клиент отключён")
+        log.info("WebSocket client disconnected")
     finally:
         telemetry_task.cancel()

@@ -1,4 +1,4 @@
-"""GPUServerManager — управление GPU-серверами для удалённого инференса."""
+"""GPUServerManager for remote inference server management."""
 
 import json
 import logging
@@ -17,7 +17,7 @@ GPU_SERVERS_FILE = "gpu_servers.json"
 
 
 class GPUServerManager:
-    """Хранение, health check, SSH auto-start GPU-серверов."""
+    """Store, health-check, and auto-start remote GPU servers over SSH."""
 
     def __init__(self):
         self._servers: list[GPUServerSchema] = []
@@ -33,33 +33,33 @@ class GPUServerManager:
             return list(self._servers)
 
     def load(self):
-        """Загрузить список серверов из gpu_servers.json."""
+        """Load the server list from gpu_servers.json."""
         if not os.path.exists(GPU_SERVERS_FILE):
-            log.info("Файл %s не найден, список серверов пуст", GPU_SERVERS_FILE)
+            log.info("File %s not found; GPU server list is empty", GPU_SERVERS_FILE)
             return
         try:
             with open(GPU_SERVERS_FILE) as f:
                 data = json.load(f)
             self._servers = [GPUServerSchema(**s) for s in data]
-            log.info("Загружено %d GPU-серверов", len(self._servers))
+            log.info("Loaded %d GPU servers", len(self._servers))
         except Exception as e:
-            log.error("Ошибка загрузки %s: %s", GPU_SERVERS_FILE, e)
+            log.error("Failed to load %s: %s", GPU_SERVERS_FILE, e)
 
     def save(self):
-        """Сохранить список серверов в gpu_servers.json."""
+        """Save the server list to gpu_servers.json."""
         with self._lock:
             data = [s.model_dump(exclude_none=True) for s in self._servers]
         try:
             with open(GPU_SERVERS_FILE, "w") as f:
                 json.dump(data, f, indent=2)
-            log.info("Сохранено %d GPU-серверов", len(data))
+            log.info("Saved %d GPU servers", len(data))
         except Exception as e:
-            log.error("Ошибка сохранения %s: %s", GPU_SERVERS_FILE, e)
+            log.error("Failed to save %s: %s", GPU_SERVERS_FILE, e)
 
     def add_server(
         self, host: str, port: int, username: str, auth_type: str = "key", password: str | None = None, key_path: str | None = None
     ) -> GPUServerSchema:
-        """Добавить GPU-сервер."""
+        """Add a GPU server."""
         server = GPUServerSchema(
             host=host,
             port=port,
@@ -69,26 +69,26 @@ class GPUServerManager:
             key_path=key_path,
         )
         with self._lock:
-            # Удалить существующий с тем же host
+            # Replace an existing entry for the same host
             self._servers = [s for s in self._servers if s.host != host]
             self._servers.append(server)
         self.save()
-        log.info("Добавлен GPU-сервер: %s:%d", host, port)
+        log.info("Added GPU server: %s:%d", host, port)
         return server
 
     def remove_server(self, host: str) -> bool:
-        """Удалить GPU-сервер."""
+        """Remove a GPU server."""
         with self._lock:
             before = len(self._servers)
             self._servers = [s for s in self._servers if s.host != host]
             removed = len(self._servers) < before
         if removed:
             self.save()
-            log.info("Удалён GPU-сервер: %s", host)
+            log.info("Removed GPU server: %s", host)
         return removed
 
     def get_server(self, host: str) -> GPUServerSchema | None:
-        """Найти сервер по хосту."""
+        """Find a server by host."""
         with self._lock:
             for s in self._servers:
                 if s.host == host:
@@ -96,10 +96,10 @@ class GPUServerManager:
         return None
 
     def test_connection(self, host: str) -> dict:
-        """Проверить подключение к серверу (GET /health)."""
+        """Test connectivity to a server using GET /health."""
         server = self.get_server(host)
         if not server:
-            return {"ok": False, "error": f"Сервер {host} не найден"}
+            return {"ok": False, "error": f"Server {host} not found"}
 
         url = f"http://{server.host}:{server.port}/health"
         try:
@@ -115,27 +115,27 @@ class GPUServerManager:
             return {"ok": False, "error": str(e)}
 
     def start_remote(self, host: str) -> dict:
-        """Запустить inference_server на удалённом сервере через SSH."""
+        """Start inference_server on a remote host over SSH."""
         server = self.get_server(host)
         if not server:
-            return {"ok": False, "error": f"Сервер {host} не найден"}
+            return {"ok": False, "error": f"Server {host} not found"}
 
         with self._lock:
             server.status = "starting"
 
         try:
             ssh = self._ssh_connect(server)
-            # Убить старый процесс, если есть
+            # Kill the previous process if it exists
             ssh.exec_command("pkill -f 'server.inference_server' 2>/dev/null || true")
             time.sleep(0.5)
 
-            # Запустить inference_server
+            # Start inference_server
             cmd = f"cd ~/sockstank && " f"nohup python -m server.inference_server " f"--port {server.port} " f"> /tmp/inference.log 2>&1 &"
             stdin, stdout, stderr = ssh.exec_command(cmd)
             stdout.channel.recv_exit_status()
             ssh.close()
 
-            # Ожидание запуска (до 30 сек)
+            # Wait for startup (up to 30 seconds)
             url = f"http://{server.host}:{server.port}/health"
             for _ in range(30):
                 time.sleep(1)
@@ -146,26 +146,26 @@ class GPUServerManager:
                         with self._lock:
                             server.status = "online"
                             server.gpu = data.get("gpu")
-                        log.info("Inference-сервер запущен на %s:%d", host, server.port)
+                        log.info("Inference server started on %s:%d", host, server.port)
                         return {"ok": True, **data}
                 except Exception:
                     continue
 
             with self._lock:
                 server.status = "offline"
-            return {"ok": False, "error": "Таймаут запуска (30 сек)"}
+            return {"ok": False, "error": "Startup timed out (30 seconds)"}
 
         except Exception as e:
             with self._lock:
                 server.status = "offline"
-            log.error("Ошибка SSH-запуска на %s: %s", host, e)
+            log.error("SSH start failed on %s: %s", host, e)
             return {"ok": False, "error": str(e)}
 
     def stop_remote(self, host: str) -> dict:
-        """Остановить inference_server на удалённом сервере."""
+        """Stop inference_server on a remote host."""
         server = self.get_server(host)
         if not server:
-            return {"ok": False, "error": f"Сервер {host} не найден"}
+            return {"ok": False, "error": f"Server {host} not found"}
 
         try:
             ssh = self._ssh_connect(server)
@@ -173,14 +173,14 @@ class GPUServerManager:
             ssh.close()
             with self._lock:
                 server.status = "offline"
-            log.info("Inference-сервер остановлен на %s", host)
+            log.info("Inference server stopped on %s", host)
             return {"ok": True}
         except Exception as e:
-            log.error("Ошибка SSH-остановки на %s: %s", host, e)
+            log.error("SSH stop failed on %s: %s", host, e)
             return {"ok": False, "error": str(e)}
 
     def _ssh_connect(self, server: GPUServerSchema) -> paramiko.SSHClient:
-        """Создать SSH-подключение."""
+        """Create an SSH connection."""
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
@@ -189,38 +189,38 @@ class GPUServerManager:
             kwargs["password"] = server.password
         elif server.key_path:
             kwargs["key_filename"] = os.path.expanduser(server.key_path)
-        # Иначе — дефолтный SSH-ключ (~/.ssh/id_rsa)
+        # Otherwise use the default SSH key (~/.ssh/id_rsa)
 
         ssh.connect(**kwargs)
         return ssh
 
     def start_health_loop(self, inference_router):
-        """Запустить фоновый health check loop."""
+        """Start the background health-check loop."""
         self._inference_router = inference_router
         self._running = True
         self._health_thread = threading.Thread(target=self._health_loop, daemon=True)
         self._health_thread.start()
-        log.info("Health check loop запущен")
+        log.info("Health check loop started")
 
     def stop(self):
-        """Остановить health check loop."""
+        """Stop the background health-check loop."""
         self._running = False
         if self._health_thread:
             self._health_thread.join(timeout=3)
         self._client.close()
-        log.info("GPUServerManager остановлен")
+        log.info("GPUServerManager stopped")
 
     def _health_loop(self):
-        """Фоновый поток: каждые 5 сек проверяет /health активного сервера."""
+        """Background thread that checks /health on active servers every 5 seconds."""
         while self._running:
             try:
                 self._check_servers()
             except Exception as e:
-                log.error("Ошибка в health loop: %s", e)
+                log.error("Health loop failed: %s", e)
             time.sleep(5)
 
     def _check_servers(self):
-        """Проверить статус всех серверов и обновить InferenceRouter."""
+        """Refresh server statuses and update the InferenceRouter."""
         active_url = None
         for server in self.servers:
             if server.status in ("online", "starting"):
@@ -241,6 +241,6 @@ class GPUServerManager:
                     with self._lock:
                         server.status = "offline"
 
-        # Обновить InferenceRouter
+        # Update the InferenceRouter
         if self._inference_router:
             self._inference_router.set_remote_url(active_url)

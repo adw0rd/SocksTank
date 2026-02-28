@@ -14,7 +14,7 @@ log.basicConfig(
 )
 
 
-log.info("Настройка камеры ov5647 (Picamera2)")
+log.info("Configuring ov5647 camera (Picamera2)")
 fps = 3
 width, height = 1280, 720
 picam2 = Picamera2()
@@ -26,18 +26,18 @@ picam2.preview_configuration.align()
 picam2.configure("preview")
 picam2.start()
 
-log.info("Загрузка модели YOLOv8")
+log.info("Loading YOLOv8 model")
 model = YOLO("best.pt")
 
-# log.info("Открытие исходного видеофайла")
+# log.info("Opening input video file")
 # capture = cv2.VideoCapture(0)
 
-# log.info("Чтение параметров видео")
+# log.info("Reading video parameters")
 # fps = int(capture.get(cv2.CAP_PROP_FPS))
 # width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
 # height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-log.info("Настройка выходного файла")
+log.info("Configuring output file")
 output_video_path = "detect.mp4"
 fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
@@ -46,23 +46,23 @@ color = (255, 0, 0)
 i = 0
 t = time.time()
 while True:
-    log.info("Захват кадра: %r", time.time() - t)
+    log.info("Captured frame: %r", time.time() - t)
     t = time.time()
     # ret, frame = capture.read()
     frame = picam2.capture_array()
     # if not ret:
     #     break
 
-    log.info("Обработка кадра с помощью модели YOLO")
+    log.info("Running YOLO inference on frame")
     results = model(frame)
     annotated_frame = results[0]
     # cv2.imshow("Camera", annotated_frame.plot())
 
-    log.info("Получение данных об объектах")
+    log.info("Collecting detected object data")
     classes_names = annotated_frame.names
     classes = annotated_frame.boxes.cls.cpu().numpy()
     boxes = annotated_frame.boxes.xyxy.cpu().numpy().astype(np.int32)
-    log.info("Рисование рамок и подписей на кадре: %r (%r)", classes_names, classes)
+    log.info("Drawing bounding boxes and labels: %r (%r)", classes_names, classes)
     for class_id, box, conf in zip(classes, boxes, annotated_frame.boxes.conf):
         if conf > 0.5:
             class_name = classes_names[int(class_id)]
@@ -78,13 +78,13 @@ while True:
                 2,
             )
 
-    log.info("Запись обработанного кадра в выходной файл")
+    log.info("Writing processed frame to output file")
     writer.write(frame)
     if i > 300:
         break
     i += 1
 
-log.info("Освобождение ресурсов и закрытие окон")
+log.info("Releasing resources and closing windows")
 # capture.release()
 writer.release()
 cv2.destroyAllWindows()

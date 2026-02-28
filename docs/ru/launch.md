@@ -78,6 +78,35 @@ cd frontend && npm run dev
 - `--skip-restart`
 - `--dry-run`
 
+Связанные команды для эксплуатации:
+
+```bash
+# Только перезапустить удалённый сервер
+./main.py restart rpi5
+
+# Показать последние логи
+./main.py logs rpi5 --lines 100
+```
+
+### Необязательно: один раз установить systemd unit
+
+Если хочешь, чтобы `deploy` и `restart` использовали `systemctl`, а не fallback через `nohup`, один раз установи unit-файл на RPi:
+
+```bash
+scp scripts/sockstank.service rpi5:~/sockstank/scripts/sockstank.service
+ssh rpi5
+sudo cp ~/sockstank/scripts/sockstank.service /etc/systemd/system/sockstank.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now sockstank
+```
+
+После этого можно использовать:
+
+```bash
+./main.py restart rpi5
+./main.py logs rpi5
+```
+
 ### Ручной деплой (fallback)
 
 #### 1. Копирование проекта

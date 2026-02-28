@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Безопасный бенчмарк NCNN моделей на RPi 5 с плавным стартом.
+"""Safe NCNN benchmark for Raspberry Pi 5 with gradual warm-up.
 
-Использует taskset для ограничения ядер и предотвращения краша питания.
-Запуск: sudo taskset -c 0 python3 scripts/bench_rpi5.py
+Uses taskset to limit active cores and reduce the risk of power-related crashes.
+Run with: sudo taskset -c 0 python3 scripts/bench_rpi5.py
 """
 
 import os
@@ -14,14 +14,14 @@ import numpy as np
 
 
 def set_affinity(cores: list[int]):
-    """Установить CPU affinity (только Linux)."""
+    """Set CPU affinity on Linux."""
     if platform.system() == "Linux":
         os.sched_setaffinity(0, set(cores))
-        print(f"  CPU affinity: ядра {cores}")
+        print(f"  CPU affinity: cores {cores}")
 
 
 def bench_model(model_path: str, label: str, n_warmup: int = 5, n_iter: int = 20):
-    """Бенчмарк одной модели."""
+    """Benchmark a single model."""
     from ultralytics import YOLO
 
     print(f"\n{'=' * 60}")
@@ -29,40 +29,40 @@ def bench_model(model_path: str, label: str, n_warmup: int = 5, n_iter: int = 20
     print(f"{'=' * 60}")
 
     if not os.path.exists(model_path):
-        print("  SKIP: модель не найдена")
+        print("  SKIP: model not found")
         return None
 
-    # Стадия 1: загрузка на 1 ядре
+    # Stage 1: load on a single core
     set_affinity([0])
-    print("  Загрузка модели на 1 ядре...")
+    print("  Loading model on 1 core...")
     model = YOLO(model_path)
     dummy = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
 
-    # Warmup на 1 ядре
-    print(f"  Warmup ({n_warmup} итераций, 1 ядро)...")
+    # Warm up on 1 core
+    print(f"  Warmup ({n_warmup} iterations, 1 core)...")
     for i in range(n_warmup):
         model(dummy, verbose=False)
     time.sleep(1)
 
-    # Стадия 2: бенч на 2 ядрах
+    # Stage 2: benchmark on 2 cores
     set_affinity([0, 1])
-    print("  Warmup (3 итерации, 2 ядра)...")
+    print("  Warmup (3 iterations, 2 cores)...")
     for i in range(3):
         model(dummy, verbose=False)
     time.sleep(1)
 
-    # Стадия 3: бенч на разном кол-ве ядер
+    # Stage 3: benchmark on different core counts
     results = {}
     for n_cores in [1, 2, 3, 4]:
         cores = list(range(n_cores))
         set_affinity(cores)
         time.sleep(0.5)
 
-        # Warmup для этой конфигурации
+        # Warm up for this configuration
         for _ in range(3):
             model(dummy, verbose=False)
 
-        # Замер
+        # Measure runtime
         times = []
         for _ in range(n_iter):
             t0 = time.monotonic()
@@ -73,27 +73,27 @@ def bench_model(model_path: str, label: str, n_warmup: int = 5, n_iter: int = 20
         mn, mx = min(times), max(times)
         fps = 1000 / avg
         results[n_cores] = {"avg": avg, "min": mn, "max": mx, "fps": fps}
-        print(f"  {n_cores} ядер: avg={avg:.1f}ms min={mn:.1f}ms max={mx:.1f}ms FPS={fps:.1f}")
+        print(f"  {n_cores} cores: avg={avg:.1f}ms min={mn:.1f}ms max={mx:.1f}ms FPS={fps:.1f}")
 
-        # Пауза между стадиями (предотвращение пикового тока)
+        # Pause between stages to avoid current spikes
         if n_cores < 4:
             time.sleep(2)
 
-    # Восстановить все ядра
+    # Restore all CPU cores
     set_affinity(list(range(os.cpu_count() or 4)))
     return results
 
 
 def main():
-    print("Бенчмарк NCNN моделей на RPi 5")
+    print("NCNN benchmark on Raspberry Pi 5")
     print(f"Python {sys.version}")
     print(f"OS: {platform.platform()}")
-    print(f"CPU: {os.cpu_count()} ядер")
+    print(f"CPU: {os.cpu_count()} cores")
 
-    # Читаем температуру
+    # Read the current temperature
     try:
         temp = os.popen("vcgencmd measure_temp").read().strip()
-        print(f"Температура: {temp}")
+        print(f"Temperature: {temp}")
     except Exception:
         pass
 
@@ -108,12 +108,12 @@ def main():
         if result:
             all_results[label] = result
 
-    # Сводная таблица
+    # Summary table
     if all_results:
         print(f"\n{'=' * 60}")
-        print("  СВОДКА")
+        print("  SUMMARY")
         print(f"{'=' * 60}")
-        print(f"{'Модель':<12} {'Ядра':>5} {'Avg ms':>8} {'FPS':>6} {'Прирост':>8}")
+        print(f"{'Model':<12} {'Cores':>5} {'Avg ms':>8} {'FPS':>6} {'Speedup':>8}")
         print("-" * 45)
 
         fp32_avgs = all_results.get("FP32 NCNN", {})
@@ -125,7 +125,7 @@ def main():
                     speedup = f"{ratio:.2f}x"
                 print(f"{label:<12} {n_cores:>5} {r['avg']:>8.1f} {r['fps']:>6.1f} {speedup:>8}")
 
-    print("\nГотово!")
+    print("\nDone!")
 
 
 if __name__ == "__main__":

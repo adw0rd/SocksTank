@@ -1,4 +1,4 @@
-"""CameraManager — захват кадров с камеры, YOLO-детекция, JPEG-буфер."""
+"""CameraManager for capture, YOLO detection, and JPEG buffering."""
 
 import threading
 import time
@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 
 class CameraManager:
-    """Фоновый захват кадров + YOLO-инференс → JPEG для MJPEG-стрима."""
+    """Background frame capture plus inference for MJPEG streaming."""
 
     def __init__(self, camera, inference_router=None):
         self._camera = camera
@@ -47,15 +47,15 @@ class CameraManager:
         return self._inference.error if self._inference else None
 
     def start(self):
-        """Запускает камеру и фоновый поток обработки."""
+        """Start the camera and the background processing thread."""
         self._camera.start()
         self._running = True
         self._thread = threading.Thread(target=self._capture_loop, daemon=True)
         self._thread.start()
-        log.info("CameraManager запущен")
+        log.info("CameraManager started")
 
     def stop(self):
-        """Останавливает захват."""
+        """Stop frame capture."""
         self._running = False
         if self._thread:
             self._thread.join(timeout=3)
@@ -63,22 +63,22 @@ class CameraManager:
             self._camera.stop()
         except Exception:
             pass
-        log.info("CameraManager остановлен")
+        log.info("CameraManager stopped")
 
     def get_jpeg(self) -> bytes | None:
-        """Возвращает последний JPEG-кадр."""
+        """Return the latest JPEG frame."""
         with self._lock:
             return self._frame_jpeg
 
     def _capture_loop(self):
-        """Основной цикл: захват → YOLO → рисование bbox → JPEG."""
+        """Main loop: capture, infer, draw detections, then encode as JPEG."""
         while self._running:
             t0 = time.monotonic()
             try:
                 frame = self._camera.capture_array()
                 detections = self._run_yolo(frame)
                 frame = self._draw_detections(frame, detections)
-                # picamera2 и mock дают RGB, imencode ожидает BGR
+                # picamera2 and the mock camera return RGB; imencode expects BGR
                 bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 _, jpeg = cv2.imencode(".jpg", bgr, [cv2.IMWRITE_JPEG_QUALITY, 70])
 
@@ -89,34 +89,34 @@ class CameraManager:
                 elapsed = time.monotonic() - t0
                 self._fps = 1.0 / max(elapsed, 0.001)
 
-                # Ограничение FPS
+                # Enforce the configured FPS ceiling
                 target_delay = 1.0 / settings.camera_fps
                 sleep_time = target_delay - elapsed
                 if sleep_time > 0:
                     time.sleep(sleep_time)
 
             except Exception as e:
-                log.error("Ошибка в capture_loop: %s", e)
+                log.error("capture_loop failed: %s", e)
                 time.sleep(0.5)
 
     def _run_yolo(self, frame: np.ndarray) -> list[dict]:
-        """Запускает инференс (local или remote) и возвращает список детекций."""
+        """Run inference and return the resulting detections."""
         if self._inference is None:
             return []
         return self._inference.infer(frame, settings.confidence)
 
     def _draw_detections(self, frame: np.ndarray, detections: list[dict]) -> np.ndarray:
-        """Рисует bounding boxes и подписи на кадре."""
-        color = (0, 0, 255)  # BGR: красный
+        """Draw bounding boxes and labels onto the frame."""
+        color = (0, 0, 255)  # BGR: red
         for det in detections:
             x1, y1, x2, y2 = det["bbox"]
             label = f'{det["class"]} {det["confidence"]:.2f}'
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-            # Фон для текста
+            # Draw a solid background for the label text
             (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
             cv2.rectangle(frame, (x1, y1 - th - 6), (x1 + tw, y1), color, -1)
             cv2.putText(frame, label, (x1, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
 
-        # FPS в углу
+        # Render FPS in the corner
         cv2.putText(frame, f"FPS: {self._fps:.1f}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         return frame

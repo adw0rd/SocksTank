@@ -1,4 +1,4 @@
-"""MJPEG видео-стрим endpoint."""
+"""MJPEG video stream endpoint."""
 
 import asyncio
 import logging
@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/video", tags=["video"])
 
-# Ссылка на CameraManager, устанавливается при старте приложения
+# CameraManager reference injected during application startup
 _camera_manager = None
 
 
@@ -20,7 +20,7 @@ def set_camera_manager(cm):
 
 
 async def _mjpeg_generator():
-    """Генератор MJPEG-кадров для StreamingResponse."""
+    """Yield MJPEG frames for StreamingResponse."""
     while True:
         if _camera_manager is None:
             await asyncio.sleep(0.1)
@@ -30,12 +30,12 @@ async def _mjpeg_generator():
         if jpeg is not None:
             yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg + b"\r\n"
 
-        await asyncio.sleep(0.03)  # ~30 проверок/сек
+        await asyncio.sleep(0.03)  # About 30 polls per second
 
 
 @router.get("/stream")
 async def video_stream():
-    """MJPEG видео-поток с камеры."""
+    """Serve an MJPEG video stream from the camera."""
     return StreamingResponse(
         _mjpeg_generator(),
         media_type="multipart/x-mixed-replace; boundary=frame",

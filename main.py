@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-"""SocksTank — робот-танк для поиска носков с компьютерным зрением."""
+"""SocksTank robot tank for sock detection with computer vision."""
 
 import typer
 
-app = typer.Typer(help="SocksTank — робот для поиска носков")
+app = typer.Typer(help="SocksTank robot for sock detection")
 
 
 @app.command()
 def train(
-    model: str = typer.Option("yolov8n.pt", help="Базовая модель"),
-    data: str = typer.Option("data.yaml", help="Конфиг датасета"),
-    epochs: int = typer.Option(100, help="Количество эпох"),
-    imgsz: int = typer.Option(640, help="Размер изображения"),
-    batch: int = typer.Option(16, help="Размер батча"),
-    device: str = typer.Option("0", help="Устройство (0=CUDA, mps, cpu)"),
+    model: str = typer.Option("yolov8n.pt", help="Base model"),
+    data: str = typer.Option("data.yaml", help="Dataset config"),
+    epochs: int = typer.Option(100, help="Number of epochs"),
+    imgsz: int = typer.Option(640, help="Image size"),
+    batch: int = typer.Option(16, help="Batch size"),
+    device: str = typer.Option("0", help="Device (0=CUDA, mps, cpu)"),
 ):
-    """Тренировка модели YOLOv8."""
+    """Train a YOLOv8 model."""
     from ultralytics import YOLO
 
     yolo = YOLO(model)
@@ -26,12 +26,12 @@ def train(
 
 @app.command()
 def bench(
-    model: str = typer.Option("yolov8n.pt", help="Модель для бенчмарка"),
-    data: str = typer.Option("data.yaml", help="Конфиг датасета"),
-    imgsz: int = typer.Option(640, help="Размер изображения"),
-    device: int = typer.Option(0, help="GPU устройство"),
+    model: str = typer.Option("yolov8n.pt", help="Model to benchmark"),
+    data: str = typer.Option("data.yaml", help="Dataset config"),
+    imgsz: int = typer.Option(640, help="Image size"),
+    device: int = typer.Option(0, help="GPU device"),
 ):
-    """Бенчмарк модели."""
+    """Benchmark a model."""
     from ultralytics.utils.benchmarks import benchmark
 
     benchmark(model=model, data=data, imgsz=imgsz, half=False, device=device)
@@ -39,15 +39,15 @@ def bench(
 
 @app.command()
 def detect(
-    model: str | None = typer.Option(None, help="Путь к обученной модели (если не указан — выбирается автоматически)"),
-    output: str = typer.Option("detect.mp4", help="Выходной видеофайл"),
-    conf: float = typer.Option(0.5, help="Порог уверенности"),
-    frames: int = typer.Option(300, help="Макс. количество кадров"),
-    width: int = typer.Option(1280, help="Ширина кадра"),
-    height: int = typer.Option(720, help="Высота кадра"),
-    fps: int = typer.Option(3, help="FPS камеры"),
+    model: str | None = typer.Option(None, help="Path to the trained model (auto-selected if omitted)"),
+    output: str = typer.Option("detect.mp4", help="Output video file"),
+    conf: float = typer.Option(0.5, help="Confidence threshold"),
+    frames: int = typer.Option(300, help="Maximum number of frames"),
+    width: int = typer.Option(1280, help="Frame width"),
+    height: int = typer.Option(720, help="Frame height"),
+    fps: int = typer.Option(3, help="Camera FPS"),
 ):
-    """Детекция носков с камеры Raspberry Pi."""
+    """Detect socks from a Raspberry Pi camera."""
     import sys
     import logging as log
     import time
@@ -63,7 +63,7 @@ def detect(
 
     resolved_model = resolve_model_path(model, runtime_role="detect")
 
-    log.info("Настройка камеры ov5647 (Picamera2)")
+    log.info("Configuring ov5647 camera (Picamera2)")
     picam2 = Picamera2()
     picam2.preview_configuration.main.size = (width, height)
     picam2.preview_configuration.main.format = "RGB888"
@@ -73,10 +73,10 @@ def detect(
     picam2.configure("preview")
     picam2.start()
 
-    log.info("Загрузка модели YOLO: %s", resolved_model)
+    log.info("Loading YOLO model: %s", resolved_model)
     yolo = YOLO(resolved_model)
 
-    log.info("Настройка выходного файла: %s", output)
+    log.info("Configuring output file: %s", output)
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(output, fourcc, fps, (width, height))
 
@@ -84,18 +84,18 @@ def detect(
     t = time.time()
     try:
         for i in range(frames):
-            log.info("Захват кадра %d: %.3fs", i, time.time() - t)
+            log.info("Captured frame %d: %.3fs", i, time.time() - t)
             t = time.time()
             frame = picam2.capture_array()
 
-            log.info("Обработка кадра с помощью модели YOLO")
+            log.info("Running YOLO inference on frame")
             results = yolo(frame)
             annotated_frame = results[0]
 
             classes_names = annotated_frame.names
             classes = annotated_frame.boxes.cls.cpu().numpy()
             boxes = annotated_frame.boxes.xyxy.cpu().numpy().astype(np.int32)
-            log.info("Объекты: %r (%r)", classes_names, classes)
+            log.info("Objects: %r (%r)", classes_names, classes)
 
             for class_id, box, box_conf in zip(classes, boxes, annotated_frame.boxes.conf):
                 if box_conf > conf:
@@ -106,21 +106,21 @@ def detect(
 
             writer.write(frame)
     finally:
-        log.info("Освобождение ресурсов")
+        log.info("Releasing resources")
         writer.release()
         cv2.destroyAllWindows()
 
 
 @app.command()
 def shot(
-    count: int = typer.Option(200, help="Количество снимков"),
-    width: int = typer.Option(1920, help="Ширина снимка"),
-    height: int = typer.Option(1080, help="Высота снимка"),
-    output_dir: str = typer.Option("images", help="Каталог для снимков"),
-    pause: int = typer.Option(2, help="Пауза между снимками (сек)"),
-    move_pause: int = typer.Option(10, help="Пауза каждые 10 снимков (сек)"),
+    count: int = typer.Option(200, help="Number of photos"),
+    width: int = typer.Option(1920, help="Photo width"),
+    height: int = typer.Option(1080, help="Photo height"),
+    output_dir: str = typer.Option("images", help="Output directory for photos"),
+    pause: int = typer.Option(2, help="Delay between photos (seconds)"),
+    move_pause: int = typer.Option(10, help="Delay every 10 photos (seconds)"),
 ):
-    """Серийная съёмка фото для сбора датасета."""
+    """Capture a series of photos for dataset collection."""
     import os
     import time
 
@@ -149,16 +149,16 @@ def shot(
 
 @app.command()
 def serve(
-    model: str | None = typer.Option(None, help="Путь к модели YOLO (если не указан — выбирается автоматически)"),
-    conf: float = typer.Option(0.5, help="Порог уверенности"),
-    host: str = typer.Option("0.0.0.0", help="Хост"),
-    port: int = typer.Option(8080, help="Порт"),
-    mock: bool = typer.Option(False, help="Mock-режим (без GPIO/камеры)"),
-    pcb_version: int = typer.Option(1, help="PCB версия платы Freenove (1 или 2)"),
+    model: str | None = typer.Option(None, help="Path to the YOLO model (auto-selected if omitted)"),
+    conf: float = typer.Option(0.5, help="Confidence threshold"),
+    host: str = typer.Option("0.0.0.0", help="Host"),
+    port: int = typer.Option(8080, help="Port"),
+    mock: bool = typer.Option(False, help="Mock mode (no GPIO/camera)"),
+    pcb_version: int = typer.Option(1, help="Freenove PCB version (1 or 2)"),
     ncnn_cpp: bool = typer.Option(False, help="NcnnNativeDetector (pip ncnn + OMP workaround)"),
-    ncnn_threads: int = typer.Option(2, help="OMP потоков для ncnn (1–4)"),
+    ncnn_threads: int = typer.Option(2, help="OMP threads for ncnn (1-4)"),
 ):
-    """Веб-сервер управления роботом."""
+    """Run the robot control web server."""
     import logging
     import uvicorn
 
@@ -186,18 +186,18 @@ def serve(
 
 @app.command()
 def deploy(
-    host_arg: str | None = typer.Argument(None, help="Хост Raspberry Pi (например, rpi5)"),
-    host: str | None = typer.Option(None, "--host", help="Хост Raspberry Pi (альтернатива позиционному аргументу)"),
-    user: str | None = typer.Option(None, help="SSH пользователь"),
-    target_dir: str = typer.Option("~/sockstank", help="Каталог проекта на удалённом хосте"),
-    port: int = typer.Option(8080, help="Порт SocksTank на удалённом хосте"),
-    service: str = typer.Option("sockstank", help="Имя systemd unit для restart (если есть)"),
-    skip_build: bool = typer.Option(False, help="Не собирать frontend перед deploy"),
-    skip_install: bool = typer.Option(False, help="Не обновлять Python-зависимости на хосте"),
-    skip_restart: bool = typer.Option(False, help="Не перезапускать удалённый serve"),
-    dry_run: bool = typer.Option(False, help="Только показать шаги без выполнения"),
+    host_arg: str | None = typer.Argument(None, help="Raspberry Pi host (for example, rpi5)"),
+    host: str | None = typer.Option(None, "--host", help="Raspberry Pi host (alternative to the positional argument)"),
+    user: str | None = typer.Option(None, help="SSH user"),
+    target_dir: str = typer.Option("~/sockstank", help="Project directory on the remote host"),
+    port: int = typer.Option(8080, help="SocksTank port on the remote host"),
+    service: str = typer.Option("sockstank", help="systemd unit name used for restart (if present)"),
+    skip_build: bool = typer.Option(False, help="Skip frontend build before deploy"),
+    skip_install: bool = typer.Option(False, help="Skip Python dependency updates on the host"),
+    skip_restart: bool = typer.Option(False, help="Skip remote serve restart"),
+    dry_run: bool = typer.Option(False, help="Show steps without executing them"),
 ):
-    """Собрать, синхронизировать и перезапустить SocksTank на Raspberry Pi."""
+    """Build, sync, and restart SocksTank on a Raspberry Pi."""
     from server.deploy import resolve_host, run_deploy
 
     resolved_host = resolve_host(host_arg, host)
@@ -210,6 +210,54 @@ def deploy(
         skip_build=skip_build,
         skip_install=skip_install,
         skip_restart=skip_restart,
+        dry_run=dry_run,
+    )
+
+
+@app.command()
+def restart(
+    host_arg: str | None = typer.Argument(None, help="Raspberry Pi host (for example, rpi5)"),
+    host: str | None = typer.Option(None, "--host", help="Raspberry Pi host (alternative to the positional argument)"),
+    user: str | None = typer.Option(None, help="SSH user"),
+    target_dir: str = typer.Option("~/sockstank", help="Project directory on the remote host"),
+    port: int = typer.Option(8080, help="SocksTank port on the remote host"),
+    service: str = typer.Option("sockstank", help="systemd unit name used for restart (if present)"),
+    dry_run: bool = typer.Option(False, help="Show steps without executing them"),
+):
+    """Restart SocksTank on a Raspberry Pi and wait for a health check."""
+    from server.deploy import resolve_host, run_restart
+
+    resolved_host = resolve_host(host_arg, host)
+    run_restart(
+        resolved_host,
+        user=user,
+        target_dir=target_dir,
+        port=port,
+        service=service,
+        dry_run=dry_run,
+    )
+
+
+@app.command()
+def logs(
+    host_arg: str | None = typer.Argument(None, help="Raspberry Pi host (for example, rpi5)"),
+    host: str | None = typer.Option(None, "--host", help="Raspberry Pi host (alternative to the positional argument)"),
+    user: str | None = typer.Option(None, help="SSH user"),
+    service: str = typer.Option("sockstank", help="systemd unit name used for log reading (if present)"),
+    lines: int = typer.Option(100, help="Number of trailing lines"),
+    follow: bool = typer.Option(False, help="Follow logs (tail -f / journalctl -f)"),
+    dry_run: bool = typer.Option(False, help="Show steps without executing them"),
+):
+    """Show SocksTank logs from a Raspberry Pi."""
+    from server.deploy import resolve_host, run_logs
+
+    resolved_host = resolve_host(host_arg, host)
+    run_logs(
+        resolved_host,
+        user=user,
+        service=service,
+        lines=lines,
+        follow=follow,
         dry_run=dry_run,
     )
 

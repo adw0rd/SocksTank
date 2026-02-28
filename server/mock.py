@@ -1,4 +1,4 @@
-"""Mock-классы для разработки на macOS без GPIO и камеры."""
+"""Mock classes for development on macOS without GPIO or a camera."""
 
 import time
 import random
@@ -6,7 +6,7 @@ import numpy as np
 
 
 class MockMotor:
-    """Заглушка tankMotor."""
+    """Mock implementation of tankMotor."""
 
     def __init__(self):
         self.left = 0
@@ -21,7 +21,7 @@ class MockMotor:
 
 
 class MockServo:
-    """Заглушка Servo."""
+    """Mock implementation of Servo."""
 
     def __init__(self):
         self.angles = {0: 90, 1: 140, 2: 90}
@@ -31,7 +31,7 @@ class MockServo:
 
 
 class MockLed:
-    """Заглушка Led."""
+    """Mock implementation of Led."""
 
     def __init__(self):
         self.color = (0, 0, 0)
@@ -53,7 +53,7 @@ class MockLed:
 
 
 class MockUltrasonic:
-    """Заглушка Ultrasonic — возвращает случайную дистанцию."""
+    """Mock ultrasonic sensor that returns a random distance."""
 
     def get_distance(self):
         return round(random.uniform(10, 200), 1)
@@ -63,7 +63,7 @@ class MockUltrasonic:
 
 
 class MockInfrared:
-    """Заглушка Infrared — возвращает случайные значения."""
+    """Mock infrared sensor that returns random values."""
 
     def read_all_infrared(self):
         return random.randint(0, 7)
@@ -76,7 +76,7 @@ class MockInfrared:
 
 
 class MockPicamera2:
-    """Заглушка Picamera2 — генерирует тестовые кадры для разработки на macOS."""
+    """Mock Picamera2 that generates test frames for macOS development."""
 
     def __init__(self):
         self._running = False

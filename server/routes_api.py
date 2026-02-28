@@ -1,4 +1,4 @@
-"""REST API endpoints — конфигурация и статус."""
+"""REST API endpoints for configuration and status."""
 
 import os
 import logging
@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["api"])
 
-# Ссылки, устанавливаются при старте приложения
+# References injected during application startup
 _hardware = None
 _camera_manager = None
 
@@ -25,7 +25,7 @@ def set_dependencies(hardware, camera_manager):
 
 @router.get("/config", response_model=ConfigResponse)
 async def get_config():
-    """Текущая конфигурация."""
+    """Return the current configuration."""
     return ConfigResponse(
         model_path=settings.model_path,
         confidence=settings.confidence,
@@ -38,7 +38,7 @@ async def get_config():
 
 @router.put("/config", response_model=ConfigResponse)
 async def update_config(update: ConfigUpdate):
-    """Обновить конфигурацию (confidence, fps)."""
+    """Update mutable configuration fields (confidence and FPS)."""
     if update.confidence is not None:
         settings.confidence = max(0.1, min(1.0, update.confidence))
     if update.camera_fps is not None:
@@ -48,7 +48,7 @@ async def update_config(update: ConfigUpdate):
 
 @router.get("/status", response_model=StatusResponse)
 async def get_status():
-    """Текущий статус робота."""
+    """Return the current robot status."""
     return StatusResponse(
         fps=_camera_manager.fps if _camera_manager else 0,
         mode=_hardware.mode if _hardware else "manual",
@@ -63,7 +63,7 @@ async def get_status():
 
 @router.get("/models")
 async def list_models():
-    """Список доступных .pt моделей."""
+    """List available .pt models."""
     models = []
     for f in os.listdir("."):
         if f.endswith(".pt"):

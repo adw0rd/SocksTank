@@ -1,4 +1,4 @@
-"""HardwareController — потокобезопасная обёртка над Freenove модулями."""
+"""Thread-safe HardwareController wrapper around Freenove modules."""
 
 import subprocess
 import threading
@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 
 class HardwareController:
-    """Управление моторами, сервоприводами, LED, сенсорами."""
+    """Control motors, servos, LEDs, and sensors."""
 
     def __init__(self):
         modules = load_hardware_modules()
@@ -24,7 +24,7 @@ class HardwareController:
         self._mode = "manual"
         self._motor_left = 0
         self._motor_right = 0
-        log.info("HardwareController инициализирован")
+        log.info("HardwareController initialized")
 
     @property
     def mode(self) -> str:
@@ -43,7 +43,7 @@ class HardwareController:
         return self._motor_right
 
     def set_motor(self, left: int, right: int):
-        """Установить скорость моторов. Диапазон: -4095..4095."""
+        """Set motor speed. Valid range: -4095..4095."""
         left = max(-4095, min(4095, int(left)))
         right = max(-4095, min(4095, int(right)))
         with self._lock:
@@ -52,23 +52,23 @@ class HardwareController:
             self._motor.setMotorModel(left, right)
 
     def stop_motors(self):
-        """Аварийная остановка моторов."""
+        """Stop both motors immediately."""
         self.set_motor(0, 0)
 
     def set_servo(self, channel: int, angle: int):
-        """Установить угол сервопривода."""
+        """Set the servo angle."""
         channel = max(0, min(2, channel))
         angle = max(0, min(180, angle))
         with self._lock:
             self._servo.setServoAngle(channel, angle)
 
     def set_led(self, r: int, g: int, b: int):
-        """Установить цвет всех LED."""
+        """Set the color of all LEDs."""
         with self._lock:
             self._led.colorWipe([r, g, b])
 
     def led_effect(self, effect: str):
-        """Запустить эффект LED."""
+        """Run a predefined LED effect."""
         with self._lock:
             if effect == "rainbow":
                 self._led.rainbow()
@@ -78,18 +78,18 @@ class HardwareController:
                 self._led.colorWipe([0, 0, 0])
 
     def get_distance(self) -> float:
-        """Получить расстояние от ультразвукового сенсора (см)."""
+        """Get the ultrasonic sensor distance in centimeters."""
         with self._lock:
             return self._ultrasonic.get_distance()
 
     def get_infrared(self) -> list[int]:
-        """Получить состояние ИК-сенсоров [IR1, IR2, IR3]."""
+        """Get infrared sensor states as [IR1, IR2, IR3]."""
         with self._lock:
             val = self._infrared.read_all_infrared()
         return [(val >> 2) & 1, (val >> 1) & 1, val & 1]
 
     def get_cpu_temp(self) -> float:
-        """Температура CPU Raspberry Pi (°C)."""
+        """Return the Raspberry Pi CPU temperature in Celsius."""
         if settings.mock:
             return 42.0
         try:
@@ -100,13 +100,13 @@ class HardwareController:
             return 0.0
 
     def stop_all(self):
-        """Полная остановка всех систем."""
+        """Stop all controllable subsystems."""
         self.stop_motors()
         self.set_led(0, 0, 0)
-        log.info("Все системы остановлены")
+        log.info("All systems stopped")
 
     def close(self):
-        """Освобождение ресурсов."""
+        """Release hardware resources."""
         self.stop_all()
         try:
             self._motor.close()
@@ -120,4 +120,4 @@ class HardwareController:
             self._infrared.close()
         except Exception:
             pass
-        log.info("HardwareController закрыт")
+        log.info("HardwareController closed")

@@ -1,4 +1,4 @@
-"""Плавный старт CPU — поэтапная загрузка ядер для предотвращения краша питания на RPi 5."""
+"""Gradual CPU warm-up to reduce power spikes on Raspberry Pi 5."""
 
 import os
 import platform
@@ -13,13 +13,13 @@ IS_LINUX = platform.system() == "Linux"
 
 
 def gradual_warmup(model, settings) -> None:
-    """Плавный прогрев модели с поэтапным увеличением числа CPU-ядер.
+    """Warm up the model while increasing the number of active CPU cores.
 
-    На RPi 5 мгновенная загрузка всех ядер вызывает пиковый бросок тока,
-    который может крашнуть систему. Этот модуль загружает ядра постепенно:
-    1 → 2 → 3 → 4, с паузами между стадиями.
+    On Raspberry Pi 5, saturating all cores instantly can create a power spike
+    large enough to crash the system. This helper ramps load gradually:
+    1 -> 2 -> 3 -> 4, with short pauses between stages.
 
-    На macOS/Windows affinity не управляется, но warmup модели всё равно выполняется.
+    On macOS and Windows, CPU affinity is not managed, but model warm-up still runs.
     """
     stages = _parse_stages(settings.cpu_warmup_stages)
     samples = settings.cpu_warmup_samples
@@ -27,12 +27,12 @@ def gradual_warmup(model, settings) -> None:
     all_cores = set(range(os.cpu_count() or 1))
 
     if not IS_LINUX:
-        log.info("Плавный старт: не Linux (%s) — прогрев без управления affinity", platform.system())
+        log.info("Gradual warm-up: non-Linux platform (%s), running without affinity control", platform.system())
         _warmup_iterations(model, samples)
         return
 
     log.info(
-        "Плавный старт CPU: стадии=%s, итераций=%d, пауза=%.1fс",
+        "CPU warm-up: stages=%s, iterations=%d, pause=%.1fs",
         stages,
         samples,
         pause_s,
@@ -47,7 +47,7 @@ def gradual_warmup(model, settings) -> None:
         stage_duration = time.monotonic() - stage_start
 
         log.info(
-            "Стадия %d/%d: %d ядер, avg %.1f мс/кадр, стадия %.1fс",
+            "Stage %d/%d: %d cores, avg %.1f ms/frame, duration %.1fs",
             i + 1,
             len(stages),
             num_cores,
@@ -55,17 +55,17 @@ def gradual_warmup(model, settings) -> None:
             stage_duration,
         )
 
-        # Пауза между стадиями (кроме последней)
+        # Pause between stages, except the last one
         if i < len(stages) - 1:
             time.sleep(pause_s)
 
-    # Восстановить доступ ко всем ядрам
+    # Restore access to all CPU cores
     os.sched_setaffinity(0, all_cores)
-    log.info("Плавный старт завершён, affinity восстановлен: %d ядер", len(all_cores))
+    log.info("CPU warm-up finished, affinity restored: %d cores", len(all_cores))
 
 
 def _warmup_iterations(model, samples: int) -> float:
-    """Запустить N итераций инференса на фиктивном кадре, вернуть среднее время (мс)."""
+    """Run N inference iterations on a dummy frame and return the average time in ms."""
     dummy = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
     times_ms = []
 
@@ -83,7 +83,7 @@ def _warmup_iterations(model, samples: int) -> float:
 
 
 def _parse_stages(stages_str: str) -> list[int]:
-    """Распарсить строку стадий '1,2,3,4' в список [1, 2, 3, 4]."""
+    """Parse a stage string like '1,2,3,4' into [1, 2, 3, 4]."""
     parts = [s.strip() for s in stages_str.split(",") if s.strip()]
     result = []
     for part in parts:
@@ -92,8 +92,8 @@ def _parse_stages(stages_str: str) -> list[int]:
             if n > 0:
                 result.append(n)
         except ValueError:
-            log.warning("Пропущена невалидная стадия: '%s'", part)
+            log.warning("Skipping invalid stage: '%s'", part)
     if not result:
-        log.warning("Нет валидных стадий, используется [1]")
+        log.warning("No valid stages found, using [1]")
         return [1]
     return result

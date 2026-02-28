@@ -1,0 +1,15 @@
+[Unit]
+Description=SocksTank web server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/zeus/sockstank
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /home/zeus/sockstank/main.py serve --host 0.0.0.0 --port 8080
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

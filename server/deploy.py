@@ -94,6 +94,59 @@ def run_deploy(
     typer.echo(f"[deploy] Done. Open: http://{host}:{port}")
 
 
+def run_restart(
+    host: str,
+    user: str | None = None,
+    *,
+    target_dir: str = DEFAULT_TARGET_DIR,
+    port: int = 8080,
+    service: str = DEFAULT_SERVICE_NAME,
+    dry_run: bool = False,
+) -> None:
+    """Restart SocksTank on a remote host and wait for health check."""
+    target = DeployTarget(host=host, user=user)
+
+    typer.echo(f"[restart] Target: {target.ssh_target}:{target_dir}")
+    _require_local_command("ssh")
+    _remote_check(target, "command -v python3 >/dev/null 2>&1", "python3", dry_run=dry_run)
+    remote_caps = _detect_remote_capabilities(target, dry_run=dry_run)
+    _restart_remote_service(
+        target,
+        target_dir,
+        port=port,
+        service=service,
+        has_systemd=remote_caps["has_systemd"],
+        dry_run=dry_run,
+    )
+    _wait_for_healthcheck(host, port=port, dry_run=dry_run)
+    typer.echo(f"[restart] Done. Open: http://{host}:{port}")
+
+
+def run_logs(
+    host: str,
+    user: str | None = None,
+    *,
+    service: str = DEFAULT_SERVICE_NAME,
+    lines: int = 100,
+    follow: bool = False,
+    dry_run: bool = False,
+) -> None:
+    """Show remote SocksTank logs."""
+    target = DeployTarget(host=host, user=user)
+
+    typer.echo(f"[logs] Target: {target.ssh_target}")
+    _require_local_command("ssh")
+    remote_caps = _detect_remote_capabilities(target, dry_run=dry_run)
+    _show_remote_logs(
+        target,
+        service=service,
+        lines=lines,
+        follow=follow,
+        has_systemd=remote_caps["has_systemd"],
+        dry_run=dry_run,
+    )
+
+
 def _local_preflight(*, skip_build: bool) -> None:
     _require_local_command("rsync")
     _require_local_command("ssh")
@@ -111,7 +164,10 @@ def _require_local_command(command: str) -> None:
 def _remote_preflight(target: DeployTarget, *, dry_run: bool) -> dict[str, bool | None]:
     _remote_check(target, "command -v python3 >/dev/null 2>&1", "python3", dry_run=dry_run)
     _remote_check(target, "command -v rsync >/dev/null 2>&1", "rsync", dry_run=dry_run)
+    return _detect_remote_capabilities(target, dry_run=dry_run)
 
+
+def _detect_remote_capabilities(target: DeployTarget, *, dry_run: bool) -> dict[str, bool | None]:
     has_uv: bool | None = None
     has_systemd: bool | None = None
     if dry_run:
@@ -215,6 +271,34 @@ def _service_exists(target: DeployTarget, service: str, *, dry_run: bool) -> boo
         typer.echo(f"[dry-run] ssh {target.ssh_target} {command}")
         return True
     return _run_remote(target, command, check=False).returncode == 0
+
+
+def _show_remote_logs(
+    target: DeployTarget,
+    *,
+    service: str,
+    lines: int,
+    follow: bool,
+    has_systemd: bool | None,
+    dry_run: bool,
+) -> None:
+    follow_flag = " -f" if follow else ""
+    if has_systemd is True and _service_exists(target, service, dry_run=dry_run):
+        _run_remote(target, f"sudo journalctl -u {shlex.quote(service)} -n {lines} --no-pager{follow_flag}", dry_run=dry_run)
+        return
+
+    if has_systemd is None and dry_run:
+        command = (
+            f"if systemctl cat {shlex.quote(service)}.service >/dev/null 2>&1; then "
+            f"sudo journalctl -u {shlex.quote(service)} -n {lines} --no-pager{follow_flag}; "
+            "else "
+            f"tail -n {lines}{follow_flag} /tmp/sockstank.log; "
+            "fi"
+        )
+        _run_remote(target, command, dry_run=dry_run)
+        return
+
+    _run_remote(target, f"tail -n {lines}{follow_flag} /tmp/sockstank.log", dry_run=dry_run)
 
 
 def _wait_for_healthcheck(host: str, *, port: int, dry_run: bool) -> None:

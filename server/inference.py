@@ -1,4 +1,4 @@
-"""InferenceRouter — переключение между локальным и удалённым инференсом."""
+"""InferenceRouter for switching between local and remote inference."""
 
 import os
 import time
@@ -16,45 +16,45 @@ log = logging.getLogger(__name__)
 
 
 def _load_class_names(model_dir: str) -> dict[int, str]:
-    """Загрузить имена классов из metadata.yaml рядом с моделью."""
+    """Load class names from the metadata.yaml file next to the model."""
     meta_path = os.path.join(model_dir, "metadata.yaml")
     if not os.path.exists(meta_path):
-        log.warning("metadata.yaml не найден: %s — используем дефолтные имена", meta_path)
+        log.warning("metadata.yaml not found: %s; using default class names", meta_path)
         return {0: "sock"}
     with open(meta_path) as f:
         meta = yaml.safe_load(f)
     names = meta.get("names", {0: "sock"})
-    # metadata.yaml хранит ключи как int, но на всякий случай
+    # metadata.yaml stores keys as ints, but normalize them defensively
     return {int(k): v for k, v in names.items()}
 
 
 def _try_load_ncnn_native(model_dir: str, num_threads: int):
-    """Загрузить модель через pip ncnn API с OMP workaround. Возвращает (NcnnNativeDetector, class_names) или (None, None)."""
+    """Load a model via the pip ncnn API with an OMP workaround."""
     try:
         import ncnn as ncnn_lib  # noqa: F401
     except ImportError:
-        log.info("pip ncnn не найден — используем ultralytics")
+        log.info("pip ncnn not found; using ultralytics")
         return None, None
 
     param_path = os.path.join(model_dir, "model.ncnn.param")
     bin_path = os.path.join(model_dir, "model.ncnn.bin")
 
     if not os.path.exists(param_path) or not os.path.exists(bin_path):
-        log.warning("NCNN файлы модели не найдены в %s", model_dir)
+        log.warning("NCNN model files were not found in %s", model_dir)
         return None, None
 
     detector = NcnnNativeDetector(param_path, bin_path, num_threads)
     class_names = _load_class_names(model_dir)
-    log.info("pip ncnn native загружен: %s (%d OMP потоков, классы: %s)", model_dir, num_threads, class_names)
+    log.info("pip ncnn native loaded: %s (%d OMP threads, classes: %s)", model_dir, num_threads, class_names)
     return detector, class_names
 
 
 class NcnnNativeDetector:
-    """Обёртка над pip ncnn с OMP workaround и preprocess/postprocess.
+    """Wrapper around pip ncnn with OMP, preprocess, and postprocess workarounds.
 
-    pip ncnn (aarch64) имеет баг: get_omp_num_threads() всегда 1.
-    Но set_omp_num_threads(N) перед каждым инференсом РАБОТАЕТ.
-    Результат: 16 FPS на 4 потоках (vs 8.5 FPS на 1 потоке).
+    On aarch64, pip ncnn reports get_omp_num_threads() as 1.
+    Calling set_omp_num_threads(N) before each inference still works.
+    Result: about 16 FPS on 4 threads vs 8.5 FPS on 1 thread.
     """
 
     INPUT_SIZE = 640
@@ -75,11 +75,11 @@ class NcnnNativeDetector:
         self._net.load_model(bin_path)
 
     def detect(self, frame: np.ndarray, conf_threshold: float = 0.5, nms_threshold: float = 0.45) -> list[dict]:
-        """Детекция на кадре (H, W, 3) uint8 RGB."""
+        """Run detection on an RGB uint8 frame with shape (H, W, 3)."""
         h, w = frame.shape[:2]
         mat_in, scale, pad_w, pad_h = self._preprocess(frame)
 
-        # OMP workaround: set перед каждым инференсом
+        # OMP workaround: set the thread count before each inference
         self._ncnn.set_omp_num_threads(self._num_threads)
 
         t0 = time.monotonic()
@@ -97,7 +97,7 @@ class NcnnNativeDetector:
         self._num_threads = n
 
     def _preprocess(self, frame: np.ndarray):
-        """Letterbox resize + normalize для ncnn."""
+        """Apply letterbox resize and normalization for ncnn."""
         h, w = frame.shape[:2]
         scale = min(self.INPUT_SIZE / w, self.INPUT_SIZE / h)
         new_w = int(round(w * scale))
@@ -105,7 +105,7 @@ class NcnnNativeDetector:
         pad_w = (self.INPUT_SIZE - new_w) // 2
         pad_h = (self.INPUT_SIZE - new_h) // 2
 
-        # Letterbox через OpenCV (быстрее ncnn copy_make_border)
+        # Use OpenCV for letterbox padding; it is faster than ncnn copy_make_border
         resized = cv2.resize(frame, (new_w, new_h))
         padded = np.full((self.INPUT_SIZE, self.INPUT_SIZE, 3), 114, dtype=np.uint8)
         padded[pad_h : pad_h + new_h, pad_w : pad_w + new_w] = resized  # noqa: E203
@@ -117,12 +117,12 @@ class NcnnNativeDetector:
         return mat, scale, pad_w, pad_h
 
     def _postprocess(self, out, scale, pad_w, pad_h, orig_w, orig_h, conf_thresh, nms_thresh):
-        """Декодирование выхода YOLO ncnn: [5, 8400] → list[dict]. Векторизовано через numpy."""
+        """Decode YOLO ncnn output [5, 8400] into a list of detections."""
         data = np.array(out)
         if data.shape[0] == 5:
             data = data.T  # (5, 8400) → (8400, 5)
 
-        # Фильтрация по confidence (векторизованно — 0.02ms вместо 13ms Python loop)
+        # Vectorized confidence filtering: ~0.02 ms instead of a ~13 ms Python loop
         scores = data[:, 4]
         mask = scores >= conf_thresh
         filtered = data[mask]
@@ -176,11 +176,11 @@ class NcnnNativeDetector:
 
 
 class InferenceRouter:
-    """Роутер инференса: local YOLO / ncnn native / remote HTTP POST."""
+    """Inference router for local YOLO, ncnn native, or remote HTTP inference."""
 
     def __init__(self, model=None, cpp_detector=None, class_names=None):
         self._model = model
-        # cpp_detector теперь может быть NcnnNativeDetector (pip ncnn) или NCNNDetector (C++ wrapper)
+        # cpp_detector may be either NcnnNativeDetector (pip ncnn) or NCNNDetector (C++ wrapper)
         self._cpp_detector = cpp_detector
         self._class_names: dict[int, str] = class_names or {}
         self._mode = settings.inference_mode  # "auto" | "local" | "remote"
@@ -216,14 +216,14 @@ class InferenceRouter:
         return self._error
 
     def set_remote_url(self, url: str | None):
-        """Установить URL удалённого сервера."""
+        """Set the remote inference server URL."""
         with self._lock:
             self._remote_url = url
             if url:
                 log.info("Remote inference URL: %s", url)
 
     def infer(self, frame: np.ndarray, confidence: float) -> list[dict]:
-        """Выполнить инференс (local или remote)."""
+        """Run inference using the active backend."""
         use_remote = self._should_use_remote()
 
         if use_remote:
@@ -231,19 +231,19 @@ class InferenceRouter:
         return self._infer_local(frame, confidence)
 
     def _should_use_remote(self) -> bool:
-        """Определить, использовать ли remote."""
+        """Decide whether remote inference should be used."""
         if self._mode == "local":
             return False
         if self._mode == "remote":
             return True
-        # mode == "auto": remote если URL установлен
+        # In auto mode, use remote inference when a URL is configured
         return self._remote_url is not None
 
     def _infer_local(self, frame: np.ndarray, confidence: float) -> list[dict]:
-        """Локальный инференс: C++ ncnn wrapper или ultralytics YOLO."""
+        """Run local inference via ncnn or ultralytics YOLO."""
         self._error = None
 
-        # C++ ncnn wrapper (приоритет, если доступен)
+        # Prefer the ncnn-based detector when available
         if self._cpp_detector is not None:
             return self._infer_cpp(frame, confidence)
 
@@ -251,10 +251,10 @@ class InferenceRouter:
         return self._infer_ultralytics(frame, confidence)
 
     def _infer_cpp(self, frame: np.ndarray, confidence: float) -> list[dict]:
-        """Инференс через ncnn native (pip ncnn или C++ wrapper)."""
+        """Run inference through ncnn native (pip ncnn or C++ wrapper)."""
         self._active_backend = "local:ncnn-native"
 
-        # C++ wrapper ожидает RGB uint8 (HWC) — frame уже в RGB от picamera2/mock
+        # The detector expects RGB uint8 (HWC); the frame is already RGB from picamera2/mock
         raw_dets = self._cpp_detector.detect(frame, confidence)
         self._inference_ms = self._cpp_detector.last_inference_ms()
 
@@ -273,7 +273,7 @@ class InferenceRouter:
         return detections
 
     def _infer_ultralytics(self, frame: np.ndarray, confidence: float) -> list[dict]:
-        """Инференс через ultralytics YOLO."""
+        """Run inference through ultralytics YOLO."""
         self._active_backend = "local"
 
         if self._model is None:
@@ -301,7 +301,7 @@ class InferenceRouter:
         return detections
 
     def _infer_remote(self, frame: np.ndarray, confidence: float) -> list[dict]:
-        """Удалённый инференс через HTTP POST."""
+        """Run remote inference via HTTP POST."""
         if not self._remote_url:
             self._error = "No remote URL"
             if self._mode == "auto":
@@ -309,7 +309,7 @@ class InferenceRouter:
             return []
 
         try:
-            # Кодируем frame в JPEG (frame приходит в RGB)
+            # Encode the RGB frame as JPEG
             bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             _, jpeg = cv2.imencode(".jpg", bgr, [cv2.IMWRITE_JPEG_QUALITY, 85])
 
@@ -336,12 +336,12 @@ class InferenceRouter:
         except Exception as e:
             log.warning("Remote inference error: %s", e)
             self._error = str(e)
-            # Auto-режим: fallback на local
+            # In auto mode, fall back to local inference
             if self._mode == "auto":
-                log.info("Fallback на локальный инференс")
+                log.info("Falling back to local inference")
                 return self._infer_local(frame, confidence)
             return []
 
     def close(self):
-        """Закрыть HTTP-клиент."""
+        """Close the underlying HTTP client."""
         self._client.close()

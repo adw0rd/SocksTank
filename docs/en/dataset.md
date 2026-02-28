@@ -66,6 +66,54 @@ When creating a new dataset version (Create New Version) Roboflow applies the se
 
 <img width="1406" height="439" alt="Creating a version with augmentation" src="https://github.com/user-attachments/assets/02dc7c54-c0b4-49e0-9636-459974bde62a" />
 
+### Alternative: local augmentation via Python (`albumentations`)
+
+If you want a reproducible local pipeline instead of Roboflow, a common choice is [`albumentations`](https://albumentations.ai/). It is widely used for computer vision and supports bounding boxes.
+
+Install:
+
+```bash
+pip install albumentations opencv-python
+```
+
+Example augmentation pipeline for a YOLO-style dataset:
+
+```python
+import cv2
+import albumentations as A
+
+transform = A.Compose(
+    [
+        A.Rotate(limit=15, border_mode=cv2.BORDER_CONSTANT, p=0.5),
+        A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
+        A.GaussianBlur(blur_limit=(3, 5), p=0.2),
+        A.GaussNoise(std_range=(0.02, 0.08), p=0.2),
+        A.RandomCropFromBorders(crop_left=0.1, crop_right=0.1, crop_top=0.1, crop_bottom=0.1, p=0.2),
+    ],
+    bbox_params=A.BboxParams(format="yolo", label_fields=["class_labels"]),
+)
+
+image = cv2.imread("dataset/train/images/example.jpg")
+image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+bboxes = [
+    [0.52, 0.48, 0.30, 0.22],  # x_center, y_center, width, height (YOLO format)
+]
+class_labels = ["sock"]
+
+augmented = transform(image=image, bboxes=bboxes, class_labels=class_labels)
+augmented_image = augmented["image"]
+augmented_bboxes = augmented["bboxes"]
+```
+
+When this approach is useful:
+
+- you want reproducible augmentations in code
+- you need to version-control the augmentation pipeline
+- you want to run the same transforms locally, in notebooks, or in CI
+
+For this project, Roboflow is still the fastest path for dataset management, but `albumentations` is a good alternative if you prefer a code-based workflow.
+
 ## Exporting the dataset
 
 After creating a version — download the dataset in **YOLOv8** format:

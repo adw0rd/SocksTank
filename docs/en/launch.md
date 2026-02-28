@@ -78,6 +78,35 @@ Useful flags:
 - `--skip-restart`
 - `--dry-run`
 
+Related operational commands:
+
+```bash
+# Restart the remote server only
+./main.py restart rpi5
+
+# Show the latest logs
+./main.py logs rpi5 --lines 100
+```
+
+### Optional: install the systemd unit once
+
+If you want `deploy` and `restart` to use `systemctl` instead of the fallback `nohup` path, install the bundled unit file once on the RPi:
+
+```bash
+scp scripts/sockstank.service rpi5:~/sockstank/scripts/sockstank.service
+ssh rpi5
+sudo cp ~/sockstank/scripts/sockstank.service /etc/systemd/system/sockstank.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now sockstank
+```
+
+After that, these commands become available:
+
+```bash
+./main.py restart rpi5
+./main.py logs rpi5
+```
+
 ### Manual deployment (fallback)
 
 #### 1. Copy the project

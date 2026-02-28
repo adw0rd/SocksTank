@@ -1,4 +1,4 @@
-"""Pydantic-модели для WebSocket и REST API."""
+"""Pydantic models for WebSocket and REST APIs."""
 
 from pydantic import BaseModel
 

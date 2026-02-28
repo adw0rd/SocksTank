@@ -99,6 +99,50 @@ class RestartServiceTests(unittest.TestCase):
             ],
         )
 
+    @patch("server.deploy._run_remote")
+    def test_dry_run_restart_uses_conditional_systemd_or_fallback(self, run_remote) -> None:
+        target = deploy.DeployTarget("rpi5")
+
+        deploy._restart_remote_service(target, "~/sockstank", port=8080, service="sockstank", has_systemd=None, dry_run=True)
+
+        run_remote.assert_called_once_with(
+            target,
+            "if systemctl cat sockstank.service >/dev/null 2>&1; then sudo systemctl restart sockstank; else pkill -f '^python3 .*main.py serve' >/dev/null 2>&1 || true; cd $HOME/sockstank && nohup python3 main.py serve --host 0.0.0.0 --port 8080 > /tmp/sockstank.log 2>&1 < /dev/null & fi",
+            dry_run=True,
+        )
+
+
+class LogsTests(unittest.TestCase):
+    @patch("server.deploy._service_exists", return_value=True)
+    @patch("server.deploy._run_remote")
+    def test_reads_journalctl_when_service_exists(self, run_remote, service_exists) -> None:
+        target = deploy.DeployTarget("rpi5")
+
+        deploy._show_remote_logs(target, service="sockstank", lines=50, follow=False, has_systemd=True, dry_run=False)
+
+        service_exists.assert_called_once_with(target, "sockstank", dry_run=False)
+        run_remote.assert_called_once_with(target, "sudo journalctl -u sockstank -n 50 --no-pager", dry_run=False)
+
+    @patch("server.deploy._run_remote")
+    def test_reads_tail_fallback_without_systemd(self, run_remote) -> None:
+        target = deploy.DeployTarget("rpi5")
+
+        deploy._show_remote_logs(target, service="sockstank", lines=25, follow=True, has_systemd=False, dry_run=False)
+
+        run_remote.assert_called_once_with(target, "tail -n 25 -f /tmp/sockstank.log", dry_run=False)
+
+    @patch("server.deploy._run_remote")
+    def test_dry_run_logs_uses_conditional_command(self, run_remote) -> None:
+        target = deploy.DeployTarget("rpi5")
+
+        deploy._show_remote_logs(target, service="sockstank", lines=10, follow=False, has_systemd=None, dry_run=True)
+
+        run_remote.assert_called_once_with(
+            target,
+            "if systemctl cat sockstank.service >/dev/null 2>&1; then sudo journalctl -u sockstank -n 10 --no-pager; else tail -n 10 /tmp/sockstank.log; fi",
+            dry_run=True,
+        )
+
 
 class RunDeployTests(unittest.TestCase):
     @patch("server.deploy._wait_for_healthcheck")
@@ -138,6 +182,52 @@ class RunDeployTests(unittest.TestCase):
             dry_run=False,
         )
         wait_for_healthcheck.assert_called_once_with("rpi5", port=8080, dry_run=False)
+
+
+class RunRestartTests(unittest.TestCase):
+    @patch("server.deploy._wait_for_healthcheck")
+    @patch("server.deploy._restart_remote_service")
+    @patch("server.deploy._detect_remote_capabilities", return_value={"has_uv": False, "has_systemd": True})
+    @patch("server.deploy._remote_check")
+    @patch("server.deploy._require_local_command")
+    def test_orchestrates_restart(
+        self, require_local_command, remote_check, detect_remote_capabilities, restart_remote_service, wait_for_healthcheck
+    ) -> None:
+        deploy.run_restart("rpi5", dry_run=False)
+
+        target = deploy.DeployTarget("rpi5")
+        require_local_command.assert_called_once_with("ssh")
+        remote_check.assert_called_once_with(target, "command -v python3 >/dev/null 2>&1", "python3", dry_run=False)
+        detect_remote_capabilities.assert_called_once_with(target, dry_run=False)
+        restart_remote_service.assert_called_once_with(
+            target,
+            "~/sockstank",
+            port=8080,
+            service="sockstank",
+            has_systemd=True,
+            dry_run=False,
+        )
+        wait_for_healthcheck.assert_called_once_with("rpi5", port=8080, dry_run=False)
+
+
+class RunLogsTests(unittest.TestCase):
+    @patch("server.deploy._show_remote_logs")
+    @patch("server.deploy._detect_remote_capabilities", return_value={"has_uv": False, "has_systemd": True})
+    @patch("server.deploy._require_local_command")
+    def test_orchestrates_logs(self, require_local_command, detect_remote_capabilities, show_remote_logs) -> None:
+        deploy.run_logs("rpi5", lines=20, follow=True, dry_run=False)
+
+        target = deploy.DeployTarget("rpi5")
+        require_local_command.assert_called_once_with("ssh")
+        detect_remote_capabilities.assert_called_once_with(target, dry_run=False)
+        show_remote_logs.assert_called_once_with(
+            target,
+            service="sockstank",
+            lines=20,
+            follow=True,
+            has_systemd=True,
+            dry_run=False,
+        )
 
 
 if __name__ == "__main__":
