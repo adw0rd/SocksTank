@@ -31,6 +31,8 @@
 | Питание | 5V/3A (USB-C) | **5V/5A** (USB PD) |
 | pigpiod | Требуется | Не требуется |
 | Камера | cam0 (15-pin CSI) | cam0 или cam1 (22-pin FPC) |
+| Диск (запись) | 60.7 MB/s (USB SanDisk) | 64.3 MB/s (microSD) |
+| Диск (чтение) | 151 MB/s (USB SanDisk) | 90.6 MB/s (microSD) |
 | YOLO FPS (NCNN) | 2.4 FPS (1 поток) | **12.8 FPS** (4 OMP потока) |
 
 ## Питание

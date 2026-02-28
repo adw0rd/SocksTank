@@ -43,19 +43,6 @@ Solution: **XL6019E1** buck-boost converter (2x18650 → 5.2V → GPIO) + capaci
 
 Detailed measurements, converter comparison, wiring and recommendations: **[rpi5-power.md](rpi5-power.md)**
 
-## config.txt
-
-Added parameters for SocksTank:
-
-```ini
-dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,func2=4
-dtoverlay=ov5647
-usb_max_current_enable=1
-psu_max_current=5000
-```
-
-Full config: [../rpi5-config.txt](../rpi5-config.txt)
-
 ## Cooling
 
 Recommended: **RPi 5 Active Cooler** — aluminum heatsink with PWM fan, connects to the FAN header on RPi 5 board. Fan speed is controlled automatically based on temperature.
@@ -73,6 +60,14 @@ The original has a Raspberry Pi logo, clones are functionally identical.
 Where to buy:
 - AliExpress: [example](https://ali.click/b7k211d). Search: «Raspberry Pi 5 active cooler» or «RPi 5 heatsink fan PWM»
 - Ozon (Russia): [original](https://ozon.ru/t/6dwBhuE), [cooler](https://ozon.ru/t/hoNZF6l), [clone 1](https://ozon.ru/t/hoNZFqO), [clone 2](https://ozon.ru/t/6dwBNmn)
+
+## OS Installation
+
+Use **Raspberry Pi OS Lite (64-bit)** via Raspberry Pi Imager:
+- OS: Raspberry Pi OS (other) → Raspberry Pi OS Lite (64-bit)
+- Hostname: rpi5
+- Username: zeus
+- Wi-Fi + SSH: enable
 
 ## Network
 
@@ -108,6 +103,31 @@ matplotlib 3.10.8
 scipy 1.17.1
 polars 1.38.1
 ```
+
+## config.txt
+
+File: `/boot/firmware/config.txt`
+
+Added parameters for SocksTank:
+
+```ini
+# PWM for Freenove Tank Board servos
+dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,func2=4
+
+# OV5647 camera
+dtoverlay=ov5647
+
+# Power via GPIO from Freenove Tank Board
+usb_max_current_enable=1
+psu_max_current=5000
+```
+
+Full config: [../rpi5-config.txt](../rpi5-config.txt)
+
+### Differences from RPi 4 (legacy)
+
+- **pigpiod** is not needed on RPi 5 (uses built-in GPIO)
+- **Camera**: RPi 5 has cam0/cam1 connectors with 22-pin FPC (not 15-pin CSI like RPi 4). A [22→15 pin cable](https://ozon.ru/t/lwESi2D) or [22-to-15 adapter](https://ozon.ru/t/EAxTi6d) is needed. On AliExpress search: «Raspberry Pi 5 camera cable 22pin to 15pin» or «RPi 5 CSI FPC adapter 22 15».
 
 ## Benchmarks
 

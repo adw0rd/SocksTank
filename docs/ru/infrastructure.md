@@ -2,6 +2,26 @@
 
 ## Хосты
 
+### rpi5 (основной)
+
+- **Назначение**: робот-танк (Raspberry Pi 5 Model B)
+- **OS**: Debian 13 (trixie) 64-bit, aarch64
+- **CPU**: BCM2712 (Cortex-A76), 4 ядра, 2.4 GHz
+- **RAM**: 8 GB
+- **Python**: 3.13.5
+- **Подключение**: WiFi (DHCP, hostname `rpi5`)
+- **Питание**: XL6019E1 buck-boost (2x18650 → 5.2V → GPIO)
+
+**Установленные пакеты** (ключевые):
+- ultralytics, torch 2.10.0+cpu, torchvision
+- ncnn 1.0.20260114, onnxruntime 1.24.2
+- picamera2, opencv-python-headless
+- gpiozero, rpi_hardware_pwm, rpi-ws281x
+
+**Автозапуск**: pigpiod не требуется на RPi 5 (встроенный GPIO).
+
+Подробная настройка: [rpi5.md](rpi5.md)
+
 ### rpi4 (legacy)
 
 - **Назначение**: робот-танк (Raspberry Pi 4B)
@@ -23,8 +43,8 @@
     ├── motor.py               # Моторы (gpiozero, GPIO 23/24, 5/6)
     ├── servo.py               # Сервоприводы (pigpio/gpiozero/hardware PWM, GPIO 7/8/25)
     ├── camera.py              # Класс Camera (preview, stream, video)
-    ├── camera_detect.py       # Детекция носков (наш скрипт)
-    ├── camera_shot.py         # Серийная съёмка (наш скрипт)
+    ├── camera_detect.py       # Детекция носков (перенесён в legacy/)
+    ├── camera_shot.py         # Серийная съёмка (перенесён в legacy/)
     ├── best.pt                # Обученная модель (скопирована на робот)
     ├── ultrasonic.py          # Ультразвуковой сенсор (GPIO 27/22, gpiozero)
     ├── infrared.py            # ИК-сенсоры линии (GPIO 16/20|26/21)
@@ -64,6 +84,10 @@
 Все устройства в одной локальной сети. Для удобства рекомендуется настроить SSH-алиасы в `~/.ssh/config`:
 
 ```
+Host rpi5
+    HostName rpi5
+    User user
+
 Host rpi4
     HostName 192.168.x.x
     User user

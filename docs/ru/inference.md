@@ -34,7 +34,7 @@ sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 
 ```bash
 ssh rpi5
 cd ~/sockstank
-sudo -E python main.py detect --model models/yolo8_best.pt --conf 0.5
+sudo -E python main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
 ```
 
 ### Параметры

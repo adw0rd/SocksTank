@@ -78,8 +78,9 @@ sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-syst
 # Веб-панель управления (RPi, реальное железо, плавный старт по умолчанию)
 sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 
-# С pip ncnn native + OMP workaround (12.8–16.0 FPS)
+# С NcnnNativeDetector (pip ncnn + OMP workaround, 12.8–16.0 FPS)
 sudo -E python main.py serve --model models/yolo11_best_ncnn_model --ncnn-cpp --ncnn-threads 4
+# Флаг --ncnn-cpp включает NcnnNativeDetector (server/inference.py), НЕ C++ wrapper
 
 # Тренировка (на GPU-сервере или dev-машине)
 ./main.py train --device 0 --epochs 100

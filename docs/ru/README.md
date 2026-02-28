@@ -26,7 +26,7 @@
 ## Quick Start
 
 1. **Собрать танк** — Freenove Tank Robot Kit (инструкция в комплекте)
-2. **Настроить RPi** — [rpi4.md (legacy)](rpi4.md)
+2. **Настроить RPi 5** — [rpi5.md](rpi5.md) (или [RPi 4, legacy](rpi4.md))
 3. **Собрать датасет** — [dataset.md](dataset.md)
 4. **Обучить модель** — [training.md](training.md)
 5. **Запустить детекцию** — [inference.md](inference.md)
@@ -38,8 +38,9 @@ main.py              # CLI точка входа (typer): train, bench, detect, 
 server/              # FastAPI backend (веб-панель управления)
 frontend/            # Vite + React + TypeScript (веб-панель)
 models/              # Обученные модели YOLO
-├── yolo8_best.pt    # YOLOv8n (mAP50=0.995, mAP50-95=0.885)
-└── yolo11_best.pt   # YOLOv11n (mAP50=0.995, mAP50-95=0.96)
+├── yolo11_best_ncnn_model/  # YOLOv11n NCNN FP32 (RPi продакшен, 12.8 FPS)
+├── yolo11_best.pt           # YOLOv11n PyTorch (GPU, разработка)
+└── yolo8_best.pt            # YOLOv8n PyTorch (старая модель)
 legacy/              # Старые скрипты (bench, camera_detect, camera_shot, train)
 data.yaml            # Конфиг датасета (1 класс: sock, Roboflow v2, 961 изображение)
 dataset/             # Приватный датасет (train/valid/test) [.gitignore]
@@ -57,7 +58,7 @@ assets/              # Изображения проекта
 ./main.py serve --mock
 
 # Веб-панель управления (RPi, реальное железо)
-sudo -E python main.py serve --model models/yolo11_best.pt --conf 0.5
+sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 
 # Тренировка модели (на GPU-сервере или dev-машине)
 ./main.py train --device 0 --epochs 100
@@ -66,7 +67,7 @@ sudo -E python main.py serve --model models/yolo11_best.pt --conf 0.5
 ./main.py bench
 
 # Детекция носков с камеры RPi (legacy)
-sudo -E python main.py detect --model models/yolo8_best.pt --conf 0.5
+sudo -E python main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
 
 # Сбор фото для датасета
 sudo -E python main.py shot --count 200 --output-dir images
@@ -87,8 +88,8 @@ sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-syst
 
 | Раздел | Описание |
 |---|---|
+| [Настройка RPi 5](rpi5.md) | Установка ОС, питание, охлаждение, бенчмарки |
 | [Настройка RPi 4 (legacy)](rpi4.md) | Установка ОС, зависимости, камера, автозапуск |
-| [Настройка RPi 5](rpi5.md) | Характеристики, питание, отличия от RPi 4 (legacy) |
 | [Подготовка датасета](dataset.md) | Съёмка фото, Roboflow, аннотации, аугментация |
 | [Тренировка модели](training.md) | Обучение YOLO, параметры, оценка, экспорт |
 | [Запуск на роботе](inference.md) | Веб-панель, деплой, детекция, интеграция с танком |

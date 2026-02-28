@@ -2,6 +2,26 @@
 
 ## Hosts
 
+### rpi5 (primary)
+
+- **Purpose**: robot tank (Raspberry Pi 5 Model B)
+- **OS**: Debian 13 (trixie) 64-bit, aarch64
+- **CPU**: BCM2712 (Cortex-A76), 4 cores, 2.4 GHz
+- **RAM**: 8 GB
+- **Python**: 3.13.5
+- **Connection**: WiFi (DHCP, hostname `rpi5`)
+- **Power**: XL6019E1 buck-boost (2x18650 → 5.2V → GPIO)
+
+**Key packages**:
+- ultralytics, torch 2.10.0+cpu, torchvision
+- ncnn 1.0.20260114, onnxruntime 1.24.2
+- picamera2, opencv-python-headless
+- gpiozero, rpi_hardware_pwm, rpi-ws281x
+
+**Autostart**: pigpiod is not required on RPi 5 (built-in GPIO).
+
+Detailed setup: [rpi5.md](rpi5.md)
+
 ### rpi4 (legacy)
 
 - **Purpose**: robot tank (Raspberry Pi 4B)
@@ -23,8 +43,8 @@
     ├── motor.py               # Motors (gpiozero, GPIO 23/24, 5/6)
     ├── servo.py               # Servos (pigpio/gpiozero/hardware PWM, GPIO 7/8/25)
     ├── camera.py              # Camera class (preview, stream, video)
-    ├── camera_detect.py       # Sock detection (our script)
-    ├── camera_shot.py         # Burst capture (our script)
+    ├── camera_detect.py       # Sock detection (moved to legacy/)
+    ├── camera_shot.py         # Burst capture (moved to legacy/)
     ├── best.pt                # Trained model (copied to robot)
     ├── ultrasonic.py          # Ultrasonic sensor (GPIO 27/22, gpiozero)
     ├── infrared.py            # IR line sensors (GPIO 16/20|26/21)
@@ -64,6 +84,10 @@
 All devices are on the same local network. It's recommended to configure SSH aliases in `~/.ssh/config`:
 
 ```
+Host rpi5
+    HostName rpi5
+    User user
+
 Host rpi4
     HostName 192.168.x.x
     User user

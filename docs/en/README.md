@@ -26,7 +26,7 @@ Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tan
 ## Quick Start
 
 1. **Assemble the tank** — Freenove Tank Robot Kit (instructions included)
-2. **Set up RPi** — [rpi4.md (legacy)](rpi4.md)
+2. **Set up RPi 5** — [rpi5.md](rpi5.md) (or [RPi 4, legacy](rpi4.md))
 3. **Collect dataset** — [dataset.md](dataset.md)
 4. **Train model** — [training.md](training.md)
 5. **Run detection** — [inference.md](inference.md)
@@ -38,8 +38,9 @@ main.py              # CLI entry point (typer): train, bench, detect, shot, serv
 server/              # FastAPI backend (web control panel)
 frontend/            # Vite + React + TypeScript (web panel)
 models/              # Trained YOLO models
-├── yolo8_best.pt    # YOLOv8n (mAP50=0.995, mAP50-95=0.885)
-└── yolo11_best.pt   # YOLOv11n (mAP50=0.995, mAP50-95=0.96)
+├── yolo11_best_ncnn_model/  # YOLOv11n NCNN FP32 (RPi production, 12.8 FPS)
+├── yolo11_best.pt           # YOLOv11n PyTorch (GPU, development)
+└── yolo8_best.pt            # YOLOv8n PyTorch (old model)
 legacy/              # Old scripts (bench, camera_detect, camera_shot, train)
 data.yaml            # Dataset config (1 class: sock, Roboflow v2, 961 images)
 dataset/             # Private dataset (train/valid/test) [.gitignore]
@@ -57,7 +58,7 @@ assets/              # Project images
 ./main.py serve --mock
 
 # Web control panel (RPi, real hardware)
-sudo -E python main.py serve --model models/yolo11_best.pt --conf 0.5
+sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 
 # Train model (on GPU server or dev machine)
 ./main.py train --device 0 --epochs 100
@@ -66,7 +67,7 @@ sudo -E python main.py serve --model models/yolo11_best.pt --conf 0.5
 ./main.py bench
 
 # Detect socks from RPi camera (legacy)
-sudo -E python main.py detect --model models/yolo8_best.pt --conf 0.5
+sudo -E python main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
 
 # Capture photos for dataset
 sudo -E python main.py shot --count 200 --output-dir images
@@ -87,8 +88,8 @@ sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-syst
 
 | Section | Description |
 |---|---|
+| [RPi 5 setup](rpi5.md) | OS installation, power, cooling, benchmarks |
 | [RPi 4 setup (legacy)](rpi4.md) | OS installation, dependencies, camera, autostart |
-| [RPi 5 setup](rpi5.md) | Specifications, power, differences from RPi 4 (legacy) |
 | [Dataset preparation](dataset.md) | Photo capture, Roboflow, annotation, augmentation |
 | [Model training](training.md) | YOLO training, parameters, evaluation, export |
 | [Running on the robot](inference.md) | Web panel, deployment, detection, tank integration |
