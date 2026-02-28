@@ -1,5 +1,7 @@
 # Инфраструктура SocksTank
 
+🇬🇧 [English version](../en/infrastructure.md)
+
 ## Хосты
 
 ### rpi5 (основной)
@@ -126,3 +128,9 @@ Host blackops
 - **Библиотека**: picamera2 + libcamera
 - **Режимы**: preview (1280x720), still (1920x1080), stream (400x300)
 - **Трансформация**: vflip=True (камера перевёрнута)
+
+---
+
+| ← Предыдущая | README | Следующая → |
+|---|---|---|
+| [SocksTank](README.md) | [Вернуться к README](README.md) | [Настройка Raspberry Pi 4 (legacy)](rpi4.md) |

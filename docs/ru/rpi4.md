@@ -1,5 +1,7 @@
 # Настройка Raspberry Pi 4 (legacy)
 
+🇬🇧 [English version](../en/rpi4.md)
+
 > **Примечание:** RPi 4B — legacy-платформа. Основной платформой является **RPi 5** — см. [rpi5.md](rpi5.md).
 >
 > Причина перехода: RPi 4 слишком медленный для real-time детекции. YOLO инференс на RPi 4: **2.4 FPS** (NCNN, 1 поток) vs **14.9 FPS** на RPi 5 (pip ncnn native, 4 OMP потока, с препроцессингом) — разница больше чем в **6x**. PyTorch ещё хуже: 1.1 FPS. Для задачи поиска носков нужно минимум 10 FPS, RPi 4 это не обеспечивает.
@@ -235,4 +237,6 @@ pip install --upgrade picamera2 simplejpeg --break-system-packages
 
 ---
 
-Следующий шаг: [Подготовка датасета](dataset.md)
+| ← Предыдущая | README | Следующая → |
+|---|---|---|
+| [Инфраструктура](infrastructure.md) | [Вернуться к README](README.md) | [Настройка Raspberry Pi 5](rpi5.md) |

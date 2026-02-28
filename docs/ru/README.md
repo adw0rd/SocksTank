@@ -1,5 +1,7 @@
 # SocksTank
 
+🇬🇧 [English version](../en/README.md)
+
 <img align="left" width="200px" src="../../assets/SocksTank.jpeg">
 
 **SocksTank** — робот-танк на базе Raspberry Pi 5 (ранее RPi 4B, legacy), который ищет носки по квартире с помощью компьютерного зрения (YOLO) и собирает их клешнёй. Включает веб-панель управления с живым видео и телеметрией.
@@ -27,7 +29,7 @@
 ## Quick Start
 
 1. **Собрать танк** — [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi) ([инструкция в комплекте](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/blob/main/Tutorial.pdf))
-2. **Настроить RPi 5** — [rpi5.md](rpi5.md) (или [RPi 4, legacy](rpi4.md))
+2. **Настроить Raspberry Pi** — [RPi 4 (легаси)](rpi4.md) или [RPi 5 (рекомендуется)](rpi5.md)
 3. **Собрать датасет** — [dataset.md](dataset.md)
 4. **Обучить модель** — [training.md](training.md)
 5. **Запустить и задеплоить проект** — [launch.md](launch.md)
@@ -90,8 +92,8 @@ sudo pip install . --break-system-packages
 
 * [**Запуск проекта**](launch.md) — сборка фронтенда, запуск бэкенда, деплой на RPi
 * **Настройка Raspberry Pi**
-    * [Настройка RPi 5 (рекомендуется)](rpi5.md)
     * [Настройка RPi 4 (legacy)](rpi4.md)
+    * [Настройка RPi 5 (рекомендуется)](rpi5.md)
     * [Питание RPi 5](rpi5-power.md)
 * **Подготовка датасета**
     * [Съёмка фотографий](dataset.md#съёмка-фотографий)
@@ -111,3 +113,9 @@ sudo pip install . --break-system-packages
     * [Бенчмарки инференса](benchmarks.md)
     * [Бенчмарки диска](disk-benchmarks.md)
 * [**Инфраструктура**](infrastructure.md)
+
+---
+
+| ← Предыдущая | README | Следующая → |
+|---|---|---|
+| — | [Вернуться к README](README.md) | [Инфраструктура](infrastructure.md) |

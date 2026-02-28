@@ -1,5 +1,7 @@
 # Running on the Robot
 
+🇷🇺 [Русская версия](../ru/inference.md)
+
 Deploying the trained model to Raspberry Pi and running sock detection from the camera.
 
 ## Deploying to RPi
@@ -81,6 +83,11 @@ In the web panel (`http://rpi5:8080`) under the **Inference** section there are 
 | **local** | Always use local inference (NCNN on RPi) |
 | **remote** | Always use remote inference (error if server is unavailable) |
 
+Quick rule of thumb:
+- use **auto** as the default day-to-day mode;
+- use **local** when debugging the RPi path or when the network/GPU host is unavailable;
+- use **remote** only when you explicitly want to force the GPU server.
+
 ### Adding a GPU Server via UI
 
 1. Open web panel → **Inference** section in the right column
@@ -152,4 +159,6 @@ The web panel (`main.py serve`) already combines detection with controls — you
 
 ---
 
-[Back to README](README.md)
+| ← Previous | README | Next → |
+|---|---|---|
+| [Running the Project](launch.md) | [Back to README](README.md) | [Inference Benchmarks](benchmarks.md) |

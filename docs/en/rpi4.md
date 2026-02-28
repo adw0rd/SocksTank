@@ -1,5 +1,7 @@
 # Raspberry Pi 4 Setup (legacy)
 
+🇷🇺 [Русская версия](../ru/rpi4.md)
+
 > **Note:** RPi 4B is a legacy platform. The primary platform is **RPi 5** — see [rpi5.md](rpi5.md).
 >
 > Reason for migration: RPi 4 is too slow for real-time detection. YOLO inference on RPi 4: **2.4 FPS** (NCNN, 1 thread) vs **14.9 FPS** on RPi 5 (pip ncnn native, 4 OMP threads, with preprocessing) — more than a **6x** difference. PyTorch is even worse: 1.1 FPS. The sock-finding task requires at least 10 FPS, which RPi 4 cannot deliver.
@@ -235,4 +237,6 @@ For remote desktop access to the RPi:
 
 ---
 
-Next step: [Dataset preparation](dataset.md)
+| ← Previous | README | Next → |
+|---|---|---|
+| [Infrastructure](infrastructure.md) | [Back to README](README.md) | [Raspberry Pi 5 Setup](rpi5.md) |

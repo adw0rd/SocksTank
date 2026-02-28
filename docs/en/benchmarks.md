@@ -1,5 +1,7 @@
 # Inference Benchmarks
 
+🇷🇺 [Русская версия](../ru/benchmarks.md)
+
 YOLO inference speed measurements on different devices and model formats. Input: random 640x480 RGB frame. Measurement: 20-30 frames after 3-5 warmup iterations.
 
 ## RPi 4 Model B (legacy) (Cortex-A72 1.8 GHz, 3.3 GB RAM)
@@ -195,3 +197,9 @@ INT8 is slightly faster only on 1 thread (+4%). From 2 threads and above, FP32 r
 - **Overclocking** RPi 5: 2600 MHz gives +2.5%, 2800 MHz causes throttling — stock 2400 MHz is optimal
 
 Measured: 2026-02-28 (updated)
+
+---
+
+| ← Previous | README | Next → |
+|---|---|---|
+| [Running on the Robot](inference.md) | [Back to README](README.md) | [Disk Benchmarks](disk-benchmarks.md) |

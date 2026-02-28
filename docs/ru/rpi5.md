@@ -1,5 +1,7 @@
 # Настройка Raspberry Pi 5
 
+🇬🇧 [English version](../en/rpi5.md)
+
 Руководство по подготовке RPi 5 для работы робота-танка SocksTank.
 
 ## Характеристики
@@ -149,3 +151,9 @@ psu_max_current=5000
 Диск: запись 73.5 MB/s, чтение 94.5 MB/s (microSD).
 
 Подробные замеры по всем форматам, источникам питания, INT8 и температурам: **[benchmarks.md](benchmarks.md)**, **[disk-benchmarks.md](disk-benchmarks.md)**
+
+---
+
+| ← Предыдущая | README | Следующая → |
+|---|---|---|
+| [Настройка Raspberry Pi 4 (legacy)](rpi4.md) | [Вернуться к README](README.md) | [Питание RPi 5](rpi5-power.md) |

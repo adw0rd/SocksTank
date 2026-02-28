@@ -1,5 +1,7 @@
 # RPi 5 — Power Supply & Consumption
 
+🇷🇺 [Русская версия](../ru/rpi5-power.md)
+
 Measured: 2026-02-25, updated 2026-02-27.
 
 ## Problem
@@ -158,3 +160,9 @@ If XL6019E1 is unavailable, limit the load:
 # Limit to 1-2 cores (safe for LM2596 3A)
 taskset -c 0,1 python3 main.py serve ...
 ```
+
+---
+
+| ← Previous | README | Next → |
+|---|---|---|
+| [Raspberry Pi 5 Setup](rpi5.md) | [Back to README](README.md) | [Dataset Preparation](dataset.md) |

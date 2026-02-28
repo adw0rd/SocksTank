@@ -1,5 +1,7 @@
 # SocksTank
 
+🇷🇺 [Русская версия](../ru/README.md)
+
 <img align="left" width="200px" src="../../assets/SocksTank.jpeg">
 
 **SocksTank** is a Raspberry Pi 5-based robot tank (formerly RPi 4B, legacy) that hunts for socks around the apartment using computer vision (YOLO) and picks them up with a claw. Includes a web control panel with live video and telemetry.
@@ -27,7 +29,7 @@ Built on top of [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tan
 ## Quick Start
 
 1. **Assemble the tank** — [Freenove Tank Robot Kit](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi) ([instructions included](https://github.com/adw0rd/Freenove_Tank_Robot_Kit_for_Raspberry_Pi/blob/main/Tutorial.pdf))
-2. **Set up RPi 5** — [rpi5.md](rpi5.md) (or [RPi 4, legacy](rpi4.md))
+2. **Set up Raspberry Pi** — [RPi 4 (legacy)](rpi4.md) or [RPi 5 (recommended)](rpi5.md)
 3. **Collect dataset** — [dataset.md](dataset.md)
 4. **Train model** — [training.md](training.md)
 5. **Launch and deploy the project** — [launch.md](launch.md)
@@ -90,8 +92,8 @@ sudo pip install . --break-system-packages
 
 * [**Running the project**](launch.md) — build frontend, run backend, deploy to RPi
 * **Raspberry Pi setup**
-    * [RPi 5 setup (recommended)](rpi5.md)
     * [RPi 4 setup (legacy)](rpi4.md)
+    * [RPi 5 setup (recommended)](rpi5.md)
     * [RPi 5 power supply](rpi5-power.md)
 * **Dataset preparation**
     * [Capturing photos](dataset.md#capturing-photos)
@@ -111,3 +113,9 @@ sudo pip install . --break-system-packages
     * [Inference benchmarks](benchmarks.md)
     * [Disk benchmarks](disk-benchmarks.md)
 * [**Infrastructure**](infrastructure.md)
+
+---
+
+| ← Previous | README | Next → |
+|---|---|---|
+| — | [Back to README](README.md) | [Infrastructure](infrastructure.md) |

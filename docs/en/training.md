@@ -1,5 +1,7 @@
 # Model Training
 
+🇷🇺 [Русская версия](../ru/training.md)
+
 Training a YOLO model for sock detection. Training requires a GPU — on CPU it would take too long.
 
 ## Where to train
@@ -96,8 +98,12 @@ runs/detect/train/
 
 ### Key metrics
 
+- **Precision** — fraction of correct detections among all detections
+- **Recall** — fraction of found objects among all real objects
 - **mAP50** — mean average precision at IoU=0.5 (primary metric)
 - **mAP50-95** — mean average precision at IoU 0.5 to 0.95
+
+In practice: use **mAP50** as the main quick quality signal, and **mAP50-95** as the stricter metric that better reflects box quality across different IoU thresholds.
 
 ### Trained model results
 
@@ -105,8 +111,6 @@ runs/detect/train/
 |---|---|---|---|---|
 | YOLOv8n (100 epochs) | 0.995 | 0.885 | 6.0 MB | `models/yolo8_best.pt` |
 | YOLOv11n (100 epochs) | 0.995 | 0.96 | 5.2 MB | `models/yolo11_best.pt` |
-- **Precision** — fraction of correct detections among all detections
-- **Recall** — fraction of found objects among all real objects
 
 ### Benchmark
 
@@ -130,6 +134,11 @@ After training, the `.pt` model should be exported to a deployment format for RP
 | NCNN (ultralytics) | 11.2 | Alternative (without OMP workaround) |
 | ONNX | 3.0 | Slower, crashes on RPi 4 (legacy) |
 | PyTorch (.pt) | 3.5 | Development and GPU only |
+
+Quick rule of thumb:
+- use **NCNN** for deployment on Raspberry Pi;
+- keep **`.pt`** for training, debugging, and GPU hosts;
+- use **ONNX** only if you specifically need cross-framework compatibility.
 
 ### Pipeline: train → export → deploy
 
@@ -212,4 +221,6 @@ model.export(format="onnx")  # -> best.onnx
 
 ---
 
-Next step: [Running on the robot](inference.md)
+| ← Previous | README | Next → |
+|---|---|---|
+| [Dataset Preparation](dataset.md) | [Back to README](README.md) | [Running the Project](launch.md) |

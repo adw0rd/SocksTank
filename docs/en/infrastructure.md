@@ -1,5 +1,7 @@
 # SocksTank Infrastructure
 
+🇷🇺 [Русская версия](../ru/infrastructure.md)
+
 ## Hosts
 
 ### rpi5 (primary)
@@ -126,3 +128,9 @@ Actual IP addresses, usernames, and SSH keys are in `docs/credentials.md` (not c
 - **Library**: picamera2 + libcamera
 - **Modes**: preview (1280x720), still (1920x1080), stream (400x300)
 - **Transform**: vflip=True (camera is mounted upside down)
+
+---
+
+| ← Previous | README | Next → |
+|---|---|---|
+| [SocksTank](README.md) | [Back to README](README.md) | [RPi 4 Setup (legacy)](rpi4.md) |

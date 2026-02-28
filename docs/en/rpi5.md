@@ -1,5 +1,7 @@
 # Raspberry Pi 5 Setup
 
+🇷🇺 [Русская версия](../ru/rpi5.md)
+
 Guide for preparing RPi 5 for the SocksTank robot.
 
 ## Specifications
@@ -150,3 +152,9 @@ Key numbers (YOLOv11n, pip ncnn native + OMP workaround):
 Disk: write 73.5 MB/s, read 94.5 MB/s (microSD).
 
 Detailed measurements for all formats, power sources, INT8 and temperatures: **[benchmarks.md](benchmarks.md)**, **[disk-benchmarks.md](disk-benchmarks.md)**
+
+---
+
+| ← Previous | README | Next → |
+|---|---|---|
+| [RPi 4 Setup (legacy)](rpi4.md) | [Back to README](README.md) | [RPi 5 Power Supply](rpi5-power.md) |

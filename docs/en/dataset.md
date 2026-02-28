@@ -1,5 +1,7 @@
 # Dataset Preparation
 
+🇷🇺 [Русская версия](../ru/dataset.md)
+
 To train a sock detection model you need a labeled dataset — a set of photos with bounding boxes marking where the socks are in each image.
 
 ## Capturing photos
@@ -65,6 +67,10 @@ Augmentation automatically creates image variations to increase the dataset. Rob
 When creating a new dataset version (Create New Version) Roboflow applies the selected augmentations and increases the number of training images.
 
 <img width="1406" height="439" alt="Creating a version with augmentation" src="https://github.com/user-attachments/assets/02dc7c54-c0b4-49e0-9636-459974bde62a" />
+
+Quick rule of thumb:
+- use **Roboflow** if you want the fastest path from photos to a trainable dataset;
+- use **`albumentations`** if you want a reproducible, code-based augmentation pipeline.
 
 ### Alternative: local augmentation via Python (`albumentations`)
 
@@ -165,4 +171,6 @@ The current dataset version contains **961 images** (Roboflow workspace: `socks-
 
 ---
 
-Next step: [Model training](training.md)
+| ← Previous | README | Next → |
+|---|---|---|
+| [Raspberry Pi 4 Setup (legacy)](rpi4.md) | [Back to README](README.md) | [Model Training](training.md) |

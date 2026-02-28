@@ -1,5 +1,7 @@
 # Running the Project
 
+🇷🇺 [Русская версия](../ru/launch.md)
+
 How to build the frontend, run the backend, and deploy SocksTank on the robot.
 
 ## Development on macOS / Linux
@@ -65,6 +67,8 @@ The easiest deployment flow is the built-in deploy command:
 ./main.py deploy --host rpi5
 ```
 
+Use this path unless you are debugging deployment itself or intentionally doing a one-off manual install.
+
 What it does:
 - builds the frontend locally (unless `--skip-build`)
 - syncs the project to `~/sockstank` via `rsync`
@@ -112,6 +116,8 @@ After that, these commands become available:
 [^passwordless-sudo]: Example on the RPi: run `sudo visudo -f /etc/sudoers.d/sockstank`, then add a rule like `zeus ALL=(ALL) NOPASSWD: /bin/cp, /bin/systemctl`. Replace `zeus` with your SSH user. This keeps passwordless sudo limited to the commands needed for service installation and restart.
 
 ### Manual deployment (fallback)
+
+Use this only when you need to debug the deployment process step by step or when the built-in deploy command is temporarily unavailable.
 
 #### 1. Copy the project
 
@@ -208,4 +214,6 @@ In web panel: **Inference → + Add GPU Server** → enter host, port, SSH key �
 
 ---
 
-[Back to README](README.md)
+| ← Previous | README | Next → |
+|---|---|---|
+| [Model Training](training.md) | [Back to README](README.md) | [Running on the Robot](inference.md) |

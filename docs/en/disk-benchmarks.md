@@ -1,5 +1,7 @@
 # Disk Benchmarks
 
+🇷🇺 [Русская версия](../ru/disk-benchmarks.md)
+
 Date: 2026-02-25. Test: `dd` with `oflag=direct` / `iflag=direct`.
 
 ## Comparison
@@ -44,3 +46,9 @@ Date: 2026-02-25. Test: `dd` with `oflag=direct` / `iflag=direct`.
 | Read | 15.2 GB/s |
 
 > Note: blackops shows abnormally high read speed — data was likely cached in RAM.
+
+---
+
+| ← Previous | README | Next → |
+|---|---|---|
+| [Inference Benchmarks](benchmarks.md) | [Back to README](README.md) | — |
