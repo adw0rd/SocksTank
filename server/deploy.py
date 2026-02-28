@@ -147,6 +147,42 @@ def run_logs(
     )
 
 
+def run_install_service(
+    host: str,
+    user: str | None = None,
+    *,
+    target_dir: str = DEFAULT_TARGET_DIR,
+    service: str = DEFAULT_SERVICE_NAME,
+    dry_run: bool = False,
+) -> None:
+    """Upload and install the bundled systemd unit on a remote host."""
+    target = DeployTarget(host=host, user=user)
+    unit_path = PROJECT_ROOT / "scripts" / f"{service}.service"
+
+    if not unit_path.exists():
+        raise typer.BadParameter(f"Unit file not found: {unit_path}")
+
+    typer.echo(f"[install-service] Target: {target.ssh_target}:{target_dir}")
+    _require_local_command("ssh")
+    _require_local_command("scp")
+    _remote_check(target, "command -v systemctl >/dev/null 2>&1", "systemctl", dry_run=dry_run)
+    _require_passwordless_sudo(target, dry_run=dry_run)
+    _ensure_remote_dirs(target, target_dir, dry_run=dry_run)
+
+    remote_unit = f"{target_dir}/scripts/{service}.service"
+    _copy_file_to_remote(target, unit_path, remote_unit, dry_run=dry_run)
+    _run_remote(
+        target,
+        (
+            f"sudo cp {_quote_remote_path(remote_unit)} /etc/systemd/system/{shlex.quote(service)}.service && "
+            "sudo systemctl daemon-reload && "
+            f"sudo systemctl enable --now {shlex.quote(service)}"
+        ),
+        dry_run=dry_run,
+    )
+    typer.echo(f"[install-service] Installed and started {service}.service")
+
+
 def _local_preflight(*, skip_build: bool) -> None:
     _require_local_command("rsync")
     _require_local_command("ssh")
@@ -165,6 +201,16 @@ def _remote_preflight(target: DeployTarget, *, dry_run: bool) -> dict[str, bool 
     _remote_check(target, "command -v python3 >/dev/null 2>&1", "python3", dry_run=dry_run)
     _remote_check(target, "command -v rsync >/dev/null 2>&1", "rsync", dry_run=dry_run)
     return _detect_remote_capabilities(target, dry_run=dry_run)
+
+
+def _require_passwordless_sudo(target: DeployTarget, *, dry_run: bool) -> None:
+    command = "sudo -n true"
+    if dry_run:
+        typer.echo(f"[dry-run] ssh {target.ssh_target} {command}")
+        return
+    result = _run_remote(target, command, check=False)
+    if result.returncode != 0:
+        raise typer.BadParameter("Remote user must have passwordless sudo for systemd installation")
 
 
 def _detect_remote_capabilities(target: DeployTarget, *, dry_run: bool) -> dict[str, bool | None]:
@@ -329,6 +375,11 @@ def _run_local(cmd: list[str], *, cwd: Path | None = None, dry_run: bool = False
         typer.echo(f"[dry-run] {display}")
         return subprocess.CompletedProcess(cmd, 0, "", "")
     return subprocess.run(cmd, cwd=cwd, check=True, text=True)
+
+
+def _copy_file_to_remote(target: DeployTarget, source: Path, destination: str, *, dry_run: bool) -> subprocess.CompletedProcess[str]:
+    cmd = ["scp", str(source), f"{target.ssh_target}:{destination}"]
+    return _run_local(cmd, dry_run=dry_run)
 
 
 def _quote_remote_path(path: str) -> str:

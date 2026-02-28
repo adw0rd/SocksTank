@@ -90,15 +90,17 @@ cd frontend && npm run dev
 
 ### Необязательно: один раз установить systemd unit
 
-Если хочешь, чтобы `deploy` и `restart` использовали `systemctl`, а не fallback через `nohup`, один раз установи unit-файл на RPi:
+Если хочешь, чтобы `deploy` и `restart` использовали `systemctl`, а не fallback через `nohup`, один раз установи bundled unit:
 
 ```bash
-scp scripts/sockstank.service rpi5:~/sockstank/scripts/sockstank.service
-ssh rpi5
-sudo cp ~/sockstank/scripts/sockstank.service /etc/systemd/system/sockstank.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now sockstank
+./main.py install-service rpi5
 ```
+
+Требования:
+- SSH-пользователь должен уметь выполнять `sudo` без интерактивного запроса пароля (`sudo -n`)[^passwordless-sudo]
+- проект уже должен быть на хосте (например, после `./main.py deploy rpi5`)
+
+Внутри команда загружает `scripts/sockstank.service`, копирует его в `/etc/systemd/system/`, выполняет `daemon-reload` и включает сервис.
 
 После этого можно использовать:
 
@@ -106,6 +108,8 @@ sudo systemctl enable --now sockstank
 ./main.py restart rpi5
 ./main.py logs rpi5
 ```
+
+[^passwordless-sudo]: Пример на RPi: выполни `sudo visudo -f /etc/sudoers.d/sockstank`, затем добавь правило вида `zeus ALL=(ALL) NOPASSWD: /bin/cp, /bin/systemctl`. Замени `zeus` на своего SSH-пользователя. Так passwordless sudo остаётся ограниченным только командами, которые нужны для установки и перезапуска сервиса.
 
 ### Ручной деплой (fallback)
 

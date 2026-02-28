@@ -262,5 +262,27 @@ def logs(
     )
 
 
+@app.command("install-service")
+def install_service(
+    host_arg: str | None = typer.Argument(None, help="Raspberry Pi host (for example, rpi5)"),
+    host: str | None = typer.Option(None, "--host", help="Raspberry Pi host (alternative to the positional argument)"),
+    user: str | None = typer.Option(None, help="SSH user"),
+    target_dir: str = typer.Option("~/sockstank", help="Project directory on the remote host"),
+    service: str = typer.Option("sockstank", help="systemd unit name to install"),
+    dry_run: bool = typer.Option(False, help="Show steps without executing them"),
+):
+    """Install the bundled systemd unit on a Raspberry Pi."""
+    from server.deploy import resolve_host, run_install_service
+
+    resolved_host = resolve_host(host_arg, host)
+    run_install_service(
+        resolved_host,
+        user=user,
+        target_dir=target_dir,
+        service=service,
+        dry_run=dry_run,
+    )
+
+
 if __name__ == "__main__":
     app()

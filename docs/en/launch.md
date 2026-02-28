@@ -90,15 +90,17 @@ Related operational commands:
 
 ### Optional: install the systemd unit once
 
-If you want `deploy` and `restart` to use `systemctl` instead of the fallback `nohup` path, install the bundled unit file once on the RPi:
+If you want `deploy` and `restart` to use `systemctl` instead of the fallback `nohup` path, install the bundled unit once:
 
 ```bash
-scp scripts/sockstank.service rpi5:~/sockstank/scripts/sockstank.service
-ssh rpi5
-sudo cp ~/sockstank/scripts/sockstank.service /etc/systemd/system/sockstank.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now sockstank
+./main.py install-service rpi5
 ```
+
+Requirements:
+- the SSH user must be allowed to run `sudo` non-interactively (`sudo -n`)[^passwordless-sudo]
+- the project should already exist on the host (for example after `./main.py deploy rpi5`)
+
+Under the hood, the command uploads `scripts/sockstank.service`, copies it to `/etc/systemd/system/`, runs `daemon-reload`, and enables the service.
 
 After that, these commands become available:
 
@@ -106,6 +108,8 @@ After that, these commands become available:
 ./main.py restart rpi5
 ./main.py logs rpi5
 ```
+
+[^passwordless-sudo]: Example on the RPi: run `sudo visudo -f /etc/sudoers.d/sockstank`, then add a rule like `zeus ALL=(ALL) NOPASSWD: /bin/cp, /bin/systemctl`. Replace `zeus` with your SSH user. This keeps passwordless sudo limited to the commands needed for service installation and restart.
 
 ### Manual deployment (fallback)
 
