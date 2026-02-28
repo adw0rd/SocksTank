@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import call, patch
 
@@ -27,6 +29,78 @@ class PathQuotingTests(unittest.TestCase):
         self.assertEqual(deploy._quote_remote_path("~"), "$HOME")
         self.assertEqual(deploy._quote_remote_path("~/sockstank"), "$HOME/sockstank")
         self.assertEqual(deploy._quote_remote_path("~/dir with spaces"), "$HOME/'dir with spaces'")
+
+
+class ServiceUnitTests(unittest.TestCase):
+    def test_renders_service_unit_for_remote_user(self) -> None:
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".service", delete=False) as template_fh:
+            template_fh.write(
+                "User=__SOCKSTANK_USER__\n"
+                "WorkingDirectory=__SOCKSTANK_HOME__/sockstank\n"
+                "ExecStart=/usr/bin/python3 __SOCKSTANK_HOME__/sockstank/main.py serve\n"
+            )
+            template_path = Path(template_fh.name)
+
+        rendered_path = deploy._render_service_unit(template_path, remote_user="zeus")
+        try:
+            rendered = rendered_path.read_text(encoding="utf-8")
+            self.assertIn("User=zeus", rendered)
+            self.assertIn("WorkingDirectory=/home/zeus/sockstank", rendered)
+            self.assertIn("ExecStart=/usr/bin/python3 /home/zeus/sockstank/main.py serve", rendered)
+        finally:
+            template_path.unlink(missing_ok=True)
+            rendered_path.unlink(missing_ok=True)
+
+
+class LocaleEnvTests(unittest.TestCase):
+    def test_sanitized_locale_env_uses_c_locale(self) -> None:
+        with patch.dict("os.environ", {"LANG": "en_US.UTF-8", "LC_ALL": "en_US.UTF-8"}, clear=False):
+            env = deploy._sanitized_locale_env()
+        self.assertEqual(env["LANG"], "C")
+        self.assertEqual(env["LC_ALL"], "C")
+
+    def test_normalizes_locale_for_locale_a(self) -> None:
+        self.assertEqual(deploy._normalize_locale_for_list("en_US.UTF-8"), "en_us.utf8")
+        self.assertEqual(deploy._normalize_locale_for_list("en_GB.utf8"), "en_gb.utf8")
+
+
+class EnsureRemoteLocaleTests(unittest.TestCase):
+    @patch("server.deploy._run_remote")
+    @patch("server.deploy._preferred_ssh_locale", return_value="en_US.UTF-8")
+    def test_skips_generation_when_locale_exists(self, _preferred_ssh_locale, run_remote) -> None:
+        target = deploy.DeployTarget("rpi5")
+        run_remote.return_value.returncode = 0
+
+        deploy._ensure_remote_ssh_locale(target, dry_run=False)
+
+        run_remote.assert_called_once_with(
+            target,
+            "locale -a | tr '[:upper:]' '[:lower:]' | grep -Fxq en_us.utf8",
+            check=False,
+        )
+
+    @patch("server.deploy._run_remote")
+    @patch("server.deploy._preferred_ssh_locale", return_value="en_US.UTF-8")
+    def test_generates_missing_locale(self, _preferred_ssh_locale, run_remote) -> None:
+        target = deploy.DeployTarget("rpi5")
+        run_remote.return_value.returncode = 1
+
+        deploy._ensure_remote_ssh_locale(target, dry_run=False)
+
+        self.assertEqual(
+            run_remote.call_args_list,
+            [
+                call(
+                    target,
+                    "locale -a | tr '[:upper:]' '[:lower:]' | grep -Fxq en_us.utf8",
+                    check=False,
+                ),
+                call(
+                    target,
+                    "sudo sed -i 's/^# \\(en_US.UTF-8 UTF-8\\)$/\\1/' /etc/locale.gen && sudo locale-gen en_US.UTF-8",
+                ),
+            ],
+        )
 
 
 class InstallDependenciesTests(unittest.TestCase):

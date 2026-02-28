@@ -78,6 +78,8 @@ class MockInfrared:
 class MockPicamera2:
     """Mock Picamera2 that generates test frames for macOS development."""
 
+    is_mock = True
+
     def __init__(self):
         self._running = False
         self._size = (640, 480)

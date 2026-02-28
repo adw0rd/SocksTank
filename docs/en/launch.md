@@ -100,7 +100,7 @@ Requirements:
 - the SSH user must be allowed to run `sudo` non-interactively (`sudo -n`)[^passwordless-sudo]
 - the project should already exist on the host (for example after `./main.py deploy rpi5`)
 
-Under the hood, the command uploads `scripts/sockstank.service`, copies it to `/etc/systemd/system/`, runs `daemon-reload`, and enables the service.
+Under the hood, the command renders `scripts/sockstank.service` for the current SSH user, copies it to `/etc/systemd/system/`, runs `daemon-reload`, and enables the service. The web server then runs under that user instead of `root`.
 
 After that, these commands become available:
 

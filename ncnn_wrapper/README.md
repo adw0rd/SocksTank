@@ -1,7 +1,6 @@
 # ncnn_wrapper — C++ NCNN Wrapper for SocksTank (LEGACY)
 
-> **OBSOLETE**: An OMP workaround was discovered for pip ncnn: `ncnn.set_omp_num_threads(N)` before
-> each inference bypasses the bug. pip ncnn with 4 OMP threads = **62ms / 16.0 FPS** (pure inference).
+> **OBSOLETE**: An OMP workaround was discovered for pip ncnn: `ncnn.set_omp_num_threads(N)` before each inference bypasses the bug. pip ncnn with 4 OMP threads = **62ms / 16.0 FPS** (pure inference).
 > C++ wrapper is not needed — pip wheel is 6x faster than building from source.
 > Recommended: `NcnnNativeDetector` in `server/inference.py`.
 

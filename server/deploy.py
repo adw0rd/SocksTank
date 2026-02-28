@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 import shlex
 import shutil
 import subprocess
+import tempfile
 import time
 import tomllib
 import urllib.error
@@ -167,19 +169,26 @@ def run_install_service(
     _require_local_command("scp")
     _remote_check(target, "command -v systemctl >/dev/null 2>&1", "systemctl", dry_run=dry_run)
     _require_passwordless_sudo(target, dry_run=dry_run)
+    _ensure_remote_ssh_locale(target, dry_run=dry_run)
     _ensure_remote_dirs(target, target_dir, dry_run=dry_run)
 
+    remote_user = _detect_remote_login_user(target, dry_run=dry_run)
     remote_unit = f"{target_dir}/scripts/{service}.service"
-    _copy_file_to_remote(target, unit_path, remote_unit, dry_run=dry_run)
-    _run_remote(
-        target,
-        (
-            f"sudo cp {_quote_remote_path(remote_unit)} /etc/systemd/system/{shlex.quote(service)}.service && "
-            "sudo systemctl daemon-reload && "
-            f"sudo systemctl enable --now {shlex.quote(service)}"
-        ),
-        dry_run=dry_run,
-    )
+    rendered_unit = _render_service_unit(unit_path, remote_user=remote_user)
+    try:
+        _copy_file_to_remote(target, rendered_unit, remote_unit, dry_run=dry_run)
+        _run_remote(
+            target,
+            (
+                f"sudo cp {_quote_remote_path(remote_unit)} /etc/systemd/system/{shlex.quote(service)}.service && "
+                "sudo systemctl daemon-reload && "
+                f"sudo systemctl enable --now {shlex.quote(service)}"
+            ),
+            dry_run=dry_run,
+        )
+    finally:
+        if rendered_unit.exists():
+            rendered_unit.unlink()
     typer.echo(f"[install-service] Installed and started {service}.service")
 
 
@@ -223,6 +232,61 @@ def _detect_remote_capabilities(target: DeployTarget, *, dry_run: bool) -> dict[
         has_systemd = _run_remote(target, "command -v systemctl >/dev/null 2>&1", check=False).returncode == 0
         typer.echo(f"[deploy] Remote toolchain: uv={'yes' if has_uv else 'no'}, systemd={'yes' if has_systemd else 'no'}")
     return {"has_uv": has_uv, "has_systemd": has_systemd}
+
+
+def _preferred_ssh_locale() -> str | None:
+    for key in ("LC_ALL", "LANG"):
+        value = os.environ.get(key)
+        if not value:
+            continue
+        normalized = value.strip()
+        if normalized and normalized not in {"C", "POSIX"}:
+            return normalized
+    return "en_US.UTF-8"
+
+
+def _normalize_locale_for_list(locale_name: str) -> str:
+    normalized = locale_name.strip().lower()
+    if normalized.endswith(".utf-8"):
+        normalized = normalized[:-6] + ".utf8"
+    return normalized
+
+
+def _ensure_remote_ssh_locale(target: DeployTarget, *, dry_run: bool) -> None:
+    locale_name = _preferred_ssh_locale()
+    if not locale_name:
+        return
+
+    if dry_run:
+        typer.echo(f"[dry-run] Ensure remote locale exists: {locale_name}")
+        return
+
+    list_name = _normalize_locale_for_list(locale_name)
+    locale_check = _run_remote(
+        target,
+        f"locale -a | tr '[:upper:]' '[:lower:]' | grep -Fxq {shlex.quote(list_name)}",
+        check=False,
+    )
+    if locale_check.returncode == 0:
+        return
+
+    locale_gen_name = locale_name.replace(".utf8", ".UTF-8")
+    typer.echo(f"[install-service] Generating missing remote locale: {locale_name}")
+    command = (
+        f"sudo sed -i 's/^# \\({locale_gen_name} UTF-8\\)$/\\1/' /etc/locale.gen && " f"sudo locale-gen {shlex.quote(locale_gen_name)}"
+    )
+    _run_remote(target, command)
+
+
+def _detect_remote_login_user(target: DeployTarget, *, dry_run: bool) -> str:
+    if dry_run:
+        typer.echo(f"[dry-run] ssh {target.ssh_target} whoami")
+        return target.user or "remote-user"
+    result = _run_remote(target, "whoami", capture_output=True)
+    remote_user = result.stdout.strip()
+    if not remote_user:
+        raise typer.BadParameter("Unable to detect remote login user")
+    return remote_user
 
 
 def _remote_check(target: DeployTarget, command: str, label: str, *, dry_run: bool) -> None:
@@ -374,7 +438,8 @@ def _run_local(cmd: list[str], *, cwd: Path | None = None, dry_run: bool = False
     if dry_run:
         typer.echo(f"[dry-run] {display}")
         return subprocess.CompletedProcess(cmd, 0, "", "")
-    return subprocess.run(cmd, cwd=cwd, check=True, text=True)
+    env = _sanitized_locale_env() if cmd and cmd[0] in {"rsync", "scp"} else None
+    return subprocess.run(cmd, cwd=cwd, check=True, text=True, env=env)
 
 
 def _copy_file_to_remote(target: DeployTarget, source: Path, destination: str, *, dry_run: bool) -> subprocess.CompletedProcess[str]:
@@ -399,15 +464,33 @@ def _runtime_dependencies() -> list[str]:
     return [str(dep) for dep in dependencies]
 
 
+def _render_service_unit(template_path: Path, *, remote_user: str) -> Path:
+    home_dir = f"/home/{remote_user}"
+    rendered = template_path.read_text(encoding="utf-8").replace("__SOCKSTANK_USER__", remote_user).replace("__SOCKSTANK_HOME__", home_dir)
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".service", delete=False) as fh:
+        fh.write(rendered)
+        return Path(fh.name)
+
+
+def _sanitized_locale_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env.pop("LANG", None)
+    env.pop("LC_ALL", None)
+    env["LANG"] = "C"
+    env["LC_ALL"] = "C"
+    return env
+
+
 def _run_remote(
     target: DeployTarget,
     command: str,
     *,
     check: bool = True,
+    capture_output: bool = False,
     dry_run: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     cmd = ["ssh", target.ssh_target, f"sh -lc {shlex.quote(command)}"]
     if dry_run:
         typer.echo(f"[dry-run] {' '.join(shlex.quote(part) for part in cmd)}")
         return subprocess.CompletedProcess(cmd, 0, "", "")
-    return subprocess.run(cmd, check=check, text=True)
+    return subprocess.run(cmd, check=check, text=True, capture_output=capture_output, env=_sanitized_locale_env())

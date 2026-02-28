@@ -26,22 +26,22 @@ export default function App() {
         display: 'grid', gridTemplateColumns: '1fr 360px',
         gap: 16, padding: 16, maxWidth: 1200, margin: '0 auto',
       }}>
-        {/* Левая колонка: видео */}
+        {/* Left column: video and status */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <VideoFeed />
           <StatusBar telemetry={telemetry} wsStatus={status} />
           <SensorDisplay telemetry={telemetry} />
         </div>
 
-        {/* Правая колонка: управление */}
+        {/* Right column: controls */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <EmergencyStop send={send} />
-          <MotorControl send={send} />
-          <ServoControl send={send} />
-          <LedControl send={send} />
           <ModeSelector send={send} telemetry={telemetry} />
           <InferencePanel telemetry={telemetry} />
           <ConfigPanel />
+          <MotorControl send={send} />
+          <ServoControl send={send} />
+          <LedControl send={send} />
         </div>
       </div>
     </div>

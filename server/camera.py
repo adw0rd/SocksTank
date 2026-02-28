@@ -18,6 +18,7 @@ class CameraManager:
     def __init__(self, camera, inference_router=None):
         self._camera = camera
         self._inference = inference_router
+        self._mock_camera = bool(getattr(camera, "is_mock", False))
         self._lock = threading.Lock()
         self._frame_jpeg: bytes | None = None
         self._running = False
@@ -101,7 +102,7 @@ class CameraManager:
 
     def _run_yolo(self, frame: np.ndarray) -> list[dict]:
         """Run inference and return the resulting detections."""
-        if self._inference is None:
+        if self._inference is None or self._mock_camera:
             return []
         return self._inference.infer(frame, settings.confidence)
 

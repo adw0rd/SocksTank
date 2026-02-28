@@ -4,8 +4,7 @@ Measured: 2026-02-25, updated 2026-02-27.
 
 ## Problem
 
-RPi 5 (Cortex-A76 2.4 GHz, 8 GB RAM) draws significantly more power than RPi 4.
-Freenove Tank Board is designed for RPi 3/4 (~2-3A max), its onboard DC/DC converter cannot handle RPi 5 peak consumption.
+RPi 5 (Cortex-A76 2.4 GHz, 8 GB RAM) draws significantly more power than RPi 4. Freenove Tank Board is designed for RPi 3/4 (~2-3A max), its onboard DC/DC converter cannot handle RPi 5 peak consumption.
 
 ### Symptoms
 
@@ -99,8 +98,7 @@ Ceramic 100nF (parallel to electrolytics, HF noise filtering):
 | EXT5V_V (4 cores) | 5.22-5.23V | 5.22-5.23V |
 | Cold start (4 cores, no gradual warmup) | ❌ crash | ✅ stable |
 
-> Capacitors smooth out current surges during cold boot and load switching.
-> Without them, direct 4-core startup crashed rpi5 (peak current >5A).
+> Capacitors smooth out current surges during cold boot and load switching. Without them, direct 4-core startup crashed rpi5 (peak current >5A).
 
 ### Converter Comparison
 

@@ -1,12 +1,10 @@
 # Бенчмарки инференса
 
-Замеры скорости инференса YOLO на разных устройствах и форматах модели.
-Входные данные: случайный кадр 640x480 RGB. Замер: 20-30 кадров после 3-5 warmup итераций.
+Замеры скорости инференса YOLO на разных устройствах и форматах модели. Входные данные: случайный кадр 640x480 RGB. Замер: 20-30 кадров после 3-5 warmup итераций.
 
 ## RPi 4 Model B (legacy) (Cortex-A72 1.8 GHz, 3.3 GB RAM)
 
-OS: Debian bookworm **64-bit**, Python 3.11 (aarch64), torch 2.8.0+cpu
-Охлаждение: heatsink case (пассивное + активное)
+OS: Debian bookworm **64-bit**, Python 3.11 (aarch64), torch 2.8.0+cpu. Охлаждение: heatsink case (пассивное + активное).
 
 | Модель | Формат | Mean (ms) | Min (ms) | Max (ms) | FPS |
 |---|---|---|---|---|---|
@@ -15,8 +13,7 @@ OS: Debian bookworm **64-bit**, Python 3.11 (aarch64), torch 2.8.0+cpu
 | YOLOv11n | NCNN | 409 | 402 | 440 | **2.4** |
 | YOLOv11n | ONNX | ❌ | — | — | **крэш** |
 
-> ⚠️ ONNX (onnxruntime 1.24.2): rpi4 (legacy) зависает при загрузке модели.
-> GPU device discovery в onnxruntime вызывает kernel hang. Не использовать до фикса.
+> ⚠️ ONNX (onnxruntime 1.24.2): rpi4 (legacy) зависает при загрузке модели. GPU device discovery в onnxruntime вызывает kernel hang. Не использовать до фикса.
 
 Температура при бенчмарке: 44→49°C (heatsink case), throttled=0x0.
 
@@ -24,9 +21,7 @@ OS: Debian bookworm **64-bit**, Python 3.11 (aarch64), torch 2.8.0+cpu
 
 ## RPi 5 Model B (Cortex-A76 2.4 GHz, 8 GB RAM)
 
-OS: Debian trixie **64-bit**, Python 3.13.5 (aarch64), torch 2.10.0+cpu
-Охлаждение: активное (PWM-вентилятор)
-Питание: LM2596 DC-DC (2x18650→5.1V) через GPIO или лабораторный БП 5.1V
+OS: Debian trixie **64-bit**, Python 3.13.5 (aarch64), torch 2.10.0+cpu. Охлаждение: активное (PWM-вентилятор). Питание: LM2596 DC-DC (2x18650→5.1V) через GPIO или лабораторный БП 5.1V.
 
 ### pip ncnn native + OMP workaround (лаб. БП 5.1V, рекомендуется)
 
@@ -37,11 +32,7 @@ OS: Debian trixie **64-bit**, Python 3.13.5 (aarch64), torch 2.10.0+cpu
 | YOLOv11n | pip ncnn native | 1 | 122.7 | 119.2 | **8.1** |
 | YOLOv11n | pip ncnn (чистый, без preproc) | 4 | **63.4** | 63.4 | **15.8** |
 
-> **OMP workaround**: `ncnn.set_omp_num_threads(N)` перед каждым инференсом обходит баг pip ncnn.
-> `get_omp_num_threads()` возвращает 1 (баг), но `set` работает!
-> Препроцессинг (letterbox + normalize) теперь добавляет только ~3.8ms к чистому инференсу.
-> Именно эти числа являются основным RPi benchmark path, потому что они сняты на том же runtime, что и прод: `NcnnNativeDetector` в `server/inference.py`.
-> `ultralytics` NCNN wrapper не стоит использовать как главный performance reference на RPi: он не совпадает с production path, может занижать FPS и может не принимать некоторые NCNN layout'ы, например каталог с именем `*_ncnn_int8_model`.
+> **OMP workaround**: `ncnn.set_omp_num_threads(N)` перед каждым инференсом обходит баг pip ncnn. `get_omp_num_threads()` возвращает 1 (баг), но `set` работает. Препроцессинг (letterbox + normalize) теперь добавляет только ~3.8ms к чистому инференсу. Именно эти числа являются основным RPi benchmark path, потому что они сняты на том же runtime, что и прод: `NcnnNativeDetector` в `server/inference.py`. `ultralytics` NCNN wrapper не стоит использовать как главный performance reference на RPi: он не совпадает с production path, может занижать FPS и может не принимать некоторые NCNN layout'ы, например каталог с именем `*_ncnn_int8_model`.
 
 ### XL6019E1 (автономное питание, 2x18650→5.2V)
 
@@ -52,8 +43,7 @@ OS: Debian trixie **64-bit**, Python 3.13.5 (aarch64), torch 2.10.0+cpu
 
 EXT5V=5.22-5.23V, VDD_CORE=1.48-1.58A, throttled=0x0, температура 38→47°C.
 
-> ⚠️ Требуется **[плавный старт](rpi5-power.md#плавный-старт-cpu-warmup)** (загрузка модели на 1 ядре → постепенный переход на 4).
-> Прямой запуск на 4 ядрах вызывает крэш из-за пикового броска тока.
+> ⚠️ Требуется **[плавный старт](rpi5-power.md#плавный-старт-cpu-warmup)** (загрузка модели на 1 ядре → постепенный переход на 4). Прямой запуск на 4 ядрах вызывает крэш из-за пикового броска тока.
 
 ### LM2596 (автономное питание, 2x18650→5.1V)
 
@@ -75,32 +65,26 @@ EXT5V=5.06-5.10V, VDD_CORE до 1.89A (2 ядра), throttled=0x0.
 | YOLOv11n | PyTorch | 4 | 288 | 285 | 298 | **3.5** |
 | YOLOv11n | ONNX | auto | 331 | 276 | 426 | **3.0** |
 
-> Замеры выполнены через ultralytics YOLO wrapper (без OMP workaround).
-> С OMP workaround (`ncnn.set_omp_num_threads`) — см. секцию "pip ncnn native" выше.
+> Замеры выполнены через ultralytics YOLO wrapper (без OMP workaround). С OMP workaround (`ncnn.set_omp_num_threads`) — см. секцию "pip ncnn native" выше.
 
-Температура при бенчмарке: 68→75°C (активный кулер), throttled=0x0.
-Питание: EXT5V=5.03-5.08V, VDD_CORE до 2.0A при нагрузке.
+Температура при бенчмарке: 68→75°C (активный кулер), throttled=0x0. Питание: EXT5V=5.03-5.08V, VDD_CORE до 2.0A при нагрузке.
 
 Исторический baseline: 2026-02-25
 
 ### Старые замеры (32-bit OS, 1 ядро, литий)
 
-OS: Raspbian bookworm **32-bit** (armhf), ncnn only.
-Питание: Freenove Tank Board (2x18650).
+OS: Raspbian bookworm **32-bit** (armhf), ncnn only. Питание: Freenove Tank Board (2x18650).
 
 | Модель | Формат | Ядра | Mean (ms) | FPS |
 |---|---|---|---|---|
 | YOLOv11n | NCNN | 1 (taskset) | 323 | **3.1** |
 | YOLOv11n | NCNN | 2+ | — | **крэш** (undervoltage) |
 
-> **Проблема питания**: Freenove Tank Board DC/DC не обеспечивает достаточный ток для RPi 5.
-> Плата выключается при полной нагрузке (все 4 ядра). См. [rpi5-power.md](rpi5-power.md).
-> Решение: LM2596 DC-DC buck converter или лабораторный БП 5.1V/5A через GPIO.
+> **Проблема питания**: Freenove Tank Board DC/DC не обеспечивает достаточный ток для RPi 5. Плата выключается при полной нагрузке (все 4 ядра). См. [rpi5-power.md](rpi5-power.md). Решение: LM2596 DC-DC buck converter или лабораторный БП 5.1V/5A через GPIO.
 
 ### Разгон (лаб. БП 5.1V)
 
-Тест разгона RPi 5 через `arm_freq` и `over_voltage` в `/boot/firmware/config.txt`.
-Бенчмарк: pip ncnn native, 4 OMP потока, 20 кадров после 3 warmup.
+Тест разгона RPi 5 через `arm_freq` и `over_voltage` в `/boot/firmware/config.txt`. Бенчмарк: pip ncnn native, 4 OMP потока, 20 кадров после 3 warmup.
 
 | Частота | over_voltage | Инференс (ms) | FPS | Throttled | Темп. | vs Сток |
 |---|---|---|---|---|---|---|
@@ -108,9 +92,7 @@ OS: Raspbian bookworm **32-bit** (armhf), ncnn only.
 | **2600 MHz** | 4 | 61.6 | **16.2** | 0x0 | ~58°C | **+2.5%** |
 | **2800 MHz** | 6 | 72.4 | **13.8** | 0x50000 | ~57°C | **-12.7%** |
 
-> 2800 MHz вызывает throttling из-за просадки напряжения (0x50000: биты 16+18) даже на лаб. БП 5.1V.
-> 2600 MHz работает без throttling, но даёт лишь +2.5% — не стоит риска.
-> **Вывод**: стоковые 2400 MHz оптимальны. Разгон RPi 5 для NCNN инференса неэффективен.
+> 2800 MHz вызывает throttling из-за просадки напряжения (0x50000: биты 16+18) даже на лаб. БП 5.1V. 2600 MHz работает без throttling, но даёт лишь +2.5% — не стоит риска. **Вывод**: стоковые 2400 MHz оптимальны. Разгон RPi 5 для NCNN инференса неэффективен.
 
 Дата замера: 2026-02-28
 
@@ -164,8 +146,7 @@ OS: Ubuntu, Python 3.13.3, torch + CUDA
 | RPi 5 | ONNX | 331 | **3.0** | 2.7x |
 | blackops | PyTorch CUDA | 3.2 | **314.8** | **286x** |
 
-> **pip ncnn native** = pip ncnn (1.0.20260114) + OMP workaround (`set_omp_num_threads`).
-> Реализовано в `NcnnNativeDetector` (`server/inference.py`).
+> **pip ncnn native** = pip ncnn (1.0.20260114) + OMP workaround (`set_omp_num_threads`). Реализовано в `NcnnNativeDetector` (`server/inference.py`).
 
 ### Температура при нагрузке
 

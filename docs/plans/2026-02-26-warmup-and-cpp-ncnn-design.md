@@ -5,8 +5,7 @@
 ## Задача 1: Плавный старт (CPU warmup)
 
 ### Проблема
-XL6019E1 (5A buck-boost) крашит RPi 5 при мгновенной нагрузке на 4 ядра.
-Нужен постепенный ramp-up: 1→2→3→4 ядра с паузами между стадиями.
+XL6019E1 (5A buck-boost) крашит RPi 5 при мгновенной нагрузке на 4 ядра. Нужен постепенный ramp-up: 1→2→3→4 ядра с паузами между стадиями.
 
 ### Решение
 Новый модуль `server/cpu_warmup.py`, вызывается в `app.py` lifespan после загрузки модели, до старта камеры.
@@ -43,15 +42,10 @@ if model and not settings.mock and settings.cpu_warmup:
 
 ## Задача 2: C++ NCNN Wrapper с OMP (НЕАКТУАЛЬНО)
 
-> **UPDATE 2026-02-27**: Обнаружен OMP workaround для pip ncnn: `ncnn.set_omp_num_threads(N)`
-> перед каждым инференсом обходит баг `get_omp_num_threads()=1`.
-> Результат: pip ncnn 4 OMP потока — **62ms чистый инференс / 78ms с preproc = 12.8–16.0 FPS**.
-> C++ wrapper **не нужен** — pip wheel быстрее сборки из исходников (сборка ncnn из src в 6x медленнее).
-> Реализовано в `NcnnNativeDetector` (`server/inference.py`).
+> **UPDATE 2026-02-27**: Обнаружен OMP workaround для pip ncnn: `ncnn.set_omp_num_threads(N)` перед каждым инференсом обходит баг `get_omp_num_threads()=1`. Результат: pip ncnn 4 OMP потока — **62ms чистый инференс / 78ms с preproc = 12.8–16.0 FPS**. C++ wrapper **не нужен** — pip wheel быстрее сборки из исходников (сборка ncnn из src в 6x медленнее). Реализовано в `NcnnNativeDetector` (`server/inference.py`).
 
 ### Проблема (оригинальная)
-Python ncnn binding (pip wheel для cp313 aarch64) — `get_omp_num_threads()` всегда 1.
-C++ с 2 OMP потоками: 78ms / 12.8 FPS vs Python 130ms / 7.7 FPS (1 поток).
+Python ncnn binding (pip wheel для cp313 aarch64) — `get_omp_num_threads()` всегда 1. C++ с 2 OMP потоками: 78ms / 12.8 FPS vs Python 130ms / 7.7 FPS (1 поток).
 
 ### Решение
 C++ модуль с pybind11: класс `NCNNDetector` с полным пайплайном.

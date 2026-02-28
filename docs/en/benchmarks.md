@@ -1,12 +1,10 @@
 # Inference Benchmarks
 
-YOLO inference speed measurements on different devices and model formats.
-Input: random 640x480 RGB frame. Measurement: 20-30 frames after 3-5 warmup iterations.
+YOLO inference speed measurements on different devices and model formats. Input: random 640x480 RGB frame. Measurement: 20-30 frames after 3-5 warmup iterations.
 
 ## RPi 4 Model B (legacy) (Cortex-A72 1.8 GHz, 3.3 GB RAM)
 
-OS: Debian bookworm **64-bit**, Python 3.11 (aarch64), torch 2.8.0+cpu
-Cooling: heatsink case (passive + active)
+OS: Debian bookworm **64-bit**, Python 3.11 (aarch64), torch 2.8.0+cpu. Cooling: heatsink case (passive + active).
 
 | Model | Format | Mean (ms) | Min (ms) | Max (ms) | FPS |
 |---|---|---|---|---|---|
@@ -15,8 +13,7 @@ Cooling: heatsink case (passive + active)
 | YOLOv11n | NCNN | 409 | 402 | 440 | **2.4** |
 | YOLOv11n | ONNX | ❌ | — | — | **crash** |
 
-> ⚠️ ONNX (onnxruntime 1.24.2): rpi4 (legacy) hangs on model load.
-> GPU device discovery in onnxruntime causes kernel hang. Do not use until fixed.
+> ⚠️ ONNX (onnxruntime 1.24.2): rpi4 (legacy) hangs on model load. GPU device discovery in onnxruntime causes kernel hang. Do not use until fixed.
 
 Temperature during benchmark: 44→49°C (heatsink case), throttled=0x0.
 
@@ -24,9 +21,7 @@ Measured: 2026-02-24, updated 2026-02-25
 
 ## RPi 5 Model B (Cortex-A76 2.4 GHz, 8 GB RAM)
 
-OS: Debian trixie **64-bit**, Python 3.13.5 (aarch64), torch 2.10.0+cpu
-Cooling: active (PWM fan)
-Power: LM2596 DC-DC (2x18650→5.1V) via GPIO, or lab PSU 5.1V
+OS: Debian trixie **64-bit**, Python 3.13.5 (aarch64), torch 2.10.0+cpu. Cooling: active (PWM fan). Power: LM2596 DC-DC (2x18650→5.1V) via GPIO, or lab PSU 5.1V.
 
 ### pip ncnn native + OMP workaround (lab PSU 5.1V, recommended)
 
@@ -37,11 +32,7 @@ Power: LM2596 DC-DC (2x18650→5.1V) via GPIO, or lab PSU 5.1V
 | YOLOv11n | pip ncnn native | 1 | 122.7 | 119.2 | **8.1** |
 | YOLOv11n | pip ncnn (pure, no preproc) | 4 | **63.4** | 63.4 | **15.8** |
 
-> **OMP workaround**: `ncnn.set_omp_num_threads(N)` before each inference bypasses the pip ncnn bug.
-> `get_omp_num_threads()` returns 1 (bug), but `set` works!
-> Preprocess (letterbox + normalize) now adds only ~3.8ms on top of pure inference.
-> These numbers are the authoritative RPi benchmark path because they use the same runtime as production: `NcnnNativeDetector` in `server/inference.py`.
-> Do not use the `ultralytics` NCNN wrapper as the main performance reference on RPi: it does not match the production path and can under-report FPS or reject some NCNN layouts such as the `*_ncnn_int8_model` directory name.
+> **OMP workaround**: `ncnn.set_omp_num_threads(N)` before each inference bypasses the pip ncnn bug. `get_omp_num_threads()` returns 1 (bug), but `set` works. Preprocess (letterbox + normalize) now adds only ~3.8ms on top of pure inference. These numbers are the authoritative RPi benchmark path because they use the same runtime as production: `NcnnNativeDetector` in `server/inference.py`. Do not use the `ultralytics` NCNN wrapper as the main performance reference on RPi: it does not match the production path and can under-report FPS or reject some NCNN layouts such as the `*_ncnn_int8_model` directory name.
 
 ### XL6019E1 (battery powered, 2x18650→5.2V)
 
@@ -52,8 +43,7 @@ Power: LM2596 DC-DC (2x18650→5.1V) via GPIO, or lab PSU 5.1V
 
 EXT5V=5.22-5.23V, VDD_CORE=1.48-1.58A, throttled=0x0, temperature 38→47°C.
 
-> ⚠️ Requires **[gradual startup](rpi5-power.md#gradual-startup-cpu-warmup)** (load model on 1 core → gradually scale to 4).
-> Direct 4-core startup causes crash due to peak current spike.
+> ⚠️ Requires **[gradual startup](rpi5-power.md#gradual-startup-cpu-warmup)** (load model on 1 core → gradually scale to 4). Direct 4-core startup causes crash due to peak current spike.
 
 ### LM2596 (battery powered, 2x18650→5.1V)
 
@@ -75,32 +65,26 @@ EXT5V=5.06-5.10V, VDD_CORE up to 1.89A (2 cores), throttled=0x0.
 | YOLOv11n | PyTorch | 4 | 288 | 285 | 298 | **3.5** |
 | YOLOv11n | ONNX | auto | 331 | 276 | 426 | **3.0** |
 
-> Measured via ultralytics YOLO wrapper (without OMP workaround).
-> With OMP workaround (`ncnn.set_omp_num_threads`) — see "pip ncnn native" section above.
+> Measured via ultralytics YOLO wrapper (without OMP workaround). With OMP workaround (`ncnn.set_omp_num_threads`) — see "pip ncnn native" section above.
 
-Temperature during benchmark: 68→75°C (active cooler), throttled=0x0.
-Power: EXT5V=5.03-5.08V, VDD_CORE up to 2.0A under load.
+Temperature during benchmark: 68→75°C (active cooler), throttled=0x0. Power: EXT5V=5.03-5.08V, VDD_CORE up to 2.0A under load.
 
 Historical baseline measured: 2026-02-25
 
 ### Old measurements (32-bit OS, 1 core, battery)
 
-OS: Raspbian bookworm **32-bit** (armhf), ncnn only.
-Power: Freenove Tank Board (2x18650).
+OS: Raspbian bookworm **32-bit** (armhf), ncnn only. Power: Freenove Tank Board (2x18650).
 
 | Model | Format | Cores | Mean (ms) | FPS |
 |---|---|---|---|---|
 | YOLOv11n | NCNN | 1 (taskset) | 323 | **3.1** |
 | YOLOv11n | NCNN | 2+ | — | **crash** (undervoltage) |
 
-> **Power issue**: Freenove Tank Board DC/DC cannot provide sufficient current for RPi 5.
-> Board shuts down under full load (all 4 cores). See [rpi5-power.md](rpi5-power.md).
-> Solution: XL6019E1 DC-DC buck-boost converter or lab PSU 5.1V/5A via GPIO.
+> **Power issue**: Freenove Tank Board DC/DC cannot provide sufficient current for RPi 5. Board shuts down under full load (all 4 cores). See [rpi5-power.md](rpi5-power.md). Solution: XL6019E1 DC-DC buck-boost converter or lab PSU 5.1V/5A via GPIO.
 
 ### Overclocking (lab PSU 5.1V)
 
-Tested RPi 5 overclocking with `arm_freq` and `over_voltage` in `/boot/firmware/config.txt`.
-Benchmark: pip ncnn native, 4 OMP threads, 20 frames after 3 warmup.
+Tested RPi 5 overclocking with `arm_freq` and `over_voltage` in `/boot/firmware/config.txt`. Benchmark: pip ncnn native, 4 OMP threads, 20 frames after 3 warmup.
 
 | Frequency | over_voltage | Inference (ms) | FPS | Throttled | Temp | vs Stock |
 |---|---|---|---|---|---|---|
@@ -108,9 +92,7 @@ Benchmark: pip ncnn native, 4 OMP threads, 20 frames after 3 warmup.
 | **2600 MHz** | 4 | 61.6 | **16.2** | 0x0 | ~58°C | **+2.5%** |
 | **2800 MHz** | 6 | 72.4 | **13.8** | 0x50000 | ~57°C | **-12.7%** |
 
-> 2800 MHz triggers under-voltage throttling (0x50000: bits 16+18) even on lab PSU 5.1V.
-> 2600 MHz works without throttling but only gives +2.5% — not worth the risk.
-> **Conclusion**: stock 2400 MHz is optimal. Overclocking RPi 5 for NCNN inference is not effective.
+> 2800 MHz triggers under-voltage throttling (0x50000: bits 16+18) even on lab PSU 5.1V. 2600 MHz works without throttling but only gives +2.5% — not worth the risk. **Conclusion**: stock 2400 MHz is optimal. Overclocking RPi 5 for NCNN inference is not effective.
 
 Measured: 2026-02-28
 
@@ -164,8 +146,7 @@ Measured: 2026-02-25
 | RPi 5 | ONNX | 331 | **3.0** | 2.7x |
 | blackops | PyTorch CUDA | 3.2 | **314.8** | **286x** |
 
-> **pip ncnn native** = pip ncnn (1.0.20260114) + OMP workaround (`set_omp_num_threads`).
-> Implemented in `NcnnNativeDetector` (`server/inference.py`).
+> **pip ncnn native** = pip ncnn (1.0.20260114) + OMP workaround (`set_omp_num_threads`). Implemented in `NcnnNativeDetector` (`server/inference.py`).
 
 ### Temperature Under Load
 
