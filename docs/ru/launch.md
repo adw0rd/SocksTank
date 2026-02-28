@@ -92,7 +92,7 @@ sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 
 
 | Параметр | По умолчанию | Описание |
 |---|---|---|
-| `--model` | `models/yolo11_best.pt` | Путь к модели (.pt для GPU/dev, ncnn директория для RPi) |
+| `--model` | `models/yolo11_best.pt` | Путь к модели (см. ниже) |
 | `--conf` | `0.5` | Порог уверенности (0.0–1.0) |
 | `--host` | `0.0.0.0` | Адрес привязки |
 | `--port` | `8080` | HTTP/WebSocket порт |
@@ -100,6 +100,13 @@ sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 
 | `--ncnn-cpp` | `false` | NcnnNativeDetector (pip ncnn + OMP workaround) |
 | `--ncnn-threads` | `2` | Количество OMP потоков для ncnn (1–4) |
 | `--freenove-path` | `~/Freenove_.../Code/Server` | Путь к модулям Freenove |
+
+> **Какую модель указывать в `--model`?**
+> - **RPi** (продакшен): `models/yolo11_best_ncnn_model` — NCNN [FP32](benchmarks.md#модели), 15 FPS
+> - **GPU-сервер**: `models/yolo11_best.pt` — PyTorch, 314 FPS на CUDA
+> - **macOS / dev**: `models/yolo11_best.pt` — PyTorch (или `--mock` без модели)
+>
+> Дефолт `.pt` рассчитан на разработку. На RPi всегда указывайте ncnn-модель явно.
 
 Все параметры можно задать через переменные окружения с префиксом `SOCKSTANK_`:
 

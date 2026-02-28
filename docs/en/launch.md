@@ -92,7 +92,7 @@ Logs: `tail -f /tmp/sockstank.log`
 
 | Parameter | Default | Description |
 |---|---|---|
-| `--model` | `models/yolo11_best.pt` | Model path (.pt for GPU/dev, ncnn directory for RPi) |
+| `--model` | `models/yolo11_best.pt` | Model path (see below) |
 | `--conf` | `0.5` | Confidence threshold (0.0–1.0) |
 | `--host` | `0.0.0.0` | Bind address |
 | `--port` | `8080` | HTTP/WebSocket port |
@@ -100,6 +100,13 @@ Logs: `tail -f /tmp/sockstank.log`
 | `--ncnn-cpp` | `false` | NcnnNativeDetector (pip ncnn + OMP workaround) |
 | `--ncnn-threads` | `2` | OMP threads for ncnn (1–4) |
 | `--freenove-path` | `~/Freenove_.../Code/Server` | Path to Freenove modules |
+
+> **Which model to use with `--model`?**
+> - **RPi** (production): `models/yolo11_best_ncnn_model` — NCNN [FP32](benchmarks.md#models), 15 FPS
+> - **GPU server**: `models/yolo11_best.pt` — PyTorch, 314 FPS on CUDA
+> - **macOS / dev**: `models/yolo11_best.pt` — PyTorch (or `--mock` without a model)
+>
+> The default `.pt` is intended for development. On RPi always specify the ncnn model explicitly.
 
 All parameters can be set via environment variables with `SOCKSTANK_` prefix:
 
