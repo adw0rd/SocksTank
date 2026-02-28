@@ -280,23 +280,22 @@ class GPUServerManager:
         """Refresh server statuses and update the InferenceRouter."""
         active_url = None
         for server in self.servers:
-            if server.status in ("online", "starting"):
-                url = f"http://{server.host}:{server.port}/health"
-                try:
-                    resp = self._client.get(url)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        with self._lock:
-                            server.status = "online"
-                            server.gpu = data.get("gpu")
-                        if active_url is None:
-                            active_url = f"http://{server.host}:{server.port}"
-                    else:
-                        with self._lock:
-                            server.status = "offline"
-                except Exception:
+            url = f"http://{server.host}:{server.port}/health"
+            try:
+                resp = self._client.get(url)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    with self._lock:
+                        server.status = "online"
+                        server.gpu = data.get("gpu")
+                    if active_url is None:
+                        active_url = f"http://{server.host}:{server.port}"
+                else:
                     with self._lock:
                         server.status = "offline"
+            except Exception:
+                with self._lock:
+                    server.status = "offline"
 
         # Update the InferenceRouter
         if self._inference_router:
