@@ -1,26 +1,26 @@
 [project]
 name = "sockstank"
 version = "0.1.0"
-description = "Робот-танк для поиска носков с компьютерным зрением (YOLO)"
+description = "Robot tank for sock detection with computer vision (YOLO)"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 dependencies = [
-    "typer>=0.9",
+    "typer>=0.19.1",
     "ultralytics",
     "opencv-python-headless",
     "numpy",
-    "fastapi>=0.104",
-    "uvicorn[standard]>=0.24",
-    "pydantic-settings>=2.0",
-    "websockets>=12.0",
-    "httpx>=0.25",
-    "paramiko>=3.0",
-    "pyyaml>=6.0",
+    "fastapi>=0.117.1",
+    "uvicorn[standard]>=0.37.0",
+    "pydantic-settings>=2.11.0",
+    "websockets>=15.0.1",
+    "httpx>=0.28.1",
+    "paramiko>=4.0.0",
+    "pyyaml>=6.0.3",
 ]
 
 [project.optional-dependencies]
-dev = ["pre-commit", "black", "flake8"]
+dev = ["pre-commit>=4.3.0", "black>=25.9.0", "flake8>=7.3.0"]
 
 [tool.black]
 line-length = 140
