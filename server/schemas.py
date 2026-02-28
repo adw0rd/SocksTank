@@ -23,6 +23,8 @@ class TelemetryMessage(BaseModel):
     camera_source: str = "camera"
     ai_state: str = "idle"
     estop: bool = False
+    claw_servos_enabled: bool = True
+    led_supported: bool = True
 
 
 class ConfigResponse(BaseModel):

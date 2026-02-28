@@ -140,10 +140,10 @@ export default function App() {
             <MotorControl send={send} telemetry={telemetry} />
           </div>
           <div style={panelStyle}>
-            <ServoControl send={send} />
+            <ServoControl send={send} telemetry={telemetry} />
           </div>
           <div style={panelStyle}>
-            <LedControl send={send} />
+            <LedControl send={send} telemetry={telemetry} />
           </div>
         </div>
 

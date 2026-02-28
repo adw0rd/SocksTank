@@ -31,6 +31,11 @@ class _PigpioServo:
         if pin is not None:
             self.pi.set_PWM_dutycycle(pin, 80 + (400 / 180) * angle)
 
+    def setServoStop(self, channel):
+        pin = self.pins.get(int(channel))
+        if pin is not None:
+            self.pi.set_PWM_dutycycle(pin, 0)
+
 
 class _GpiozeroServo:
     """PCB v1 + RPi 5: gpiozero AngularServo."""
@@ -50,6 +55,11 @@ class _GpiozeroServo:
         servo = self.servos.get(int(channel))
         if servo is not None:
             servo.angle = angle
+
+    def setServoStop(self, channel):
+        servo = self.servos.get(int(channel))
+        if servo is not None:
+            servo.angle = None
 
 
 class _HardwareServo:
@@ -105,10 +115,6 @@ class Servo:
             type(self._pwm).__name__,
         )
 
-        # Initial positions
-        self._pwm.setServoPwm("0", 90)
-        self._pwm.setServoPwm("1", 140)
-
     def _angle_range(self, channel, angle):
         """Clamp angle per channel."""
         ch = int(channel)
@@ -123,3 +129,9 @@ class Servo:
     def setServoAngle(self, channel, angle):
         angle = self._angle_range(channel, int(angle))
         self._pwm.setServoPwm(str(channel), angle)
+
+    def setServoEnabled(self, channel, enabled: bool):
+        if enabled:
+            return
+        if hasattr(self._pwm, "setServoStop"):
+            self._pwm.setServoStop(str(channel))

@@ -32,6 +32,8 @@ def _handle_command(data: dict):
         _hardware.set_motor(params.get("left", 0), params.get("right", 0))
     elif cmd == "servo":
         _hardware.set_servo(params.get("channel", 0), params.get("angle", 90))
+    elif cmd == "servo_power":
+        _hardware.set_claw_servos_enabled(params.get("enabled", True))
     elif cmd == "led":
         if "effect" in params:
             _hardware.led_effect(params["effect"])
@@ -72,6 +74,8 @@ def _get_telemetry() -> str:
         camera_source=_camera_manager.camera_source if _camera_manager else "camera",
         ai_state=_camera_manager.ai_state if _camera_manager else "idle",
         estop=_hardware.estop if _hardware else False,
+        claw_servos_enabled=_hardware.claw_servos_enabled if _hardware else True,
+        led_supported=_hardware.led_supported if _hardware else True,
     )
     return msg.model_dump_json()
 

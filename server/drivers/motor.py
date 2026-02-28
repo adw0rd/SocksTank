@@ -9,7 +9,7 @@ from gpiozero import Motor
 
 class tankMotor:
     def __init__(self):
-        self.left_motor = Motor(24, 23)
+        self.left_motor = Motor(23, 24)
         self.right_motor = Motor(5, 6)
 
     def _clamp(self, duty):
@@ -20,6 +20,9 @@ class tankMotor:
         """Set motor speed. Range: -4095..4095."""
         duty1 = self._clamp(duty1)
         duty2 = self._clamp(duty2)
+        # The right drivetrain is mounted in mirrored orientation, so its
+        # logical forward/backward direction is inverted relative to gpiozero.
+        duty2 = -duty2
         # Left motor
         if duty1 > 0:
             self.left_motor.forward(duty1 / 4096)

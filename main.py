@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """SocksTank robot tank for sock detection with computer vision."""
 
+import code
+import time
+
 import typer
 
 app = typer.Typer(help="SocksTank robot for sock detection")
@@ -282,6 +285,124 @@ def install_service(
         service=service,
         dry_run=dry_run,
     )
+
+
+@app.command("motor-test")
+def motor_test(
+    channel: str = typer.Argument(..., help="One of: lf, lb, rf, rb"),
+    speed: int = typer.Option(1200, min=200, max=4095, help="Motor duty to apply"),
+    seconds: float = typer.Option(1.0, min=0.1, max=5.0, help="How long to drive before auto-stop"),
+):
+    """Drive a single motor direction for a short diagnostic test."""
+    from server.config import settings
+    from server.freenove_bridge import load_hardware_modules
+
+    normalized = channel.strip().lower()
+    profiles = {
+        "lf": (speed, 0),
+        "lb": (-speed, 0),
+        "rf": (0, speed),
+        "rb": (0, -speed),
+    }
+    if normalized not in profiles:
+        raise typer.BadParameter("channel must be one of: lf, lb, rf, rb")
+
+    settings.mock = False
+    motor = load_hardware_modules()["motor"]()
+    left, right = profiles[normalized]
+    typer.echo(f"Driving {normalized} for {seconds:.1f}s at duty {speed}")
+    try:
+        motor.setMotorModel(left, right)
+        time.sleep(seconds)
+    finally:
+        motor.setMotorModel(0, 0)
+        motor.close()
+        typer.echo("Motors stopped")
+
+
+@app.command("motor-shell")
+def motor_shell():
+    """Open an interactive shell with motor helpers for raw drivetrain tests."""
+    from server.config import settings
+    from server.freenove_bridge import load_hardware_modules
+
+    settings.mock = False
+    motor = load_hardware_modules()["motor"]()
+
+    def set_motor(left: int, right: int):
+        motor.setMotorModel(left, right)
+
+    def stop():
+        motor.setMotorModel(0, 0)
+
+    def pulse(left: int, right: int, seconds: float = 1.0):
+        motor.setMotorModel(left, right)
+        time.sleep(seconds)
+        motor.setMotorModel(0, 0)
+
+    def lf(speed: int = 1200, seconds: float = 1.0):
+        pulse(speed, 0, seconds)
+
+    def lb(speed: int = 1200, seconds: float = 1.0):
+        pulse(-speed, 0, seconds)
+
+    def rf(speed: int = 1200, seconds: float = 1.0):
+        pulse(0, speed, seconds)
+
+    def rb(speed: int = 1200, seconds: float = 1.0):
+        pulse(0, -speed, seconds)
+
+    banner = (
+        "SocksTank motor shell\n"
+        "Helpers:\n"
+        "  set_motor(left, right)\n"
+        "  stop()\n"
+        "  pulse(left, right, seconds=1.0)\n"
+        "  lf(speed=1200, seconds=1.0)\n"
+        "  lb(speed=1200, seconds=1.0)\n"
+        "  rf(speed=1200, seconds=1.0)\n"
+        "  rb(speed=1200, seconds=1.0)\n"
+        "Examples:\n"
+        "  lf()\n"
+        "  set_motor(1500, -1500)\n"
+        "  stop()\n"
+        "Press Ctrl-D to exit; motors are stopped automatically.\n"
+    )
+
+    namespace = {
+        "motor": motor,
+        "set_motor": set_motor,
+        "stop": stop,
+        "pulse": pulse,
+        "lf": lf,
+        "lb": lb,
+        "rf": rf,
+        "rb": rb,
+    }
+
+    try:
+        try:
+            from IPython import embed
+
+            embed(banner1=banner, user_ns=namespace)
+        except ImportError:
+            typer.echo("IPython is not installed, falling back to the standard Python shell.")
+            code.interact(banner=banner, local=namespace)
+    finally:
+        motor.setMotorModel(0, 0)
+        motor.close()
+        typer.echo("Motors stopped")
+
+
+@app.command()
+def shell():
+    """Open an interactive project shell."""
+    try:
+        from IPython import start_ipython
+    except ImportError as exc:
+        raise typer.Exit("IPython is not installed. Install it to use `main.py shell`.") from exc
+
+    start_ipython(argv=[])
 
 
 if __name__ == "__main__":

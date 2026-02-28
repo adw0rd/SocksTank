@@ -25,6 +25,7 @@ class HardwareController:
         self._lock = threading.Lock()
         self._mode = "manual"
         self._estop = False
+        self._claw_servos_enabled = True
         self._motor_left = 0
         self._motor_right = 0
         log.info("HardwareController initialized")
@@ -54,6 +55,14 @@ class HardwareController:
     def estop(self) -> bool:
         return self._estop
 
+    @property
+    def claw_servos_enabled(self) -> bool:
+        return self._claw_servos_enabled
+
+    @property
+    def led_supported(self) -> bool:
+        return getattr(self._led, "supported", True)
+
     def set_motor(self, left: int, right: int):
         """Set motor speed. Valid range: -4095..4095."""
         left = max(-4095, min(4095, int(left)))
@@ -75,7 +84,17 @@ class HardwareController:
         channel = max(0, min(2, channel))
         angle = max(0, min(180, angle))
         with self._lock:
+            if channel in (0, 1) and not self._claw_servos_enabled:
+                return
             self._servo.setServoAngle(channel, angle)
+
+    def set_claw_servos_enabled(self, enabled: bool):
+        """Enable or disable the grip/lift servos."""
+        with self._lock:
+            self._claw_servos_enabled = bool(enabled)
+            if not self._claw_servos_enabled:
+                self._servo.setServoEnabled(0, False)
+                self._servo.setServoEnabled(1, False)
 
     def set_led(self, r: int, g: int, b: int):
         """Set the color of all LEDs."""

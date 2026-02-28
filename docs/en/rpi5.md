@@ -134,6 +134,7 @@ Full config: [../rpi5-config.txt](../rpi5-config.txt)
 
 - **pigpiod** is not needed on RPi 5 (uses built-in GPIO)
 - **Camera**: RPi 5 has cam0/cam1 connectors with 22-pin FPC (not 15-pin CSI like RPi 4). A [22→15 pin cable](https://ozon.ru/t/lwESi2D) or [22-to-15 adapter](https://ozon.ru/t/EAxTi6d) is needed. On AliExpress search: «Raspberry Pi 5 camera cable 22pin to 15pin» or «RPi 5 CSI FPC adapter 22 15».
+- **LED (PCB v1)**: the onboard RGB LEDs are not supported on RPi 5 with the original PCB v1 board. `rpi_ws281x` is not compatible there, so the LED controls are intentionally disabled in the UI. On RPi 4 the LEDs work, and on PCB v2 they work via SPI.
 
 ## Benchmarks
 

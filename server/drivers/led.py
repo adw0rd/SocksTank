@@ -117,6 +117,10 @@ class Led:
         self._breathe_flag = 0
         self._breathe_time = time.time()
 
+    @property
+    def supported(self) -> bool:
+        return self._supported
+
     def colorWipe(self, color, wait_ms=50):
         """Wipe color across display a pixel at a time."""
         if not self._supported:

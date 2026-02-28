@@ -133,6 +133,7 @@ psu_max_current=5000
 
 - **pigpiod** не нужен на RPi 5 (используется встроенный GPIO)
 - **Камера**: на RPi 5 разъёмы cam0/cam1 с 22-pin FPC (не 15-pin CSI как на RPi 4). Необходим [кабель 22→15 pin](https://ozon.ru/t/lwESi2D) или [переходник 22-to-15](https://ozon.ru/t/EAxTi6d). На AliExpress искать: «Raspberry Pi 5 camera cable 22pin to 15pin» или «RPi 5 CSI FPC adapter 22 15».
+- **LED (PCB v1)**: встроенные RGB-светодиоды на оригинальной плате PCB v1 не поддерживаются на RPi 5. Там несовместим `rpi_ws281x`, поэтому LED-управление в UI специально отключено. На RPi 4 LED работают, и на PCB v2 они тоже работают через SPI.
 
 ## Бенчмарки
 

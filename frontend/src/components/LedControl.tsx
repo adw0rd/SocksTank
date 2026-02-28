@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import type { WsCommand } from '../lib/types'
+import type { Telemetry, WsCommand } from '../lib/types'
 
 interface Props {
   send: (cmd: WsCommand) => void
+  telemetry: Telemetry | null
 }
 
 const PRESETS = [
@@ -11,10 +12,12 @@ const PRESETS = [
   { label: 'Breathing', effect: 'breathing' },
 ]
 
-export function LedControl({ send }: Props) {
+export function LedControl({ send, telemetry }: Props) {
   const [color, setColor] = useState('#0064ff')
+  const supported = telemetry?.led_supported ?? true
 
   const applyColor = () => {
+    if (!supported) return
     const r = parseInt(color.slice(1, 3), 16)
     const g = parseInt(color.slice(3, 5), 16)
     const b = parseInt(color.slice(5, 7), 16)
@@ -27,17 +30,37 @@ export function LedControl({ send }: Props) {
         LED Control
       </div>
 
+      {!supported && (
+        <div
+          style={{
+            marginBottom: 10,
+            padding: '9px 10px',
+            background: '#1a1420',
+            border: '1px solid #43324f',
+            borderRadius: 8,
+            color: '#ffcf7a',
+            fontSize: 12,
+            lineHeight: 1.4,
+          }}
+        >
+          LED is not supported on PCB v1 + Raspberry Pi 5. It works on RPi 4, or on PCB v2 via SPI.
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
         <input
           type="color" value={color}
           onChange={(e) => setColor(e.target.value)}
           style={{ width: 48, height: 36, border: 'none', cursor: 'pointer' }}
+          disabled={!supported}
         />
         <button
           onClick={applyColor}
+          disabled={!supported}
           style={{
             flex: 1, padding: '8px', background: '#2d8cff', color: '#fff',
-            border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700,
+            border: 'none', borderRadius: 8, cursor: supported ? 'pointer' : 'not-allowed', fontWeight: 700,
+            opacity: supported ? 1 : 0.45,
           }}
         >
           Apply Color
@@ -48,10 +71,12 @@ export function LedControl({ send }: Props) {
         {PRESETS.map((p) => (
           <button
             key={p.effect}
-            onClick={() => send({ cmd: 'led', params: { effect: p.effect } })}
+            onClick={() => supported && send({ cmd: 'led', params: { effect: p.effect } })}
+            disabled={!supported}
             style={{
               flex: 1, padding: '8px', background: '#242b45', color: '#fff',
-              border: '1px solid #343d62', borderRadius: 8, cursor: 'pointer', fontSize: 13,
+              border: '1px solid #343d62', borderRadius: 8, cursor: supported ? 'pointer' : 'not-allowed', fontSize: 13,
+              opacity: supported ? 1 : 0.45,
             }}
           >
             {p.label}

@@ -19,6 +19,8 @@ export interface Telemetry {
   camera_source: string
   ai_state: string
   estop: boolean
+  claw_servos_enabled: boolean
+  led_supported: boolean
 }
 
 export interface WsCommand {
