@@ -1,10 +1,47 @@
 """SocksTank web server configuration."""
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
+
+DEFAULT_DEV_MODEL_PATH = "models/yolo11_best.pt"
+DEFAULT_RPI_MODEL_PATH = "models/yolo11_best_ncnn_model"
+
+
+def _is_raspberry_pi() -> bool:
+    """Best-effort detection of Raspberry Pi hardware."""
+    model_path = Path("/sys/firmware/devicetree/base/model")
+    if not model_path.exists():
+        return False
+    try:
+        return "Raspberry Pi" in model_path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return False
+
+
+def resolve_model_path(
+    explicit_model: str | None = None,
+    configured_model: str | None = None,
+    *,
+    runtime_role: str = "serve",
+    mock: bool = False,
+) -> str:
+    """Resolve the best model path for the current runtime."""
+    if explicit_model:
+        return explicit_model
+    if configured_model:
+        return configured_model
+    if runtime_role == "gpu-server":
+        return DEFAULT_DEV_MODEL_PATH
+    if mock:
+        return DEFAULT_DEV_MODEL_PATH
+    if _is_raspberry_pi():
+        return DEFAULT_RPI_MODEL_PATH
+    return DEFAULT_DEV_MODEL_PATH
 
 
 class Settings(BaseSettings):
-    model_path: str = "models/yolo11_best_ncnn_model"
+    model_path: str | None = None
     confidence: float = 0.5
     resolution_w: int = 640
     resolution_h: int = 480

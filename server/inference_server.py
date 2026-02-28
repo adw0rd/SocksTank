@@ -89,20 +89,21 @@ async def infer(request: Request):
 
 @app_cli.command()
 def main(
-    model: str = typer.Option("models/yolo11_best.pt", help="Путь к модели YOLO"),
+    model: str | None = typer.Option(None, help="Путь к модели YOLO (если не указан — выбирается автоматически)"),
     host: str = typer.Option("0.0.0.0", help="Хост"),
     port: int = typer.Option(8090, help="Порт"),
 ):
     """Запуск inference-сервера."""
     import uvicorn
     from ultralytics import YOLO
+    from server.config import resolve_model_path
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
     global _model, _model_path
-    _model_path = model
-    log.info("Загрузка модели: %s", model)
-    _model = YOLO(model)
+    _model_path = resolve_model_path(model, runtime_role="gpu-server")
+    log.info("Загрузка модели: %s", _model_path)
+    _model = YOLO(_model_path)
     log.info("Модель загружена")
 
     uvicorn.run(api, host=host, port=port)

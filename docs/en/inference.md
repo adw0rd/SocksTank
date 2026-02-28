@@ -41,7 +41,7 @@ sudo -E python main.py detect --model models/yolo11_best_ncnn_model --conf 0.5
 
 | Parameter | Default | Description |
 |---|---|---|
-| `--model` | `models/yolo11_best.pt` | Model path (.pt for GPU, ncnn directory for RPi) |
+| `--model` | auto (`.pt` on dev/GPU, `ncnn` on RPi) | Model path (.pt for GPU, ncnn directory for RPi) |
 | `--output` | `detect.mp4` | Output video file |
 | `--conf` | `0.5` | Confidence threshold (0.0–1.0). Detections below the threshold are ignored |
 | `--frames` | `300` | Maximum number of frames to record |
@@ -97,7 +97,7 @@ Server configuration is saved in `gpu_servers.json` (in `.gitignore`).
 ```bash
 # On the GPU server (blackops)
 cd ~/work/SocksTank
-python main.py serve --model models/yolo11_best.pt --host 0.0.0.0 --port 8090  # .pt for GPU server
+python -m server.inference_server --port 8090  # auto-selects models/yolo11_best.pt on GPU/dev hosts
 ```
 
 ### API

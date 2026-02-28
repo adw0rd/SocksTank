@@ -1,6 +1,6 @@
 # Model Training
 
-Training a YOLOv8 model for sock detection. Training requires a GPU — on CPU it would take too long.
+Training a YOLO model for sock detection. Training requires a GPU — on CPU it would take too long.
 
 ## Where to train
 
@@ -9,6 +9,8 @@ Training a YOLOv8 model for sock detection. Training requires a GPU — on CPU i
 | NVIDIA GPU (RTX 4070 Super) | `--device 0` | ~15 min |
 | Apple Silicon (M3 Pro) | `--device mps` | ~20 min |
 | CPU | `--device cpu` | several hours |
+
+This project uses a dedicated NVIDIA GPU server for training.
 
 ## Setting up the environment
 
@@ -116,39 +118,97 @@ To evaluate inference speed across different formats:
 
 ## Model export
 
-For running on Raspberry Pi you can export the model to **ncnn** format — optimized for ARM processors:
+After training, the `.pt` model should be exported to a deployment format for RPi.
+
+### Recommended format: NCNN
+
+**NCNN** (Tencent) is optimized for ARM processors. On RPi 5 it delivers **16.0 FPS** (pure inference) / **12.8 FPS** (with preprocessing) via pip ncnn + OMP workaround, vs 3.5 FPS for PyTorch.
+
+| Format | RPi 5 FPS | Recommendation |
+|---|---|---|
+| **pip ncnn native (4 OMP)** | **12.8–16.0** | ✅ Production on RPi (`NcnnNativeDetector`) |
+| NCNN (ultralytics) | 11.2 | Alternative (without OMP workaround) |
+| ONNX | 3.0 | Slower, crashes on RPi 4 (legacy) |
+| PyTorch (.pt) | 3.5 | Development and GPU only |
+
+### Pipeline: train → export → deploy
 
 ```bash
-yolo export model=best.pt format=ncnn imgsz=640
+# 1. Train the model (on the GPU server)
+ssh blackops
+cd ~/work/test20250807_yolov8
+python -c "
+from ultralytics import YOLO
+model = YOLO('yolo11n.pt')
+model.train(data='data.yaml', epochs=100, batch=16, device=0)
+"
+# Result: runs/detect/train/weights/best.pt
+
+# 2. Export to NCNN (on dev machine or GPU server)
+python -c "
+from ultralytics import YOLO
+model = YOLO('runs/detect/train/weights/best.pt')
+model.export(format='ncnn')
+"
+# Result: runs/detect/train/weights/best_ncnn_model/
+#   ├── model.ncnn.param   (model graph, ~22 KB)
+#   ├── model.ncnn.bin     (weights, ~10 MB)
+#   └── metadata.yaml      (ultralytics metadata)
+
+# 3. Copy to RPi
+scp -r runs/detect/train/weights/best_ncnn_model rpi5:~/sockstank/models/yolo11_best_ncnn_model
+
+# 4. Run SocksTank on RPi
+ssh rpi5
+cd ~/sockstank
+sudo -E python main.py serve --model models/yolo11_best_ncnn_model --conf 0.5
 ```
 
-Or via Python:
+### Export via CLI
+
+```bash
+# NCNN (recommended for RPi)
+yolo export model=best.pt format=ncnn imgsz=640
+
+# ONNX (generic)
+yolo export model=best.pt format=onnx imgsz=640
+```
+
+### Export via Python
 
 ```python
 from ultralytics import YOLO
 
 model = YOLO("best.pt")
-model.export(format="ncnn")
+
+# NCNN
+model.export(format="ncnn")  # -> best_ncnn_model/
+
+# ONNX
+model.export(format="onnx")  # -> best.onnx
 ```
 
 ### Export arguments
 
 | Argument | Type | Default | Description |
 |---|---|---|---|
-| `format` | str | `torchscript` | Export format: `onnx`, `torchscript`, `engine` (TensorRT), `ncnn`, etc. |
+| `format` | str | `torchscript` | Export format: `ncnn`, `onnx`, `torchscript`, `engine` (TensorRT) |
 | `imgsz` | int/tuple | `640` | Input image size |
-| `half` | bool | `False` | FP16 quantization (reduces size, speeds up inference) |
-| `int8` | bool | `False` | INT8 quantization (maximum compression, for edge devices) |
-| `optimize` | bool | `False` | Mobile optimization (TorchScript). Incompatible with ncnn and CUDA |
-| `dynamic` | bool | `False` | Dynamic input sizes (ONNX, TensorRT, OpenVINO) |
+| `half` | bool | `False` | FP16 quantization |
+| `int8` | bool | `False` | INT8 quantization (for edge devices) |
 | `simplify` | bool | `True` | Simplify model graph (ONNX) |
-| `nms` | bool | `False` | Add NMS to exported model |
-| `batch` | int | `1` | Inference batch size |
-| `device` | str | `None` | Device: `0` (GPU), `cpu`, `mps`, `dla:0` (Jetson) |
-| `data` | str | `coco8.yaml` | Dataset path (for INT8 calibration) |
-| `workspace` | float/None | `None` | Max workspace size (GiB) for TensorRT |
-| `opset` | int | `None` | ONNX opset version |
-| `fraction` | float | `1.0` | Dataset fraction for INT8 calibration |
+| `dynamic` | bool | `False` | Dynamic input sizes (ONNX, TensorRT) |
+| `device` | str | `None` | Device: `0` (GPU), `cpu`, `mps` |
+| `data` | str | `coco8.yaml` | Dataset path for INT8 calibration |
+
+### Current models in the project
+
+| Model | Format | File | Size | Purpose |
+|---|---|---|---|---|
+| YOLOv11n | PyTorch | `models/yolo11_best.pt` | 5.2 MB | GPU, development |
+| YOLOv11n | NCNN | `models/yolo11_best_ncnn_model/` | 10.4 MB | **RPi production** |
+| YOLOv11n | ONNX | `models/yolo11_best.onnx` | 10.1 MB | Generic |
+| YOLOv8n | PyTorch | `models/yolo8_best.pt` | 6.0 MB | Older model |
 
 ---
 

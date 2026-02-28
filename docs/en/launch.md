@@ -91,7 +91,7 @@ Logs: `tail -f /tmp/sockstank.log`
 
 | Parameter | Default | Description |
 |---|---|---|
-| `--model` | `models/yolo11_best.pt` | Model path (see below) |
+| `--model` | auto (`.pt` on dev/GPU, `ncnn` on RPi) | Model path (see below) |
 | `--conf` | `0.5` | Confidence threshold (0.0–1.0) |
 | `--host` | `0.0.0.0` | Bind address |
 | `--port` | `8080` | HTTP/WebSocket port |
@@ -105,7 +105,7 @@ Logs: `tail -f /tmp/sockstank.log`
 > - **GPU server**: `models/yolo11_best.pt` — PyTorch, 314 FPS on CUDA
 > - **macOS / dev**: `models/yolo11_best.pt` — PyTorch (or `--mock` without a model)
 >
-> The default `.pt` is intended for development. On RPi always specify the ncnn model explicitly.
+> If `--model` is omitted, SocksTank chooses automatically: `.pt` on dev/GPU hosts, `models/yolo11_best_ncnn_model` on Raspberry Pi. You can still override it explicitly.
 
 All parameters can be set via environment variables with `SOCKSTANK_` prefix:
 
@@ -133,7 +133,7 @@ Details: [inference.md — Remote Inference](inference.md#remote-inference-gpu-s
 
 ```bash
 # On GPU server (blackops)
-python -m server.inference_server --model models/yolo11_best.pt --port 8090  # .pt for GPU server
+python -m server.inference_server --port 8090  # auto-selects models/yolo11_best.pt on GPU/dev hosts
 ```
 
 In web panel: **Inference → + Add GPU Server** → enter host, port, SSH key → **Save**.

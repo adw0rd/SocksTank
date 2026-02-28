@@ -91,7 +91,7 @@ sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 
 
 | Параметр | По умолчанию | Описание |
 |---|---|---|
-| `--model` | `models/yolo11_best.pt` | Путь к модели (см. ниже) |
+| `--model` | auto (`.pt` на dev/GPU, `ncnn` на RPi) | Путь к модели (см. ниже) |
 | `--conf` | `0.5` | Порог уверенности (0.0–1.0) |
 | `--host` | `0.0.0.0` | Адрес привязки |
 | `--port` | `8080` | HTTP/WebSocket порт |
@@ -105,7 +105,7 @@ sudo -E nohup python main.py serve --model models/yolo11_best_ncnn_model --conf 
 > - **GPU-сервер**: `models/yolo11_best.pt` — PyTorch, 314 FPS на CUDA
 > - **macOS / dev**: `models/yolo11_best.pt` — PyTorch (или `--mock` без модели)
 >
-> Дефолт `.pt` рассчитан на разработку. На RPi всегда указывайте ncnn-модель явно.
+> Если `--model` не указан, SocksTank выбирает автоматически: `.pt` на dev/GPU-хостах и `models/yolo11_best_ncnn_model` на Raspberry Pi. Явный путь по-прежнему имеет приоритет.
 
 Все параметры можно задать через переменные окружения с префиксом `SOCKSTANK_`:
 
@@ -133,7 +133,7 @@ rsync -avz frontend/dist/ rpi5:~/sockstank/frontend/dist/
 
 ```bash
 # На GPU-сервере (blackops)
-python -m server.inference_server --model models/yolo11_best.pt --port 8090  # .pt для GPU-сервера
+python -m server.inference_server --port 8090  # автоматически выберет models/yolo11_best.pt на GPU/dev-хостах
 ```
 
 В веб-панели: **Inference → + Add GPU Server** → ввести хост, порт, SSH-ключ → **Save**.

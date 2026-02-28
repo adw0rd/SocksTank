@@ -130,12 +130,7 @@ class GPUServerManager:
             time.sleep(0.5)
 
             # Запустить inference_server
-            cmd = (
-                f"cd ~/sockstank && "
-                f"nohup python -m server.inference_server "
-                f"--model models/yolo11_best.pt --port {server.port} "
-                f"> /tmp/inference.log 2>&1 &"
-            )
+            cmd = f"cd ~/sockstank && " f"nohup python -m server.inference_server " f"--port {server.port} " f"> /tmp/inference.log 2>&1 &"
             stdin, stdout, stderr = ssh.exec_command(cmd)
             stdout.channel.recv_exit_status()
             ssh.close()
