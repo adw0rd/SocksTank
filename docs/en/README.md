@@ -88,6 +88,7 @@ sudo pip install fastapi uvicorn pydantic-settings websockets typer --break-syst
 
 | Section | Description |
 |---|---|
+| [Running the project](launch.md) | Build frontend, run backend, deploy to RPi |
 | [RPi 5 setup](rpi5.md) | OS installation, power, cooling, benchmarks |
 | [RPi 4 setup (legacy)](rpi4.md) | OS installation, dependencies, camera, autostart |
 | [Dataset preparation](dataset.md) | Photo capture, Roboflow, annotation, augmentation |

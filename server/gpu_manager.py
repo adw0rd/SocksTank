@@ -126,13 +126,13 @@ class GPUServerManager:
         try:
             ssh = self._ssh_connect(server)
             # Убить старый процесс, если есть
-            ssh.exec_command("pkill -f 'inference_server.py' 2>/dev/null || true")
+            ssh.exec_command("pkill -f 'server.inference_server' 2>/dev/null || true")
             time.sleep(0.5)
 
             # Запустить inference_server
             cmd = (
                 f"cd ~/sockstank && "
-                f"nohup python inference_server.py "
+                f"nohup python -m server.inference_server "
                 f"--model models/yolo11_best.pt --port {server.port} "
                 f"> /tmp/inference.log 2>&1 &"
             )
@@ -174,7 +174,7 @@ class GPUServerManager:
 
         try:
             ssh = self._ssh_connect(server)
-            ssh.exec_command("pkill -f 'inference_server.py' 2>/dev/null || true")
+            ssh.exec_command("pkill -f 'server.inference_server' 2>/dev/null || true")
             ssh.close()
             with self._lock:
                 server.status = "offline"
