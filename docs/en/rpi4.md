@@ -1,6 +1,8 @@
 # Raspberry Pi 4 Setup (legacy)
 
-> **Note:** This documentation is for RPi 4B (legacy). The primary platform is **RPi 5** — see [rpi5.md](rpi5.md).
+> **Note:** RPi 4B is a legacy platform. The primary platform is **RPi 5** — see [rpi5.md](rpi5.md).
+>
+> Reason for migration: RPi 4 is too slow for real-time detection. YOLO inference on RPi 4: **2.4 FPS** (NCNN, 1 thread) vs **12.8 FPS** on RPi 5 (NCNN, 4 OMP threads) — a **5x** difference. PyTorch is even worse: 1.1 FPS. The sock-finding task requires at least 10 FPS, which RPi 4 cannot deliver.
 
 Guide for preparing a Raspberry Pi 4B to run the SocksTank robot.
 
@@ -229,8 +231,7 @@ For remote desktop access to the RPi:
    sudo raspi-config
    # Interface Options → VNC → Enable
    ```
-2. RPi 5 uses **WayVNC** (Wayland). RPi 4B uses **RealVNC**
-3. Connect from your computer using [RealVNC Viewer](https://www.realvnc.com/en/connect/download/viewer/)
+2. Connect from your computer using [RealVNC Viewer](https://www.realvnc.com/en/connect/download/viewer/)
 
 ---
 

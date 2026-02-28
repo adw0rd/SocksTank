@@ -10,13 +10,12 @@ Guide for preparing RPi 5 for the SocksTank robot.
 | SoC | BCM2712 (Cortex-A76) |
 | CPU | 4 cores, 1.5-2.4 GHz |
 | RAM | 8 GB |
-| OS | Raspbian GNU/Linux 12 (bookworm) |
-| Kernel | 6.12.25+rpt-rpi-v8 aarch64 |
-| Python | 3.11.2 (**32-bit armhf**, kernel is 64-bit) |
-| Disk | microSD 119.1 GB (15 GB partition) |
+| OS | Debian GNU/Linux 13 (trixie) **64-bit** |
+| Kernel | 6.12.62+rpt-rpi-2712 aarch64 |
+| Python | 3.13.5 (aarch64 **64-bit**) |
+| Disk | microSD 117 GB |
 | Revision | d04170 |
-| Serial | 9aad3f08b599e338 |
-| IP | 192.168.0.158 (static) |
+| IP | 192.168.0.158 (DHCP, hostname rpi5) |
 
 ## Differences from RPi 4 (legacy)
 
@@ -24,32 +23,25 @@ Guide for preparing RPi 5 for the SocksTank robot.
 |---|---|---|
 | CPU | Cortex-A72 1.8 GHz | Cortex-A76 2.4 GHz |
 | RAM | 3.3 GB | 8 GB |
-| OS | Debian 64-bit | Raspbian 32-bit* |
-| Python | 64-bit (aarch64) | 32-bit (armhf) |
-| PyTorch | ✅ (pip install) | ❌ (no wheel for armv7l) |
-| onnxruntime | ✅ (pip install) | ❌ (no wheel for armv7l) |
-| ncnn | ✅ | ✅ |
+| OS | Debian 12 bookworm 64-bit | Debian 13 trixie 64-bit |
+| Python | 3.11.2 (aarch64) | 3.13.5 (aarch64) |
+| PyTorch | ✅ 2.8.0+cpu | ✅ 2.10.0+cpu |
+| onnxruntime | ✅ 1.24.2 | ✅ 1.24.2 |
+| ncnn | ✅ | ✅ 1.0.20260114 |
 | Power | 5V/3A (USB-C) | **5V/5A** (USB PD) |
 | pigpiod | Required | Not required |
 | Camera | cam0 (15-pin CSI) | cam0 or cam1 (22-pin FPC) |
 | Disk (write) | 60.7 MB/s (USB SanDisk) | 64.3 MB/s (microSD) |
 | Disk (read) | 151 MB/s (USB SanDisk) | 90.6 MB/s (microSD) |
+| YOLO FPS (NCNN) | 2.4 FPS (1 thread) | **12.8 FPS** (4 OMP threads) |
 
-> *Recommended: reinstall 64-bit Raspberry Pi OS for full PyTorch/onnxruntime compatibility.
+## Power
 
-## Power Issue
+RPi 5 draws significantly more power than RPi 4. The Freenove Tank Board DC/DC converter is insufficient.
 
-RPi 5 draws significantly more power than RPi 4. The Freenove Tank Board DC/DC converter is rated for RPi 3/4 (~2-3A max).
+Solution: **XL6019E1** buck-boost converter (2x18650 → 5.2V → GPIO) + capacitors + [gradual startup](rpi5-power.md#gradual-startup-cpu-warmup).
 
-Detailed measurements: [../rpi5-power.md](../rpi5-power.md)
-
-### Solution: LM2596 DC-DC Buck Converter
-
-```
-Batteries (2x18650, 7.4V) → LM2596 → 5.1V/3A → RPi 5 GPIO (5V + GND)
-```
-
-Set output to **5.1V**. Verify: `vcgencmd pmic_read_adc | grep EXT5V` → >5.0V.
+Detailed measurements, converter comparison, wiring and recommendations: **[rpi5-power.md](rpi5-power.md)**
 
 ## config.txt
 
@@ -64,21 +56,70 @@ psu_max_current=5000
 
 Full config: [../rpi5-config.txt](../rpi5-config.txt)
 
+## Cooling
+
+Recommended: **RPi 5 Active Cooler** — aluminum heatsink with PWM fan, connects to the FAN header on RPi 5 board. Fan speed is controlled automatically based on temperature.
+
+Temperature under load (YOLO inference, 4 cores): 38→47°C (XL6019E1), 37→60°C (LM2596). Throttled=0x0.
+
+The original has a Raspberry Pi logo, clones are functionally identical.
+
+![Active Cooler installed on RPi 5](../../assets/cooler-installed.jpg)
+
+![Original Active Cooler (Raspberry Pi logo)](../../assets/cooler-original.jpg)
+
+![Active Cooler clone with thermal pads](../../assets/cooler-clone.jpg)
+
+Where to buy:
+- AliExpress: [example](https://ali.click/b7k211d). Search: «Raspberry Pi 5 active cooler» or «RPi 5 heatsink fan PWM»
+- Ozon (Russia): [original](https://ozon.ru/t/6dwBhuE), [cooler](https://ozon.ru/t/hoNZF6l), [clone 1](https://ozon.ru/t/hoNZFqO), [clone 2](https://ozon.ru/t/6dwBNmn)
+
+## Network
+
+Uses **DHCP** (ipv4.method: auto) + hostname `rpi5`. Static IP is not needed — access via hostname through mDNS (avahi):
+
+```bash
+ssh rpi5            # instead of ssh 192.168.0.xxx
+http://rpi5:8080    # web panel
+```
+
+If mDNS doesn't work (Windows without Bonjour, or a different network), you can set a static IP:
+
+```bash
+sudo nmcli con modify "netplan-wlan0-YOUR_SSID" ipv4.addresses 192.168.0.158/24
+sudo nmcli con modify "netplan-wlan0-YOUR_SSID" ipv4.gateway 192.168.0.1
+sudo nmcli con modify "netplan-wlan0-YOUR_SSID" ipv4.dns "8.8.8.8"
+sudo nmcli con modify "netplan-wlan0-YOUR_SSID" ipv4.method manual
+sudo nmcli con up "netplan-wlan0-YOUR_SSID"
+```
+
 ## Installed Packages
 
 ```
-Python 3.11.2 (armhf 32-bit)
-numpy 1.26.4, cv2 4.6.0, ncnn 1.0.20260114
-ultralytics 8.4.16 (--no-deps, cannot import without torch)
-matplotlib 3.10.8, pandas 3.0.1, scipy 1.17.1, Pillow 9.4.0
+Python 3.13.5 (aarch64 64-bit)
+torch 2.10.0+cpu
+torchvision 0.25.0
+ultralytics 8.4.16
+cv2 4.13.0 (opencv-python-headless)
+numpy 2.4.2
+ncnn 1.0.20260114
+onnxruntime 1.24.2
+matplotlib 3.10.8
+scipy 1.17.1
+polars 1.38.1
 ```
 
-**Not available** (no armv7l wheels): torch, torchvision, onnxruntime
+## Benchmarks
 
-## TODO
+Key numbers (YOLOv11n, pip ncnn native + OMP workaround):
 
-- [ ] Reinstall 64-bit Raspberry Pi OS
-- [ ] Install LM2596 DC-DC converter for stable power
-- [ ] Benchmark YOLO inference (NCNN, PyTorch, ONNX)
-- [ ] Connect camera (22→15 pin cable ordered)
-- [ ] Test SocksTank serve
+| Configuration | FPS | vs RPi 4 |
+|---|---|---|
+| 4 OMP threads (pure inference) | **16.0** | 14.5x |
+| 4 OMP threads (with preproc) | **12.8** | 11.6x |
+| XL6019E1, 4 cores (battery) | **11.2** | 10.2x |
+| LM2596, 2 cores (battery) | **11.1** | 10.1x |
+
+Disk: write 73.5 MB/s, read 94.5 MB/s (microSD).
+
+Detailed measurements for all formats, power sources, INT8 and temperatures: **[benchmarks.md](benchmarks.md)**, **[disk-benchmarks.md](disk-benchmarks.md)**

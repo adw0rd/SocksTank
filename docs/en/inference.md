@@ -57,6 +57,62 @@ If the model was exported to ncnn (see [training](training.md#model-export)):
 sudo ./main.py detect --model best_ncnn_model --conf 0.5
 ```
 
+## Remote Inference (GPU Server)
+
+Inference can be offloaded to a remote GPU server (e.g., blackops with RTX 4070 SUPER — 314.8 FPS vs 12.8 FPS on RPi 5). The robot sends frames over HTTP, the server returns detections.
+
+### Inference Modes
+
+In the web panel (`http://rpi5:8080`) under the **Inference** section there are three buttons:
+
+| Mode | Description |
+|---|---|
+| **auto** | Use GPU server if online, otherwise fallback to local |
+| **local** | Always use local inference (NCNN on RPi) |
+| **remote** | Always use remote inference (error if server is unavailable) |
+
+### Adding a GPU Server via UI
+
+1. Open web panel → **Inference** section in the right column
+2. Click **+ Add GPU Server**
+3. Fill in the form:
+   - **Host** — IP or hostname of the GPU server (e.g. `192.168.0.188`)
+   - **Port** — inference server port (default `8090`)
+   - **Username** — SSH user
+   - **Auth** — `SSH Key` (path to key, default `~/.ssh/id_rsa`) or `Password`
+4. Click **Test** to verify connection (shows GPU and model info)
+5. Click **Save** to save
+
+The server appears in the list with a status indicator:
+- green — online
+- orange — starting
+- grey — offline
+
+**Start** / **Stop** buttons launch and stop the inference server on the GPU host via SSH. The **×** button removes the server from the list.
+
+Server configuration is saved in `gpu_servers.json` (in `.gitignore`).
+
+### Running via CLI
+
+```bash
+# On the GPU server (blackops)
+cd ~/work/SocksTank
+python main.py serve --model models/yolo11_best.pt --host 0.0.0.0 --port 8090
+```
+
+### API
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/inference` | Inference status (mode, backend, ms) |
+| PUT | `/api/inference/mode` | Switch mode (`auto`/`local`/`remote`) |
+| GET | `/api/gpu/servers` | List GPU servers |
+| POST | `/api/gpu/servers` | Add GPU server |
+| DELETE | `/api/gpu/servers/{host}` | Remove GPU server |
+| POST | `/api/gpu/servers/{host}/test` | Test connection |
+| POST | `/api/gpu/servers/{host}/start` | Start inference server |
+| POST | `/api/gpu/servers/{host}/stop` | Stop inference server |
+
 ## How detection works
 
 1. The ov5647 camera captures frames via **picamera2**

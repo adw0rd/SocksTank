@@ -57,6 +57,62 @@ sudo -E python main.py detect --model models/yolo8_best.pt --conf 0.5
 sudo ./main.py detect --model best_ncnn_model --conf 0.5
 ```
 
+## Удалённый инференс (GPU-сервер)
+
+Инференс можно перенести на удалённый GPU-сервер (например, blackops с RTX 4070 SUPER — 314.8 FPS vs 12.8 FPS на RPi 5). Робот отправляет кадры по HTTP, сервер возвращает детекции.
+
+### Режимы инференса
+
+В веб-панели (`http://rpi5:8080`) в секции **Inference** есть три кнопки:
+
+| Режим | Описание |
+|---|---|
+| **auto** | Если GPU-сервер онлайн — используется он, иначе fallback на локальный |
+| **local** | Всегда локальный инференс (NCNN на RPi) |
+| **remote** | Всегда удалённый инференс (ошибка если сервер недоступен) |
+
+### Добавление GPU-сервера через UI
+
+1. Открыть веб-панель → секция **Inference** в правой колонке
+2. Нажать **+ Add GPU Server**
+3. Заполнить форму:
+   - **Host** — IP или hostname GPU-сервера (например `192.168.0.188`)
+   - **Port** — порт inference-сервера (по умолчанию `8090`)
+   - **Username** — SSH-пользователь
+   - **Auth** — `SSH Key` (путь к ключу, по умолчанию `~/.ssh/id_rsa`) или `Password`
+4. Нажать **Test** для проверки подключения (покажет GPU и модель)
+5. Нажать **Save** для сохранения
+
+Сервер появится в списке с индикатором статуса:
+- зелёный — online
+- оранжевый — starting
+- серый — offline
+
+Кнопки **Start** / **Stop** запускают и останавливают inference-сервер на GPU-хосте через SSH. Кнопка **×** удаляет сервер из списка.
+
+Конфигурация серверов сохраняется в `gpu_servers.json` (в `.gitignore`).
+
+### Запуск через CLI
+
+```bash
+# На GPU-сервере (blackops)
+cd ~/work/SocksTank
+python main.py serve --model models/yolo11_best.pt --host 0.0.0.0 --port 8090
+```
+
+### API
+
+| Метод | Эндпоинт | Описание |
+|---|---|---|
+| GET | `/api/inference` | Статус инференса (режим, backend, ms) |
+| PUT | `/api/inference/mode` | Переключить режим (`auto`/`local`/`remote`) |
+| GET | `/api/gpu/servers` | Список GPU-серверов |
+| POST | `/api/gpu/servers` | Добавить GPU-сервер |
+| DELETE | `/api/gpu/servers/{host}` | Удалить GPU-сервер |
+| POST | `/api/gpu/servers/{host}/test` | Проверить подключение |
+| POST | `/api/gpu/servers/{host}/start` | Запустить inference-сервер |
+| POST | `/api/gpu/servers/{host}/stop` | Остановить inference-сервер |
+
 ## Как работает детекция
 
 1. Камера ov5647 захватывает кадры через **picamera2**

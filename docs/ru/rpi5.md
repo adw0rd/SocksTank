@@ -31,70 +31,34 @@
 | Питание | 5V/3A (USB-C) | **5V/5A** (USB PD) |
 | pigpiod | Требуется | Не требуется |
 | Камера | cam0 (15-pin CSI) | cam0 или cam1 (22-pin FPC) |
+| YOLO FPS (NCNN) | 2.4 FPS (1 поток) | **12.8 FPS** (4 OMP потока) |
 
 ## Питание
 
-**Критическая проблема**: RPi 5 потребляет значительно больше энергии, чем RPi 4.
+RPi 5 потребляет значительно больше энергии, чем RPi 4. Freenove Tank Board DC/DC не справляется.
 
-Подробная документация: [../rpi5-power.md](../rpi5-power.md)
+Решение: **XL6019E1** buck-boost конвертер (2x18650 → 5.2V → GPIO) + конденсаторы + [плавный старт](rpi5-power.md#плавный-старт-cpu-warmup).
 
-### Потребление (замеры PMIC)
+Подробные замеры, сравнение конвертеров, схема подключения и рекомендации: **[rpi5-power.md](rpi5-power.md)**
 
-| Режим | Питание | VDD_CORE (A) | EXT5V_V (V) |
-|---|---|---|---|
-| Idle | Литий (2x18650) | 1.63 | 4.86 |
-| Компиляция | Литий (2x18650) | 2.61 | 4.73 |
-| 4 ядра YOLO | Литий (2x18650) | ~3-4 | ~4.5-4.7 |
-| Idle | Лаб. БП 5.1V | 1.46 | 5.08 |
-| 4 ядра YOLO | Лаб. БП 5.1V | 1.75-2.0 | 5.06-5.08 |
-| Idle | LM2596 (2x18650→5.1V) | 1.38 | 5.10 |
-| 1 ядро YOLO | LM2596 (2x18650→5.1V) | 1.47-1.53 | 5.08-5.10 |
-| 4 ядра YOLO | LM2596 (2x18650→5.1V) | — | ❌ крэш |
-| Idle | XL6019E1 (2x18650→5.2V) | 1.41 | 5.23 |
-| 4 ядра YOLO | XL6019E1 (2x18650→5.2V) | 1.48-1.58 | 5.22-5.23 |
+## Охлаждение
 
-### Источники питания (результаты тестов)
+Рекомендуется **RPi 5 Active Cooler** — алюминиевый радиатор с PWM-вентилятором, подключается к разъёму FAN на плате RPi 5. Скорость вентилятора управляется автоматически по температуре.
 
-| Источник | EXT5V_V | Результат |
-|---|---|---|
-| Freenove Tank Board (2x18650 DC/DC) | ~4.8-4.9V | ❌ Undervoltage, крэши при 2+ ядрах |
-| USB-C зарядка 3A | ~4.8V | ❌ Undervoltage |
-| Xiaomi 120W USB-C | 4.73-4.86V | ❌ Undervoltage (нет PD) |
-| LM2596 (2x18650→5.1V, GPIO) | 5.08-5.10V | ✅ Стабильно на 1-2 ядрах, крэш на 3+ |
-| **XL6019E1** (2x18650→5.2V, GPIO) | 5.22-5.23V | ✅ Стабильно на 4 ядрах (плавный старт) |
-| Лабораторный БП 5.1V/5A (GPIO) | 5.06-5.08V | ✅ Стабильно, throttled=0x0 |
-| Официальный RPi 5 PSU (27W) | 5.0-5.1V | ✅ Рекомендуется |
+Температура при нагрузке (YOLO инференс 4 ядра): 38→47°C (XL6019E1), 37→60°C (LM2596). Throttled=0x0.
 
-### Решение: XL6019E1 DC-DC Buck-Boost Converter ✅
+У оригинала есть логотип Raspberry Pi, копии функционально идентичны.
 
-```
-Батареи (2x18650, 7.4V) → XL6019E1 → 5.2V → RPi 5 GPIO (Pin 2 = 5V, Pin 6 = GND)
-```
+![Active Cooler установлен на RPi 5](../../assets/cooler-installed.jpg)
 
-Настроить выход на **5.2V** (потенциометр, проверить мультиметром перед подключением).
+![Оригинальный Active Cooler (логотип Raspberry Pi)](../../assets/cooler-original.jpg)
 
-![XL6019E1 с конденсаторами — крупный план](../../assets/xl6019e1-capacitors-closeup.jpeg)
+![Клон Active Cooler с термопрокладками](../../assets/cooler-clone.jpg)
 
-![XL6019E1 + RPi 5 — вид сбоку](../../assets/xl6019e1-rpi5-side-view.jpeg)
-
-#### Сравнение конвертеров
-
-| Конвертер | Тип | Rated | Выход | 1 ядро | 2 ядра | 3 ядра | 4 ядра |
-|---|---|---|---|---|---|---|---|
-| LM2596 | buck | 3A | 5.1V | ✅ 7.7 FPS | ✅ 11.1 FPS | ❌ крэш | ❌ крэш |
-| **XL6019E1** | buck-boost | **5A** | 5.2V | ✅ | ✅ | ✅ 11.1 FPS | ✅ **11.2 FPS** |
-
-#### Результаты с XL6019E1
-
-| Режим | EXT5V_V | VDD_CORE_A | Throttled | Результат |
-|---|---|---|---|---|
-| Idle | 5.23V | 1.41A | 0x0 | ✅ |
-| NCNN 4 ядра (100 итераций) | 5.22-5.23V | 1.48-1.58A | 0x0 | ✅ **11.2 FPS** |
-
-Проверка: `vcgencmd pmic_read_adc | grep EXT5V` → >5.0V.
-
-> ⚠️ Требуется **плавный старт**: загрузка модели на 1 ядре → постепенный переход на 4.
-> Прямой запуск на 4 ядрах вызывает крэш из-за пикового броска тока.
+Где купить:
+- Ozon (оригинал): [кейс + кулер](https://ozon.ru/t/6dwBhuE), [кулер](https://ozon.ru/t/hoNZF6l)
+- Ozon (копии): [вариант 1](https://ozon.ru/t/hoNZFqO), [вариант 2](https://ozon.ru/t/6dwBNmn)
+- AliExpress: [пример](https://ali.click/b7k211d). Искать: «Raspberry Pi 5 active cooler» или «RPi 5 heatsink fan PWM»
 
 ## Установка ОС
 
@@ -103,6 +67,25 @@
 - Hostname: rpi5
 - Username: zeus
 - Wi-Fi + SSH: включить
+
+## Сеть
+
+Используется **DHCP** (ipv4.method: auto) + hostname `rpi5`. Статический IP не нужен — доступ по hostname через mDNS (avahi):
+
+```bash
+ssh rpi5            # вместо ssh 192.168.0.xxx
+http://rpi5:8080    # веб-панель
+```
+
+Если mDNS не работает (Windows без Bonjour, или другая сеть), можно настроить статический IP:
+
+```bash
+sudo nmcli con modify "netplan-wlan0-YOUR_SSID" ipv4.addresses 192.168.0.158/24
+sudo nmcli con modify "netplan-wlan0-YOUR_SSID" ipv4.gateway 192.168.0.1
+sudo nmcli con modify "netplan-wlan0-YOUR_SSID" ipv4.dns "8.8.8.8"
+sudo nmcli con modify "netplan-wlan0-YOUR_SSID" ipv4.method manual
+sudo nmcli con up "netplan-wlan0-YOUR_SSID"
+```
 
 ## Установленные пакеты
 
@@ -141,78 +124,19 @@ psu_max_current=5000
 ### Отличие от RPi 4 (legacy)
 
 - **pigpiod** не нужен на RPi 5 (используется встроенный GPIO)
-- **Камера**: на RPi 5 разъёмы cam0/cam1 с 22-pin FPC (не 15-pin CSI как на RPi 4). Необходим переходник или кабель 22→15 pin.
+- **Камера**: на RPi 5 разъёмы cam0/cam1 с 22-pin FPC (не 15-pin CSI как на RPi 4). Необходим [кабель 22→15 pin](https://ozon.ru/t/lwESi2D) или [переходник 22-to-15](https://ozon.ru/t/EAxTi6d). На AliExpress искать: «Raspberry Pi 5 camera cable 22pin to 15pin» или «RPi 5 CSI FPC adapter 22 15».
 
 ## Бенчмарки
 
-### Диск (microSD 117 GB)
+Ключевые цифры (YOLOv11n, pip ncnn native + OMP workaround):
 
-| Операция | Скорость |
-|---|---|
-| Запись | **73.5 MB/s** |
-| Чтение | **94.5 MB/s** |
+| Конфигурация | FPS | vs RPi 4 |
+|---|---|---|
+| 4 OMP потока (чистый инференс) | **16.0** | 14.5x |
+| 4 OMP потока (с preproc) | **12.8** | 11.6x |
+| XL6019E1, 4 ядра (автономное) | **11.2** | 10.2x |
+| LM2596, 2 ядра (автономное) | **11.1** | 10.1x |
 
-### Инференс YOLO (64-bit ОС, active cooler)
+Диск: запись 73.5 MB/s, чтение 94.5 MB/s (microSD).
 
-#### pip ncnn native + OMP workaround (лаб. БП 5.1V)
-
-| Формат | OMP потоки | Mean (ms) | Инференс (ms) | FPS | vs RPi 4 |
-|---|---|---|---|---|---|
-| **pip ncnn (чистый)** | **4** | **62** | 62 | **16.0** | **14.5x** |
-| pip ncnn (с preproc) | 4 | 78 | 64 | **12.8** | **11.6x** |
-| pip ncnn (с preproc) | 2 | 92 | 77 | **10.9** | **9.9x** |
-| pip ncnn (с preproc) | 1 | 133 | 119 | **7.5** | **6.8x** |
-
-> **OMP workaround**: `ncnn.set_omp_num_threads(N)` перед каждым инференсом обходит баг.
-> `get_omp_num_threads()` возвращает 1 (баг), но `set` работает. Реализовано в `NcnnNativeDetector`.
-
-#### XL6019E1 (2x18650, автономное питание)
-
-| Формат | Ядра | Mean (ms) | Min (ms) | Max (ms) | FPS | vs RPi 4 |
-|---|---|---|---|---|---|---|
-| NCNN ultralytics | 4 (плавный старт) | 89 | 87 | 97 | **11.2** | **10.2x** |
-| NCNN ultralytics | 3 (taskset) | 90 | 87 | 99 | **11.1** | **10.1x** |
-| NCNN INT8 (Python, 1 поток) | 1 | 117.5 | 117.2 | 118.0 | **8.5** | **7.7x** |
-
-Температура: 38→47°C. Throttled=0x0, EXT5V=5.22-5.23V.
-
-#### LM2596 (2x18650, автономное питание)
-
-| Формат | Ядра | Mean (ms) | Min (ms) | Max (ms) | FPS | vs RPi 4 |
-|---|---|---|---|---|---|---|
-| NCNN | 2 (taskset) | 90 | 86 | 106 | **11.1** | **10.1x** |
-| NCNN | 1 (taskset) | 130 | 128 | 134 | **7.7** | **7.0x** |
-| NCNN | 3+ | — | — | — | **крэш** | — |
-
-Температура: 1 ядро 37→44°C, 2 ядра 53→60°C. Throttled=0x0, EXT5V=5.06-5.10V.
-
-#### Лаб. БП 5.1V (для сравнения)
-
-| Формат | Потоки | Mean (ms) | Min (ms) | Max (ms) | FPS | vs RPi 4 |
-|---|---|---|---|---|---|---|
-| NCNN (native) | 1 | 161 | 149 | 178 | **6.2** | **5.6x** |
-| PyTorch | 4 | 288 | 285 | 298 | **3.5** | **3.2x** |
-| ONNX | auto | 331 | 276 | 426 | **3.0** | **2.7x** |
-
-> Замеры без OMP workaround. С `ncnn.set_omp_num_threads(N)` — см. секцию "pip ncnn native" выше.
-
-Температура: 68→75°C (active cooler), throttled=0x0.
-
-### Старые замеры (32-bit ОС, литий)
-
-| Формат | Ядра | Mean (ms) | FPS | vs RPi 4 |
-|---|---|---|---|---|
-| NCNN | 1 (taskset) | 323 | **3.1** | 1.3x |
-| NCNN | 2+ | — | **крэш** | undervoltage |
-
-## TODO
-
-- [x] Переустановить 64-bit Raspberry Pi OS (Debian 13 trixie)
-- [x] Установить torch, ultralytics, ncnn, onnxruntime
-- [x] Замерить YOLO инференс на 4 ядрах (PyTorch 3.5 FPS, NCNN 14.6 FPS, ONNX 6.8 FPS)
-- [x] Установить DC-DC конвертер (XL6019E1, 5.2V, 4 ядра стабильно, 11.2 FPS)
-- [x] Замерить диск (microSD: запись 73.5 MB/s, чтение 94.5 MB/s)
-- [x] Настроить config.txt (PWM, камера, питание, gpu_mem, disable-bt)
-- [ ] Подключить камеру (кабель 22→15 pin заказан)
-- [x] Установить SocksTank зависимости (fastapi, uvicorn, pydantic-settings)
-- [x] Протестировать SocksTank serve --mock (3.4 FPS)
+Подробные замеры по всем форматам, источникам питания, INT8 и температурам: **[benchmarks.md](benchmarks.md)**, **[disk-benchmarks.md](disk-benchmarks.md)**

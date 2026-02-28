@@ -1,6 +1,8 @@
 # Настройка Raspberry Pi 4 (legacy)
 
-> **Примечание:** Эта документация для RPi 4B (legacy). Основной платформой является **RPi 5** — см. [rpi5.md](rpi5.md).
+> **Примечание:** RPi 4B — legacy-платформа. Основной платформой является **RPi 5** — см. [rpi5.md](rpi5.md).
+>
+> Причина перехода: RPi 4 слишком медленный для real-time детекции. YOLO инференс на RPi 4: **2.4 FPS** (NCNN, 1 поток) vs **12.8 FPS** на RPi 5 (NCNN, 4 OMP потока) — разница в **5x**. PyTorch ещё хуже: 1.1 FPS. Для задачи поиска носков нужно минимум 10 FPS, RPi 4 это не обеспечивает.
 
 Руководство по подготовке Raspberry Pi 4B для работы робота-танка SocksTank.
 
@@ -229,8 +231,7 @@ pip install --upgrade picamera2 simplejpeg --break-system-packages
    sudo raspi-config
    # Interface Options → VNC → Enable
    ```
-2. На RPi 5 используется **WayVNC** (Wayland). На RPi 4B — **RealVNC**
-3. Подключиться с компьютера через [RealVNC Viewer](https://www.realvnc.com/en/connect/download/viewer/)
+2. Подключиться с компьютера через [RealVNC Viewer](https://www.realvnc.com/en/connect/download/viewer/)
 
 ---
 
