@@ -10,9 +10,13 @@ How to build the frontend, run the backend, and deploy SocksTank on the robot.
 cd ~/work/SocksTank
 
 # Python (via uv, recommended)
-uv venv && uv pip install -e .
+uv venv
+source .venv/bin/activate
+uv pip install -e .
 
 # Or via pip
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -e .
 ```
 
@@ -50,23 +54,54 @@ Frontend: **http://localhost:5173** (with hot-reload, proxies API to port 8080).
 
 ## Deploying to Raspberry Pi
 
-### 1. Copy the project
+### Recommended: `main.py deploy`
+
+The easiest deployment flow is the built-in deploy command:
+
+```bash
+./main.py deploy rpi5
+
+# Equivalent explicit form
+./main.py deploy --host rpi5
+```
+
+What it does:
+- builds the frontend locally (unless `--skip-build`)
+- syncs the project to `~/sockstank` via `rsync`
+- installs runtime dependencies on RPi (`uv` if available, otherwise `pip`)
+- restarts `sockstank.service` if present, otherwise falls back to `nohup python3 main.py serve ...`
+- waits for `/api/status` health check on port `8080`
+
+Useful flags:
+- `--skip-build`
+- `--skip-install`
+- `--skip-restart`
+- `--dry-run`
+
+### Manual deployment (fallback)
+
+#### 1. Copy the project
 
 ```bash
 rsync -avz --exclude .venv --exclude frontend/node_modules --exclude __pycache__ --exclude .git \
   ~/work/SocksTank/ rpi5:~/sockstank/
 ```
 
-### 2. Install dependencies on RPi
+#### 2. Install dependencies on RPi
 
 ```bash
 ssh rpi5
-sudo pip install fastapi uvicorn pydantic-settings websockets typer httpx paramiko --break-system-packages
+
+# Preferred (if uv is installed)
+uv pip install --system "typer>=0.9" ultralytics opencv-python-headless numpy "fastapi>=0.104" "uvicorn[standard]>=0.24" "pydantic-settings>=2.0" "websockets>=12.0" "httpx>=0.25" "paramiko>=3.0" "pyyaml>=6.0"
+
+# Fallback (no uv)
+python3 -m pip install "typer>=0.9" ultralytics opencv-python-headless numpy "fastapi>=0.104" "uvicorn[standard]>=0.24" "pydantic-settings>=2.0" "websockets>=12.0" "httpx>=0.25" "paramiko>=3.0" "pyyaml>=6.0" --break-system-packages
 ```
 
 `picamera2` is pre-installed in Raspberry Pi OS.
 
-### 3. Run on RPi
+#### 3. Run on RPi
 
 ```bash
 cd ~/sockstank

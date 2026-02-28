@@ -10,9 +10,13 @@
 cd ~/work/SocksTank
 
 # Python (через uv, рекомендуется)
-uv venv && uv pip install -e .
+uv venv
+source .venv/bin/activate
+uv pip install -e .
 
 # Или через pip
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -e .
 ```
 
@@ -50,23 +54,54 @@ cd frontend && npm run dev
 
 ## Деплой на Raspberry Pi
 
-### 1. Копирование проекта
+### Рекомендуемый способ: `main.py deploy`
+
+Самый удобный сценарий деплоя — встроенная команда:
+
+```bash
+./main.py deploy rpi5
+
+# Эквивалентная явная форма
+./main.py deploy --host rpi5
+```
+
+Что она делает:
+- локально собирает фронтенд (если не указан `--skip-build`)
+- синхронизирует проект в `~/sockstank` через `rsync`
+- ставит runtime-зависимости на RPi (`uv`, если доступен, иначе `pip`)
+- перезапускает `sockstank.service`, если unit существует, иначе использует fallback через `nohup python3 main.py serve ...`
+- ждёт health check `/api/status` на порту `8080`
+
+Полезные флаги:
+- `--skip-build`
+- `--skip-install`
+- `--skip-restart`
+- `--dry-run`
+
+### Ручной деплой (fallback)
+
+#### 1. Копирование проекта
 
 ```bash
 rsync -avz --exclude .venv --exclude frontend/node_modules --exclude __pycache__ --exclude .git \
   ~/work/SocksTank/ rpi5:~/sockstank/
 ```
 
-### 2. Установка зависимостей на RPi
+#### 2. Установка зависимостей на RPi
 
 ```bash
 ssh rpi5
-sudo pip install fastapi uvicorn pydantic-settings websockets typer httpx paramiko --break-system-packages
+
+# Предпочтительно (если установлен uv)
+uv pip install --system "typer>=0.9" ultralytics opencv-python-headless numpy "fastapi>=0.104" "uvicorn[standard]>=0.24" "pydantic-settings>=2.0" "websockets>=12.0" "httpx>=0.25" "paramiko>=3.0" "pyyaml>=6.0"
+
+# Fallback (если uv нет)
+python3 -m pip install "typer>=0.9" ultralytics opencv-python-headless numpy "fastapi>=0.104" "uvicorn[standard]>=0.24" "pydantic-settings>=2.0" "websockets>=12.0" "httpx>=0.25" "paramiko>=3.0" "pyyaml>=6.0" --break-system-packages
 ```
 
 `picamera2` уже предустановлен в Raspberry Pi OS.
 
-### 3. Запуск на RPi
+#### 3. Запуск на RPi
 
 ```bash
 cd ~/sockstank
