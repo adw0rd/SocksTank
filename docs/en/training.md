@@ -14,6 +14,8 @@ Training a YOLO model for sock detection. Training requires a GPU — on CPU it 
 
 This project uses a dedicated NVIDIA GPU server for training.
 
+Before using `ssh blackops` in the examples below, make sure this host alias is configured in `~/.ssh/config` (and optionally in `/etc/hosts`). See: [infrastructure.md](infrastructure.md#networking)
+
 ## Setting up the environment
 
 ### GPU server (Ubuntu + NVIDIA)

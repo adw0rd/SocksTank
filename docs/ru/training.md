@@ -14,6 +14,8 @@
 
 В проекте используется отдельный GPU-сервер с NVIDIA.
 
+Перед тем как использовать `ssh blackops` в примерах ниже, убедись, что этот host alias настроен в `~/.ssh/config` (и при необходимости в `/etc/hosts`). См.: [infrastructure.md](infrastructure.md#сетевое-взаимодействие)
+
 ## Подготовка окружения
 
 ### GPU-сервер (Ubuntu + NVIDIA)

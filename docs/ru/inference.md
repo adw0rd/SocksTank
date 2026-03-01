@@ -25,6 +25,8 @@ rsync -avz --exclude .venv --exclude frontend/node_modules --exclude __pycache__
 
 ## Веб-панель управления (рекомендуемый способ)
 
+Перед тем как использовать `ssh rpi5` ниже, убедись, что host alias `rpi5` резолвится на твоей dev-машине. При необходимости настрой `~/.ssh/config` и `/etc/hosts`, как описано в [infrastructure.md](infrastructure.md#сетевое-взаимодействие).
+
 Основной способ работы с роботом — через веб-панель:
 
 ```bash

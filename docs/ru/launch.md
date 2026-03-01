@@ -56,6 +56,28 @@ cd frontend && npm run dev
 
 ## Деплой на Raspberry Pi
 
+Перед тем как использовать `rpi5` как hostname в командах ниже, убедись, что твоя dev-машина его резолвит. Типовой вариант:
+
+```text
+# ~/.ssh/config
+Host rpi5
+    HostName 192.168.0.158
+    User user
+
+Host blackops
+    HostName 192.168.0.124
+    User user
+    IdentityFile ~/.ssh/blackops
+```
+
+```text
+# /etc/hosts (необязательный fallback, если mDNS работает нестабильно)
+192.168.0.158 rpi5
+192.168.0.124 blackops
+```
+
+См. также: [infrastructure.md](infrastructure.md#сетевое-взаимодействие)
+
 ### Рекомендуемый способ: `main.py deploy`
 
 Самый удобный сценарий деплоя — встроенная команда:

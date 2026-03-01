@@ -25,6 +25,8 @@ rsync -avz --exclude .venv --exclude frontend/node_modules --exclude __pycache__
 
 ## Web control panel (recommended)
 
+Before using `ssh rpi5` below, make sure the `rpi5` host alias resolves on your development machine. If needed, configure `~/.ssh/config` and `/etc/hosts` as described in [infrastructure.md](infrastructure.md#networking).
+
 The main way to interact with the robot is through the web panel:
 
 ```bash

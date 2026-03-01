@@ -56,6 +56,28 @@ Frontend: **http://localhost:5173** (with hot-reload, proxies API to port 8080).
 
 ## Deploying to Raspberry Pi
 
+Before using `rpi5` as a hostname in the commands below, make sure your development machine resolves it. A typical setup is:
+
+```text
+# ~/.ssh/config
+Host rpi5
+    HostName 192.168.0.158
+    User user
+
+Host blackops
+    HostName 192.168.0.124
+    User user
+    IdentityFile ~/.ssh/blackops
+```
+
+```text
+# /etc/hosts (optional fallback if mDNS is unreliable)
+192.168.0.158 rpi5
+192.168.0.124 blackops
+```
+
+See also: [infrastructure.md](infrastructure.md#networking)
+
 ### Recommended: `main.py deploy`
 
 The easiest deployment flow is the built-in deploy command:

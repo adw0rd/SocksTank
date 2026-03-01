@@ -100,6 +100,15 @@ Host blackops
     IdentityFile ~/.ssh/blackops
 ```
 
+If mDNS or local DNS does not resolve `rpi5` / `blackops` reliably, add static aliases in `/etc/hosts` on your development machine:
+
+```text
+192.168.0.158 rpi5
+192.168.0.124 blackops
+```
+
+Then the hostnames used throughout this documentation will work consistently for `ssh`, `rsync`, the web panel URL, and deploy commands.
+
 Actual IP addresses, usernames, and SSH keys are in `docs/credentials.md` (not committed).
 
 ## Robot hardware
