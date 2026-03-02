@@ -43,8 +43,9 @@ class PlaceStoreTests(unittest.TestCase):
         )
         self.assertEqual(record.place_image_id, images[0].id)
 
-        job = self.store.train_place(place.id, "models/yolo11_best.pt")
+        job = self.store.train_place(place.id, "models/yolo11_best.pt", "local:rpi5")
         self.assertEqual(job.status.value, "ready")
+        self.assertEqual(job.executor, "local:rpi5")
         self.assertEqual(self.store.get_place(place.id).status.value, "ready")
 
         active = self.store.set_active_target(place.id)
@@ -63,7 +64,7 @@ class PlaceStoreTests(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(ValueError, "annotated"):
-            self.store.train_place(place.id, "models/yolo11_best.pt")
+            self.store.train_place(place.id, "models/yolo11_best.pt", "local:rpi5")
 
     def test_delete_image_removes_annotation_and_updates_count(self) -> None:
         place = self.store.create_place("Dryer")

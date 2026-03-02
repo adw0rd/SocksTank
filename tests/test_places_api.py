@@ -14,7 +14,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from server.places import PlaceStore
-from server.routes_places import router, set_store
+from server.routes_places import router, set_dependencies, set_store
+from server.schemas import GPUServerSchema
 
 
 class PlacesApiTests(unittest.TestCase):
@@ -22,6 +23,7 @@ class PlacesApiTests(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.store = PlaceStore(Path(self._tmp.name) / "places")
         set_store(self.store)
+        set_dependencies(None)
         app = FastAPI()
         app.include_router(router)
         self.client = TestClient(app)
@@ -111,6 +113,7 @@ class PlacesApiTests(unittest.TestCase):
         self.assertEqual(train.status_code, 200)
         train_payload = train.json()
         self.assertEqual(train_payload["status"], "ready")
+        self.assertEqual(train_payload["executor"], "local:rpi5")
 
         job = self.client.get(f"/api/places/jobs/{train_payload['job_id']}")
         self.assertEqual(job.status_code, 200)
@@ -126,6 +129,49 @@ class PlacesApiTests(unittest.TestCase):
         self.assertEqual(payload["active_target_place_id"], place_id)
         self.assertEqual(payload["items"][0]["status"], "ready")
         self.assertTrue(payload["items"][0]["is_active_target"])
+
+    def test_training_prefers_online_gpu_server(self) -> None:
+        class FakeGpuManager:
+            def __init__(self):
+                self.servers = [
+                    GPUServerSchema(
+                        name="blackops",
+                        host="192.168.0.124",
+                        username="user",
+                        status="online",
+                        gpu="RTX",
+                    )
+                ]
+
+        set_dependencies(FakeGpuManager())
+
+        image = np.zeros((20, 20, 3), dtype=np.uint8)
+        ok, encoded = cv2.imencode(".jpg", image)
+        self.assertTrue(ok)
+
+        create = self.client.post("/api/places", json={"name": "Washer"})
+        place_id = create.json()["id"]
+        upload = self.client.post(
+            f"/api/places/{place_id}/images",
+            json={
+                "items": [
+                    {
+                        "filename": "washer.jpg",
+                        "content_base64": base64.b64encode(encoded.tobytes()).decode("ascii"),
+                    }
+                ]
+            },
+        )
+        image_id = upload.json()["items"][0]["id"]
+        annotate = self.client.put(
+            f"/api/places/{place_id}/images/{image_id}/annotation",
+            json={"x_center": 0.5, "y_center": 0.5, "width": 0.4, "height": 0.4},
+        )
+        self.assertEqual(annotate.status_code, 200)
+
+        train = self.client.post(f"/api/places/{place_id}/train", json={})
+        self.assertEqual(train.status_code, 200)
+        self.assertEqual(train.json()["executor"], "remote:blackops")
 
     def test_training_requires_annotations(self) -> None:
         create = self.client.post("/api/places", json={"name": "Laundry Basket"})

@@ -28,12 +28,33 @@ from server.schemas import (
 router = APIRouter(prefix="/api/places", tags=["places"])
 
 _store = PlaceStore()
+_gpu_manager = None
 
 
 def set_store(store: PlaceStore) -> None:
     """Override the default place store (used in tests)."""
     global _store
     _store = store
+
+
+def set_dependencies(gpu_manager) -> None:
+    """Inject shared dependencies from app.py."""
+    global _gpu_manager
+    _gpu_manager = gpu_manager
+
+
+def _select_training_executor(preferred_host: str | None) -> str:
+    if _gpu_manager:
+        servers = list(_gpu_manager.servers)
+        online_servers = [server for server in servers if server.status == "online"]
+        if preferred_host:
+            for server in online_servers:
+                if preferred_host in {server.host, server.name}:
+                    return f"remote:{server.name or server.host}"
+        if online_servers:
+            server = online_servers[0]
+            return f"remote:{server.name or server.host}"
+    return "local:rpi5"
 
 
 @router.get("", response_model=PlacesListResponse)
@@ -153,14 +174,14 @@ async def list_place_annotations(place_id: str):
 
 @router.post("/{place_id}/train", response_model=PlaceTrainResponse)
 async def train_place(place_id: str, body: PlaceTrainRequest):
-    del body
+    executor = _select_training_executor(body.gpu_host)
     try:
-        job = _store.train_place(place_id, base_model="models/yolo11_best.pt")
+        job = _store.train_place(place_id, base_model="models/yolo11_best.pt", executor=executor)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Place not found") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return PlaceTrainResponse(job_id=job.id, status=job.status)
+    return PlaceTrainResponse(job_id=job.id, status=job.status, executor=job.executor)
 
 
 @router.get("/jobs/{job_id}", response_model=PlaceTrainingJob)

@@ -304,7 +304,7 @@ class PlaceStore:
         data = _read_json(self._annotations_path(place_id), {"items": []})
         return [PlaceAnnotationRecord.model_validate(item) for item in data["items"]]
 
-    def train_place(self, place_id: str, base_model: str) -> PlaceTrainingJob:
+    def train_place(self, place_id: str, base_model: str, executor: str) -> PlaceTrainingJob:
         place = self.get_place(place_id)
         if place is None:
             raise KeyError(place_id)
@@ -320,6 +320,7 @@ class PlaceStore:
         job = PlaceTrainingJob(
             id=f"job_{uuid4().hex[:8]}",
             place_id=place_id,
+            executor=executor,
             status=PlaceJobStatus.READY,
             queued_at=now,
             started_at=now,

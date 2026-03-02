@@ -21,6 +21,7 @@ from server.routes_api import set_dependencies as api_set_deps
 from server.routes_gpu import router as gpu_router
 from server.routes_gpu import set_dependencies as gpu_set_deps
 from server.routes_places import router as places_router
+from server.routes_places import set_dependencies as places_set_deps
 
 log = logging.getLogger(__name__)
 
@@ -79,6 +80,7 @@ async def lifespan(app: FastAPI):
     ws_set_deps(hardware, camera_manager)
     api_set_deps(hardware, camera_manager)
     gpu_set_deps(inference_router, gpu_manager)
+    places_set_deps(gpu_manager)
 
     log.info("SocksTank server started on %s:%d (mock=%s)", settings.host, settings.port, settings.mock)
 

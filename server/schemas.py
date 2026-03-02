@@ -205,11 +205,13 @@ class PlaceTrainRequest(BaseModel):
 class PlaceTrainResponse(BaseModel):
     job_id: str
     status: PlaceJobStatus
+    executor: str
 
 
 class PlaceTrainingJob(BaseModel):
     id: str
     place_id: str
+    executor: str
     status: PlaceJobStatus
     queued_at: datetime
     started_at: datetime | None = None
