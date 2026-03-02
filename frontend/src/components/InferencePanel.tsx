@@ -21,9 +21,12 @@ export function InferencePanel({ telemetry }: Props) {
   const backendLabel = formatBackendLabel(backend, servers)
 
   const fetchServers = useCallback(() => {
-    fetch('/api/gpu/servers')
+    return fetch('/api/gpu/servers')
       .then((r) => r.json())
-      .then((data) => setServers(data.servers ?? []))
+      .then((data) => {
+        setServers(data.servers ?? [])
+        return data.servers ?? []
+      })
       .catch(() => {})
   }, [])
 
@@ -41,12 +44,38 @@ export function InferencePanel({ telemetry }: Props) {
     }).catch(() => {})
   }
 
+  const waitForServer = useCallback((host: string, attemptsLeft = 12) => {
+    fetchServers()
+      .then((nextServers) => {
+        const server = nextServers?.find((item: GPUServer) => item.host === host)
+        if (server?.status === 'online') {
+          setLoading((prev) => ({ ...prev, [host]: false }))
+          return
+        }
+        if (attemptsLeft <= 0) {
+          setLoading((prev) => ({ ...prev, [host]: false }))
+          return
+        }
+        window.setTimeout(() => waitForServer(host, attemptsLeft - 1), 1000)
+      })
+      .catch(() => {
+        if (attemptsLeft <= 0) {
+          setLoading((prev) => ({ ...prev, [host]: false }))
+          return
+        }
+        window.setTimeout(() => waitForServer(host, attemptsLeft - 1), 1000)
+      })
+  }, [fetchServers])
+
   const startServer = (host: string) => {
+    if (loading[host]) {
+      return
+    }
     setLoading((prev) => ({ ...prev, [host]: true }))
     fetch(`/api/gpu/servers/${host}/start`, { method: 'POST' })
-      .then(() => setTimeout(fetchServers, 2000))
+      .then(() => waitForServer(host))
       .catch(() => {})
-      .finally(() => setLoading((prev) => ({ ...prev, [host]: false })))
+      .finally(() => {})
   }
 
   const stopServer = (host: string) => {
@@ -79,6 +108,15 @@ export function InferencePanel({ telemetry }: Props) {
 
   return (
     <div style={{ padding: 16 }}>
+      <style>
+        {`
+          @keyframes gpuStartPulse {
+            0% { opacity: 0.35; }
+            50% { opacity: 1; }
+            100% { opacity: 0.35; }
+          }
+        `}
+      </style>
       <div style={{ color: '#cbd3ff', fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>
         Inference
       </div>
@@ -126,7 +164,9 @@ export function InferencePanel({ telemetry }: Props) {
           <span
             style={{
               width: 8, height: 8, borderRadius: '50%',
-              background: statusColor(s.status), flexShrink: 0,
+              background: loading[s.host] ? '#666' : statusColor(s.status),
+              flexShrink: 0,
+              animation: loading[s.host] ? 'gpuStartPulse 1s ease-in-out infinite' : 'none',
             }}
           />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -146,7 +186,7 @@ export function InferencePanel({ telemetry }: Props) {
               disabled={loading[s.host]}
               style={{ ...btnSmall, opacity: loading[s.host] ? 0.5 : 1 }}
             >
-              {loading[s.host] ? '...' : 'Start'}
+              {loading[s.host] ? 'Starting...' : 'Start'}
             </button>
           )}
           <button onClick={() => openEdit(s)} style={btnSmall}>Edit</button>
