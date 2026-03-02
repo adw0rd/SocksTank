@@ -26,6 +26,7 @@ RSYNC_EXCLUDES = (
     ".DS_Store",
     "frontend/node_modules",
     "dataset",
+    "user_data",
     "__pycache__",
     "*.pyc",
 )
