@@ -80,10 +80,20 @@ export function PlacesPanel() {
   const [places, setPlaces] = useState<PlaceSummary[]>([])
   const [activeTargetId, setActiveTargetId] = useState<string | null>(null)
   const [name, setName] = useState('')
-  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null)
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') {
+      return null
+    }
+    return window.localStorage.getItem('sockstank.places.selectedPlaceId')
+  })
   const [images, setImages] = useState<PlaceImageSummary[]>([])
   const [annotations, setAnnotations] = useState<Record<string, PlaceAnnotationRecord>>({})
-  const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
+  const [selectedImageId, setSelectedImageId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') {
+      return null
+    }
+    return window.localStorage.getItem('sockstank.places.selectedImageId')
+  })
   const [draftBox, setDraftBox] = useState<DraftBox | null>(null)
   const [draftDrag, setDraftDrag] = useState<DraftDragState>(null)
   const [busy, setBusy] = useState(false)
@@ -154,6 +164,15 @@ export function PlacesPanel() {
 
   useEffect(() => {
     if (!selectedPlaceId) {
+      return
+    }
+    if (!places.some((place) => place.id === selectedPlaceId)) {
+      setSelectedPlaceId(places[0]?.id ?? null)
+    }
+  }, [places, selectedPlaceId])
+
+  useEffect(() => {
+    if (!selectedPlaceId) {
       setImages([])
       setAnnotations({})
       setSelectedImageId(null)
@@ -168,6 +187,28 @@ export function PlacesPanel() {
     }
     window.localStorage.setItem('sockstank.places.showGallery', String(showGallery))
   }, [showGallery])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    if (selectedPlaceId) {
+      window.localStorage.setItem('sockstank.places.selectedPlaceId', selectedPlaceId)
+    } else {
+      window.localStorage.removeItem('sockstank.places.selectedPlaceId')
+    }
+  }, [selectedPlaceId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    if (selectedImageId) {
+      window.localStorage.setItem('sockstank.places.selectedImageId', selectedImageId)
+    } else {
+      window.localStorage.removeItem('sockstank.places.selectedImageId')
+    }
+  }, [selectedImageId])
 
   const selectedPlace = useMemo(
     () => places.find((place) => place.id === selectedPlaceId) ?? null,
