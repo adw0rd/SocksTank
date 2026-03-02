@@ -157,9 +157,6 @@ export default function App() {
             <StatusBar telemetry={telemetry} wsStatus={status} />
           </div>
           <div style={panelStyle}>
-            <SensorDisplay telemetry={telemetry} />
-          </div>
-          <div style={panelStyle}>
             <PlacesPanel />
           </div>
         </div>
@@ -168,6 +165,9 @@ export default function App() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={panelStyle}>
             <EmergencyStop send={send} telemetry={telemetry} />
+          </div>
+          <div style={panelStyle}>
+            <SensorDisplay telemetry={telemetry} />
           </div>
           <div style={panelStyle}>
             <ModeSelector send={send} telemetry={telemetry} />
