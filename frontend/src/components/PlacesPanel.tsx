@@ -225,6 +225,10 @@ export function PlacesPanel() {
   )
 
   const selectedAnnotation = selectedImageId ? annotations[selectedImageId] ?? null : null
+  const annotatedCount = useMemo(
+    () => images.filter((image) => image.annotated || Boolean(annotations[image.id])).length,
+    [annotations, images],
+  )
 
   const createPlace = async () => {
     const trimmed = name.trim()
@@ -317,7 +321,7 @@ export function PlacesPanel() {
     }
   }
 
-  const saveAnnotation = async () => {
+  const saveAnnotation = async (moveNext = false) => {
     if (!selectedPlaceId || !selectedImageId || !draftBox || !canvasRef.current) return
     const rect = canvasRef.current.getBoundingClientRect()
     const normalized = normalizeDraft(draftBox, rect.width, rect.height)
@@ -341,7 +345,13 @@ export function PlacesPanel() {
       }
       setAnnotations((current) => ({ ...current, [selectedImageId]: payload }))
       setDraftBox(null)
-      setMessage('Annotation saved')
+      if (moveNext) {
+        const nextIndex = selectedImageIndex + 1
+        if (nextIndex < images.length) {
+          setSelectedImageId(images[nextIndex].id)
+        }
+      }
+      setMessage(moveNext ? 'Annotation saved, moved to next image' : 'Annotation saved')
       fetchPlaces()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to save annotation')
@@ -611,6 +621,11 @@ export function PlacesPanel() {
           <div style={{ color: '#8b93bb', fontSize: 11, lineHeight: 1.5, marginBottom: 10 }}>
             Upload photos, draw one bounding box per image, then train. The current MVP saves YOLO-normalized boxes directly from this panel.
           </div>
+          {images.length > 0 && (
+            <div style={{ color: '#9fd1ff', fontSize: 11, fontWeight: 700, marginBottom: 10 }}>
+              Annotated {annotatedCount} / {images.length}
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             <button
@@ -827,11 +842,18 @@ export function PlacesPanel() {
                       </button>
                     )}
                     <button
-                      onClick={saveAnnotation}
+                      onClick={() => void saveAnnotation(false)}
                       disabled={busy || !draftBox}
                       style={{ ...actionButton, flex: 1, opacity: busy || !draftBox ? 0.6 : 1 }}
                     >
                       Save Box
+                    </button>
+                    <button
+                      onClick={() => void saveAnnotation(true)}
+                      disabled={busy || !draftBox || selectedImageIndex >= images.length - 1}
+                      style={{ ...actionButton, opacity: busy || !draftBox || selectedImageIndex >= images.length - 1 ? 0.6 : 1 }}
+                    >
+                      Save & Next
                     </button>
                     <button
                       onClick={() => setDraftBox(null)}
