@@ -1,13 +1,16 @@
 """Thread-safe HardwareController wrapper around Freenove modules."""
 
+import json
 import subprocess
 import threading
 import logging
+from pathlib import Path
 
 from server.freenove_bridge import load_hardware_modules
 from server.config import settings
 
 log = logging.getLogger(__name__)
+STATE_PATH = Path("user_data/hardware_state.json")
 
 
 class HardwareController:
@@ -16,6 +19,7 @@ class HardwareController:
     VALID_MODES = {"manual", "ultrasonic", "infrared", "ai"}
 
     def __init__(self):
+        saved_state = self._load_state()
         modules = load_hardware_modules()
         self._motor = modules["motor"]()
         self._servo = modules["servo"]()
@@ -25,10 +29,33 @@ class HardwareController:
         self._lock = threading.Lock()
         self._mode = "manual"
         self._estop = False
-        self._claw_servos_enabled = True
+        self._claw_servos_enabled = saved_state.get("claw_servos_enabled", True)
         self._motor_left = 0
         self._motor_right = 0
+        if not self._claw_servos_enabled:
+            self._servo.setServoEnabled(0, False)
+            self._servo.setServoEnabled(1, False)
         log.info("HardwareController initialized")
+
+    def _load_state(self) -> dict:
+        """Load persisted runtime state."""
+        try:
+            if STATE_PATH.exists():
+                return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+        except Exception as exc:
+            log.warning("Failed to load hardware state: %s", exc)
+        return {}
+
+    def _save_state(self):
+        """Persist runtime state to disk."""
+        payload = {
+            "claw_servos_enabled": self._claw_servos_enabled,
+        }
+        try:
+            STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            STATE_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        except Exception as exc:
+            log.warning("Failed to save hardware state: %s", exc)
 
     @property
     def mode(self) -> str:
@@ -95,6 +122,7 @@ class HardwareController:
             if not self._claw_servos_enabled:
                 self._servo.setServoEnabled(0, False)
                 self._servo.setServoEnabled(1, False)
+            self._save_state()
 
     def set_led(self, r: int, g: int, b: int):
         """Set the color of all LEDs."""

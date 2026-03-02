@@ -46,9 +46,9 @@ class _GpiozeroServo:
         min_pw = 0.5 / 1000
         max_pw = 2.5 / 1000
         self.servos = {
-            0: AngularServo(7, initial_angle=0, min_angle=0, max_angle=180, min_pulse_width=min_pw, max_pulse_width=max_pw),
-            1: AngularServo(8, initial_angle=0, min_angle=0, max_angle=180, min_pulse_width=min_pw, max_pulse_width=max_pw),
-            2: AngularServo(25, initial_angle=0, min_angle=0, max_angle=180, min_pulse_width=min_pw, max_pulse_width=max_pw),
+            0: AngularServo(7, initial_angle=None, min_angle=0, max_angle=180, min_pulse_width=min_pw, max_pulse_width=max_pw),
+            1: AngularServo(8, initial_angle=None, min_angle=0, max_angle=180, min_pulse_width=min_pw, max_pulse_width=max_pw),
+            2: AngularServo(25, initial_angle=None, min_angle=0, max_angle=180, min_pulse_width=min_pw, max_pulse_width=max_pw),
         }
 
     def setServoPwm(self, channel, angle):
