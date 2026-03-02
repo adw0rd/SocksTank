@@ -3,6 +3,7 @@ import { VideoFeed } from './components/VideoFeed'
 import { StatusBar } from './components/StatusBar'
 import { EmergencyStop } from './components/EmergencyStop'
 import { MotorControl } from './components/MotorControl'
+import { TerminatorPanel } from './components/TerminatorPanel'
 import { ServoControl } from './components/ServoControl'
 import { LedControl } from './components/LedControl'
 import { ModeSelector } from './components/ModeSelector'
@@ -137,6 +138,9 @@ export default function App() {
       }}>
         {/* Left sidebar: direct controls */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={panelStyle}>
+            <TerminatorPanel />
+          </div>
           <div style={panelStyle}>
             <SensorDisplay telemetry={telemetry} />
           </div>

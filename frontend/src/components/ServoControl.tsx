@@ -130,7 +130,14 @@ export function ServoControl({ send, telemetry }: Props) {
             {auxExpanded ? 'Hide' : 'Show'}
           </button>
         </div>
-        {auxExpanded && <div style={{ marginTop: 10 }}>{renderServoSlider(2)}</div>}
+        {auxExpanded && (
+          <>
+            <div style={{ color: '#8b93bb', fontSize: 11, lineHeight: 1.4, marginTop: 8 }}>
+              On some builds this servo is used for camera rotation. On fixed-camera builds it may control another auxiliary mount instead.
+            </div>
+            <div style={{ marginTop: 10 }}>{renderServoSlider(2)}</div>
+          </>
+        )}
       </div>
     </div>
   )

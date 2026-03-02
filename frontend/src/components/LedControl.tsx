@@ -77,26 +77,13 @@ export function LedControl({ send, telemetry }: Props) {
           </button>
         </div>
 
-        {expanded && !supported && (
-          <div
-            style={{
-              marginTop: 10,
-              marginBottom: 10,
-              padding: '9px 10px',
-              background: '#1a1420',
-              border: '1px solid #43324f',
-              borderRadius: 8,
-              color: '#ffcf7a',
-              fontSize: 12,
-              lineHeight: 1.4,
-            }}
-          >
-            LED is not supported on PCB v1 + Raspberry Pi 5. It works on RPi 4, or on PCB v2 via SPI.
-          </div>
-        )}
-
         {expanded && (
           <>
+            <div style={{ color: '#8b93bb', fontSize: 11, lineHeight: 1.4, marginTop: 10, marginBottom: 10 }}>
+              {supported
+                ? 'Use a solid color or a preset effect. Availability depends on the board version and wiring.'
+                : 'LED is not supported on PCB v1 + Raspberry Pi 5. It works on RPi 4, or on PCB v2 via SPI.'}
+            </div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 10, marginTop: 10 }}>
               <input
                 type="color" value={color}
