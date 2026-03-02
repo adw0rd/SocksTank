@@ -59,3 +59,15 @@ export interface GPUServer {
   status: string
   gpu?: string
 }
+
+export interface PlaceSummary {
+  id: string
+  name: string
+  label: string
+  status: string
+  model_version: string | null
+  image_count: number
+  is_active_target: boolean
+  created_at: string
+  updated_at: string
+}

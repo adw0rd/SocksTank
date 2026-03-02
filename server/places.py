@@ -1,0 +1,332 @@
+"""File-backed storage for user-defined places."""
+
+from __future__ import annotations
+
+import json
+import re
+import base64
+from datetime import datetime, UTC
+from pathlib import Path
+from uuid import uuid4
+
+from server.schemas import (
+    PlaceAnnotationRecord,
+    PlaceAnnotationUpsertRequest,
+    PlaceImageUploadItem,
+    PlaceImageSummary,
+    PlaceJobStatus,
+    PlaceStatus,
+    PlaceSummary,
+    PlaceTrainingJob,
+)
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _read_json(path: Path, default):
+    if not path.exists():
+        return default
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _write_json(path: Path, payload) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
+
+
+def _slugify(name: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "_", name.strip().lower())
+    slug = re.sub(r"_+", "_", slug).strip("_")
+    if not slug:
+        slug = "place"
+    return f"place_{slug}"
+
+
+class PlaceStore:
+    """Persist places, images, annotations, and training jobs under user_data/."""
+
+    def __init__(self, root: str | Path = "user_data/places") -> None:
+        self.root = Path(root)
+        self._ensure_layout()
+
+    def _ensure_layout(self) -> None:
+        self.root.mkdir(parents=True, exist_ok=True)
+        if not self.index_path.exists():
+            _write_json(self.index_path, {"active_target_place_id": None, "places": []})
+        if not self.jobs_path.exists():
+            _write_json(self.jobs_path, {"jobs": []})
+
+    @property
+    def index_path(self) -> Path:
+        return self.root / "index.json"
+
+    @property
+    def jobs_path(self) -> Path:
+        return self.root / "jobs.json"
+
+    def _load_index(self) -> dict:
+        self._ensure_layout()
+        return _read_json(self.index_path, {"active_target_place_id": None, "places": []})
+
+    def _save_index(self, data: dict) -> None:
+        _write_json(self.index_path, data)
+
+    def _load_jobs(self) -> dict:
+        self._ensure_layout()
+        return _read_json(self.jobs_path, {"jobs": []})
+
+    def _save_jobs(self, data: dict) -> None:
+        _write_json(self.jobs_path, data)
+
+    def _place_dir(self, place_id: str) -> Path:
+        return self.root / place_id
+
+    def _images_dir(self, place_id: str) -> Path:
+        return self._place_dir(place_id) / "images"
+
+    def _images_path(self, place_id: str) -> Path:
+        return self._place_dir(place_id) / "images.json"
+
+    def _annotations_path(self, place_id: str) -> Path:
+        return self._place_dir(place_id) / "annotations.json"
+
+    def list_places(self) -> tuple[str | None, list[PlaceSummary]]:
+        data = self._load_index()
+        active_id = data.get("active_target_place_id")
+        return active_id, [PlaceSummary.model_validate(item) for item in data["places"]]
+
+    def get_place(self, place_id: str) -> PlaceSummary | None:
+        _, places = self.list_places()
+        for place in places:
+            if place.id == place_id:
+                return place
+        return None
+
+    def create_place(self, name: str) -> PlaceSummary:
+        data = self._load_index()
+        place_id = f"place_{uuid4().hex[:8]}"
+        now = _now()
+        place = PlaceSummary(
+            id=place_id,
+            name=name.strip(),
+            label=_slugify(name),
+            status=PlaceStatus.DRAFT,
+            model_version=None,
+            image_count=0,
+            is_active_target=False,
+            created_at=now,
+            updated_at=now,
+        )
+        data["places"].append(place.model_dump(mode="json"))
+        self._save_index(data)
+        _write_json(self._images_path(place_id), {"items": []})
+        _write_json(self._annotations_path(place_id), {"items": []})
+        self._images_dir(place_id).mkdir(parents=True, exist_ok=True)
+        return place
+
+    def update_place(self, place_id: str, name: str) -> PlaceSummary | None:
+        data = self._load_index()
+        for item in data["places"]:
+            if item["id"] != place_id:
+                continue
+            item["name"] = name.strip()
+            item["updated_at"] = _now().isoformat()
+            self._save_index(data)
+            return PlaceSummary.model_validate(item)
+        return None
+
+    def delete_place(self, place_id: str) -> bool:
+        data = self._load_index()
+        original_len = len(data["places"])
+        data["places"] = [item for item in data["places"] if item["id"] != place_id]
+        if len(data["places"]) == original_len:
+            return False
+        if data.get("active_target_place_id") == place_id:
+            data["active_target_place_id"] = None
+        self._save_index(data)
+        place_dir = self._place_dir(place_id)
+        if place_dir.exists():
+            for path in sorted(place_dir.rglob("*"), reverse=True):
+                if path.is_file():
+                    path.unlink()
+                elif path.is_dir():
+                    path.rmdir()
+            place_dir.rmdir()
+        jobs = self._load_jobs()
+        jobs["jobs"] = [job for job in jobs["jobs"] if job["place_id"] != place_id]
+        self._save_jobs(jobs)
+        return True
+
+    def add_images(self, place_id: str, files: list[PlaceImageUploadItem]) -> list[PlaceImageSummary]:
+        if self.get_place(place_id) is None:
+            raise KeyError(place_id)
+        images_data = _read_json(self._images_path(place_id), {"items": []})
+        created: list[PlaceImageSummary] = []
+        target_dir = self._images_dir(place_id)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        for upload in files:
+            suffix = Path(upload.filename).suffix.lower() or ".jpg"
+            image_id = f"img_{uuid4().hex[:8]}"
+            filename = f"{image_id}{suffix}"
+            payload = base64.b64decode(upload.content_base64)
+            file_path = target_dir / filename
+            file_path.write_bytes(payload)
+            image = PlaceImageSummary(
+                id=image_id,
+                filename=filename,
+                path=str(Path("user_data") / "places" / place_id / "images" / filename),
+                width=0,
+                height=0,
+                annotated=False,
+                created_at=_now(),
+            )
+            images_data["items"].append(image.model_dump(mode="json"))
+            created.append(image)
+        _write_json(self._images_path(place_id), images_data)
+        self._update_place_counters(place_id)
+        return created
+
+    def list_images(self, place_id: str) -> list[PlaceImageSummary]:
+        if self.get_place(place_id) is None:
+            raise KeyError(place_id)
+        data = _read_json(self._images_path(place_id), {"items": []})
+        return [PlaceImageSummary.model_validate(item) for item in data["items"]]
+
+    def get_image_path(self, place_id: str, image_id: str) -> Path | None:
+        for image in self.list_images(place_id):
+            if image.id == image_id:
+                return self._images_dir(place_id) / image.filename
+        return None
+
+    def upsert_annotation(self, place_id: str, image_id: str, body: PlaceAnnotationUpsertRequest) -> PlaceAnnotationRecord:
+        place = self.get_place(place_id)
+        if place is None:
+            raise KeyError(place_id)
+        image = next((img for img in self.list_images(place_id) if img.id == image_id), None)
+        if image is None:
+            raise FileNotFoundError(image_id)
+        data = _read_json(self._annotations_path(place_id), {"items": []})
+        now = _now()
+        record = None
+        for item in data["items"]:
+            if item["place_image_id"] != image_id:
+                continue
+            item.update(body.model_dump())
+            item["updated_at"] = now.isoformat()
+            record = PlaceAnnotationRecord.model_validate(item)
+            break
+        if record is None:
+            record = PlaceAnnotationRecord(
+                id=f"ann_{uuid4().hex[:8]}",
+                place_image_id=image_id,
+                label=place.label,
+                x_center=body.x_center,
+                y_center=body.y_center,
+                width=body.width,
+                height=body.height,
+                created_at=now,
+                updated_at=now,
+            )
+            data["items"].append(record.model_dump(mode="json"))
+        _write_json(self._annotations_path(place_id), data)
+        self._set_image_annotated(place_id, image_id, True)
+        self._set_place_status(place_id, PlaceStatus.ANNOTATING)
+        return record
+
+    def list_annotations(self, place_id: str) -> list[PlaceAnnotationRecord]:
+        if self.get_place(place_id) is None:
+            raise KeyError(place_id)
+        data = _read_json(self._annotations_path(place_id), {"items": []})
+        return [PlaceAnnotationRecord.model_validate(item) for item in data["items"]]
+
+    def train_place(self, place_id: str, base_model: str) -> PlaceTrainingJob:
+        place = self.get_place(place_id)
+        if place is None:
+            raise KeyError(place_id)
+        images = self.list_images(place_id)
+        annotations = self.list_annotations(place_id)
+        if not images:
+            raise ValueError("Place has no images")
+        if len(annotations) != len(images):
+            raise ValueError("All images must be annotated before training")
+        jobs = self._load_jobs()
+        now = _now()
+        model_version = f"{now.strftime('%Y%m%dT%H%M%SZ')}-{place_id}-v1"
+        job = PlaceTrainingJob(
+            id=f"job_{uuid4().hex[:8]}",
+            place_id=place_id,
+            status=PlaceJobStatus.READY,
+            queued_at=now,
+            started_at=now,
+            finished_at=now,
+            error=None,
+            base_model=base_model,
+            result_model_version=model_version,
+            result_model_path=f"models/{model_version}.pt",
+            result_ncnn_path=f"models/{model_version}_ncnn_model",
+        )
+        jobs["jobs"].append(job.model_dump(mode="json"))
+        self._save_jobs(jobs)
+        self._set_place_ready(place_id, model_version)
+        return job
+
+    def get_job(self, job_id: str) -> PlaceTrainingJob | None:
+        jobs = self._load_jobs()
+        for item in jobs["jobs"]:
+            if item["id"] == job_id:
+                return PlaceTrainingJob.model_validate(item)
+        return None
+
+    def set_active_target(self, place_id: str | None) -> str | None:
+        data = self._load_index()
+        if place_id is not None:
+            target = next((item for item in data["places"] if item["id"] == place_id), None)
+            if target is None:
+                raise KeyError(place_id)
+            if target["status"] != PlaceStatus.READY.value:
+                raise ValueError("Only ready places can be selected as active targets")
+        data["active_target_place_id"] = place_id
+        for item in data["places"]:
+            item["is_active_target"] = item["id"] == place_id
+            if item["id"] == place_id:
+                item["updated_at"] = _now().isoformat()
+        self._save_index(data)
+        return place_id
+
+    def _update_place_counters(self, place_id: str) -> None:
+        data = self._load_index()
+        count = len(_read_json(self._images_path(place_id), {"items": []})["items"])
+        for item in data["places"]:
+            if item["id"] != place_id:
+                continue
+            item["image_count"] = count
+            item["updated_at"] = _now().isoformat()
+            if item["status"] == PlaceStatus.DRAFT.value and count:
+                item["status"] = PlaceStatus.ANNOTATING.value
+        self._save_index(data)
+
+    def _set_image_annotated(self, place_id: str, image_id: str, value: bool) -> None:
+        data = _read_json(self._images_path(place_id), {"items": []})
+        for item in data["items"]:
+            if item["id"] == image_id:
+                item["annotated"] = value
+        _write_json(self._images_path(place_id), data)
+
+    def _set_place_status(self, place_id: str, status: PlaceStatus) -> None:
+        data = self._load_index()
+        for item in data["places"]:
+            if item["id"] == place_id:
+                item["status"] = status.value
+                item["updated_at"] = _now().isoformat()
+        self._save_index(data)
+
+    def _set_place_ready(self, place_id: str, model_version: str) -> None:
+        data = self._load_index()
+        for item in data["places"]:
+            if item["id"] == place_id:
+                item["status"] = PlaceStatus.READY.value
+                item["model_version"] = model_version
+                item["updated_at"] = _now().isoformat()
+        self._save_index(data)

@@ -20,6 +20,7 @@ from server.routes_api import router as api_router
 from server.routes_api import set_dependencies as api_set_deps
 from server.routes_gpu import router as gpu_router
 from server.routes_gpu import set_dependencies as gpu_set_deps
+from server.routes_places import router as places_router
 
 log = logging.getLogger(__name__)
 
@@ -99,6 +100,7 @@ def create_app() -> FastAPI:
     app.include_router(ws_router)
     app.include_router(api_router)
     app.include_router(gpu_router)
+    app.include_router(places_router)
 
     # Mount frontend static files when the build is available
     static_dir = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")

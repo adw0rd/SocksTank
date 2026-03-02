@@ -9,6 +9,7 @@ import { ModeSelector } from './components/ModeSelector'
 import { SensorDisplay } from './components/SensorDisplay'
 import { ConfigPanel } from './components/ConfigPanel'
 import { InferencePanel } from './components/InferencePanel'
+import { PlacesPanel } from './components/PlacesPanel'
 
 function formatInferenceHeader(telemetry: ReturnType<typeof useWebSocket>['telemetry']) {
   const mode = telemetry?.inference_mode ?? 'auto'
@@ -173,6 +174,9 @@ export default function App() {
           </div>
           <div style={panelStyle}>
             <ConfigPanel telemetry={telemetry} />
+          </div>
+          <div style={panelStyle}>
+            <PlacesPanel />
           </div>
         </div>
       </div>
