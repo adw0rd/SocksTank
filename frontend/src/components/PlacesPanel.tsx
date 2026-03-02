@@ -167,6 +167,10 @@ export function PlacesPanel() {
     () => images.find((image) => image.id === selectedImageId) ?? null,
     [images, selectedImageId],
   )
+  const selectedImageIndex = useMemo(
+    () => images.findIndex((image) => image.id === selectedImageId),
+    [images, selectedImageId],
+  )
 
   const selectedAnnotation = selectedImageId ? annotations[selectedImageId] ?? null : null
 
@@ -341,6 +345,18 @@ export function PlacesPanel() {
     } finally {
       setBusy(false)
     }
+  }
+
+  const selectRelativeImage = (offset: number) => {
+    if (selectedImageIndex < 0) {
+      return
+    }
+    const nextIndex = selectedImageIndex + offset
+    if (nextIndex < 0 || nextIndex >= images.length) {
+      return
+    }
+    setSelectedImageId(images[nextIndex].id)
+    setDraftBox(null)
   }
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -545,8 +561,36 @@ export function PlacesPanel() {
 
               {selectedImage && (
                 <>
-                  <div style={{ color: '#8b93bb', fontSize: 11, marginBottom: 8 }}>
-                    Draw a box around the place, then press <strong>Save Box</strong>.
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <div style={{ color: '#8b93bb', fontSize: 11 }}>
+                      Draw a box around the place, then press <strong>Save Box</strong>.
+                    </div>
+                    {images.length > 1 && (
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <button
+                          onClick={() => selectRelativeImage(-1)}
+                          disabled={selectedImageIndex <= 0}
+                          style={{ ...actionButton, padding: '6px 8px', opacity: selectedImageIndex <= 0 ? 0.5 : 1 }}
+                        >
+                          Prev
+                        </button>
+                        <button
+                          onClick={() => selectRelativeImage(1)}
+                          disabled={selectedImageIndex >= images.length - 1}
+                          style={{ ...actionButton, padding: '6px 8px', opacity: selectedImageIndex >= images.length - 1 ? 0.5 : 1 }}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div
                     ref={canvasRef}
