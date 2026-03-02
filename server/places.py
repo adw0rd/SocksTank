@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import base64
+import shutil
 from datetime import datetime, UTC
 from pathlib import Path
 from uuid import uuid4
@@ -97,6 +98,12 @@ class PlaceStore:
 
     def _annotations_path(self, place_id: str) -> Path:
         return self._place_dir(place_id) / "annotations.json"
+
+    def _jobs_root(self) -> Path:
+        return self.root / "jobs"
+
+    def _job_dir(self, job_id: str) -> Path:
+        return self._jobs_root() / job_id
 
     def list_places(self) -> tuple[str | None, list[PlaceSummary]]:
         data = self._load_index()
@@ -316,12 +323,15 @@ class PlaceStore:
             raise ValueError("All images must be annotated before training")
         jobs = self._load_jobs()
         now = _now()
+        job_id = f"job_{uuid4().hex[:8]}"
+        dataset_path = self._build_training_dataset(job_id, place, images, annotations)
         model_version = f"{now.strftime('%Y%m%dT%H%M%SZ')}-{place_id}-v1"
         job = PlaceTrainingJob(
-            id=f"job_{uuid4().hex[:8]}",
+            id=job_id,
             place_id=place_id,
             executor=executor,
             status=PlaceJobStatus.READY,
+            dataset_path=str(dataset_path),
             queued_at=now,
             started_at=now,
             finished_at=now,
@@ -335,6 +345,53 @@ class PlaceStore:
         self._save_jobs(jobs)
         self._set_place_ready(place_id, model_version)
         return job
+
+    def _build_training_dataset(
+        self,
+        job_id: str,
+        place: PlaceSummary,
+        images: list[PlaceImageSummary],
+        annotations: list[PlaceAnnotationRecord],
+    ) -> Path:
+        job_dir = self._job_dir(job_id)
+        if job_dir.exists():
+            shutil.rmtree(job_dir)
+
+        dataset_dir = job_dir / "dataset"
+        images_dir = dataset_dir / "images" / "train"
+        labels_dir = dataset_dir / "labels" / "train"
+        images_dir.mkdir(parents=True, exist_ok=True)
+        labels_dir.mkdir(parents=True, exist_ok=True)
+
+        annotations_by_image = {record.place_image_id: record for record in annotations}
+        for image in images:
+            source_path = self._images_dir(place.id) / image.filename
+            target_path = images_dir / image.filename
+            shutil.copy2(source_path, target_path)
+
+            record = annotations_by_image.get(image.id)
+            if record is None:
+                raise ValueError(f"Missing annotation for image {image.id}")
+            label_path = labels_dir / f"{Path(image.filename).stem}.txt"
+            label_line = f"0 {record.x_center:.6f} {record.y_center:.6f} {record.width:.6f} {record.height:.6f}\n"
+            label_path.write_text(label_line, encoding="utf-8")
+
+        data_yaml = dataset_dir / "data.yaml"
+        data_yaml.write_text(
+            "\n".join(
+                [
+                    "path: .",
+                    "train: images/train",
+                    "val: images/train",
+                    "test: images/train",
+                    "names:",
+                    f"  0: {place.label}",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        return dataset_dir
 
     def get_job(self, job_id: str) -> PlaceTrainingJob | None:
         jobs = self._load_jobs()

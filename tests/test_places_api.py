@@ -118,6 +118,7 @@ class PlacesApiTests(unittest.TestCase):
         job = self.client.get(f"/api/places/jobs/{train_payload['job_id']}")
         self.assertEqual(job.status_code, 200)
         self.assertEqual(job.json()["status"], "ready")
+        self.assertTrue(job.json()["dataset_path"].endswith("/dataset"))
 
         activate = self.client.put("/api/places/active", json={"place_id": place_id})
         self.assertEqual(activate.status_code, 200)

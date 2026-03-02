@@ -213,6 +213,7 @@ class PlaceTrainingJob(BaseModel):
     place_id: str
     executor: str
     status: PlaceJobStatus
+    dataset_path: str | None = None
     queued_at: datetime
     started_at: datetime | None = None
     finished_at: datetime | None = None

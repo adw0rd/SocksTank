@@ -46,6 +46,11 @@ class PlaceStoreTests(unittest.TestCase):
         job = self.store.train_place(place.id, "models/yolo11_best.pt", "local:rpi5")
         self.assertEqual(job.status.value, "ready")
         self.assertEqual(job.executor, "local:rpi5")
+        self.assertIsNotNone(job.dataset_path)
+        dataset_path = Path(job.dataset_path)
+        self.assertTrue((dataset_path / "data.yaml").exists())
+        self.assertTrue((dataset_path / "images" / "train" / images[0].filename).exists())
+        self.assertTrue((dataset_path / "labels" / "train" / f"{Path(images[0].filename).stem}.txt").exists())
         self.assertEqual(self.store.get_place(place.id).status.value, "ready")
 
         active = self.store.set_active_target(place.id)
