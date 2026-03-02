@@ -21,6 +21,16 @@ type DraftBox = {
   endY: number
 }
 
+type DraftDragState =
+  | null
+  | {
+      mode: 'draw' | 'move' | 'resize'
+      startX: number
+      startY: number
+      origin: DraftBox
+      handle?: 'nw' | 'ne' | 'sw' | 'se'
+    }
+
 async function readFileAsBase64(file: File) {
   const buffer = await file.arrayBuffer()
   let binary = ''
@@ -75,6 +85,7 @@ export function PlacesPanel() {
   const [annotations, setAnnotations] = useState<Record<string, PlaceAnnotationRecord>>({})
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
   const [draftBox, setDraftBox] = useState<DraftBox | null>(null)
+  const [draftDrag, setDraftDrag] = useState<DraftDragState>(null)
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -347,6 +358,38 @@ export function PlacesPanel() {
     }
   }
 
+  const clampToRange = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
+
+  const loadSavedAnnotationIntoDraft = () => {
+    if (!selectedAnnotation || !canvasRef.current) return
+    const rect = canvasRef.current.getBoundingClientRect()
+    const nextDraft = {
+      startX: (selectedAnnotation.x_center - selectedAnnotation.width / 2) * rect.width,
+      startY: (selectedAnnotation.y_center - selectedAnnotation.height / 2) * rect.height,
+      endX: (selectedAnnotation.x_center + selectedAnnotation.width / 2) * rect.width,
+      endY: (selectedAnnotation.y_center + selectedAnnotation.height / 2) * rect.height,
+    }
+    setDraftBox(nextDraft)
+    setDraftDrag(null)
+    setMessage('Edit the saved box, then press Save Box')
+  }
+
+  const detectResizeHandle = (x: number, y: number) => {
+    if (!draftBox) return null
+    const left = Math.min(draftBox.startX, draftBox.endX)
+    const top = Math.min(draftBox.startY, draftBox.endY)
+    const width = Math.abs(draftBox.endX - draftBox.startX)
+    const height = Math.abs(draftBox.endY - draftBox.startY)
+    const hitSize = 14
+    const handles = [
+      { key: 'nw' as const, x: left, y: top },
+      { key: 'ne' as const, x: left + width, y: top },
+      { key: 'sw' as const, x: left, y: top + height },
+      { key: 'se' as const, x: left + width, y: top + height },
+    ]
+    return handles.find((handle) => Math.abs(handle.x - x) <= hitSize && Math.abs(handle.y - y) <= hitSize)?.key ?? null
+  }
+
   const selectRelativeImage = (offset: number) => {
     if (selectedImageIndex < 0) {
       return
@@ -364,19 +407,98 @@ export function PlacesPanel() {
     const rect = event.currentTarget.getBoundingClientRect()
     const startX = event.clientX - rect.left
     const startY = event.clientY - rect.top
-    setDraftBox({ startX, startY, endX: startX, endY: startY })
+    if (draftStyle && draftBox) {
+      const resizeHandle = detectResizeHandle(startX, startY)
+      if (resizeHandle) {
+        setDraftDrag({
+          mode: 'resize',
+          handle: resizeHandle,
+          startX,
+          startY,
+          origin: draftBox,
+        })
+        return
+      }
+      const insideDraft =
+        startX >= draftStyle.left &&
+        startX <= draftStyle.left + draftStyle.width &&
+        startY >= draftStyle.top &&
+        startY <= draftStyle.top + draftStyle.height
+      if (insideDraft) {
+        setDraftDrag({
+          mode: 'move',
+          startX,
+          startY,
+          origin: draftBox,
+        })
+        return
+      }
+    }
+    const nextDraft = { startX, startY, endX: startX, endY: startY }
+    setDraftBox(nextDraft)
+    setDraftDrag({
+      mode: 'draw',
+      startX,
+      startY,
+      origin: nextDraft,
+    })
   }
 
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!draftBox) return
+    if (!draftBox || !draftDrag) return
     const rect = event.currentTarget.getBoundingClientRect()
-    const endX = Math.max(0, Math.min(rect.width, event.clientX - rect.left))
-    const endY = Math.max(0, Math.min(rect.height, event.clientY - rect.top))
-    setDraftBox((current) => (current ? { ...current, endX, endY } : current))
+    const pointerX = clampToRange(event.clientX - rect.left, 0, rect.width)
+    const pointerY = clampToRange(event.clientY - rect.top, 0, rect.height)
+
+    if (draftDrag.mode === 'draw') {
+      setDraftBox((current) => (current ? { ...current, endX: pointerX, endY: pointerY } : current))
+      return
+    }
+
+    if (draftDrag.mode === 'move') {
+      const dx = pointerX - draftDrag.startX
+      const dy = pointerY - draftDrag.startY
+      const originLeft = Math.min(draftDrag.origin.startX, draftDrag.origin.endX)
+      const originTop = Math.min(draftDrag.origin.startY, draftDrag.origin.endY)
+      const width = Math.abs(draftDrag.origin.endX - draftDrag.origin.startX)
+      const height = Math.abs(draftDrag.origin.endY - draftDrag.origin.startY)
+      const nextLeft = clampToRange(originLeft + dx, 0, rect.width - width)
+      const nextTop = clampToRange(originTop + dy, 0, rect.height - height)
+      setDraftBox({
+        startX: nextLeft,
+        startY: nextTop,
+        endX: nextLeft + width,
+        endY: nextTop + height,
+      })
+      return
+    }
+
+    const nextDraft = { ...draftDrag.origin }
+    switch (draftDrag.handle) {
+      case 'nw':
+        nextDraft.startX = pointerX
+        nextDraft.startY = pointerY
+        break
+      case 'ne':
+        nextDraft.endX = pointerX
+        nextDraft.startY = pointerY
+        break
+      case 'sw':
+        nextDraft.startX = pointerX
+        nextDraft.endY = pointerY
+        break
+      case 'se':
+        nextDraft.endX = pointerX
+        nextDraft.endY = pointerY
+        break
+      default:
+        break
+    }
+    setDraftBox(nextDraft)
   }
 
   const onPointerUp = () => {
-    // Keep the draft visible until the user explicitly saves or resets it.
+    setDraftDrag(null)
   }
 
   const draftStyle = useMemo(() => {
@@ -616,7 +738,7 @@ export function PlacesPanel() {
                       draggable={false}
                     />
 
-                    {selectedAnnotation && (
+                    {selectedAnnotation && !draftBox && (
                       <div
                         style={{
                           ...annotationBox,
@@ -636,11 +758,33 @@ export function PlacesPanel() {
                           borderColor: '#ffe082',
                           background: 'rgba(255, 224, 130, 0.14)',
                         }}
-                      />
+                      >
+                        {(['nw', 'ne', 'sw', 'se'] as const).map((handle) => (
+                          <div
+                            key={handle}
+                            style={{
+                              ...draftHandle,
+                              ...(handle === 'nw' ? { left: -6, top: -6 } : {}),
+                              ...(handle === 'ne' ? { right: -6, top: -6 } : {}),
+                              ...(handle === 'sw' ? { left: -6, bottom: -6 } : {}),
+                              ...(handle === 'se' ? { right: -6, bottom: -6 } : {}),
+                            }}
+                          />
+                        ))}
+                      </div>
                     )}
                   </div>
 
                   <div style={{ display: 'flex', gap: 8 }}>
+                    {selectedAnnotation && !draftBox && (
+                      <button
+                        onClick={loadSavedAnnotationIntoDraft}
+                        disabled={busy}
+                        style={{ ...actionButton, opacity: busy ? 0.6 : 1 }}
+                      >
+                        Edit Saved
+                      </button>
+                    )}
                     <button
                       onClick={saveAnnotation}
                       disabled={busy || !draftBox}
@@ -823,6 +967,15 @@ const annotationBox: React.CSSProperties = {
   background: 'rgba(77, 208, 225, 0.12)',
   pointerEvents: 'none',
   boxSizing: 'border-box',
+}
+
+const draftHandle: React.CSSProperties = {
+  position: 'absolute',
+  width: 10,
+  height: 10,
+  borderRadius: 999,
+  background: '#ffe082',
+  border: '1px solid #1b1b1b',
 }
 
 const spinner: React.CSSProperties = {
