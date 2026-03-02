@@ -17,11 +17,23 @@ export function ServoControl({ send, telemetry }: Props) {
     Object.fromEntries(SERVOS.map((s) => [s.channel, s.init]))
   )
   const [clawEnabled, setClawEnabled] = useState(true)
-  const [auxExpanded, setAuxExpanded] = useState(false)
+  const [auxExpanded, setAuxExpanded] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false
+    }
+    return window.localStorage.getItem('sockstank.servo.auxExpanded') === 'true'
+  })
 
   useEffect(() => {
     setClawEnabled(telemetry?.claw_servos_enabled ?? true)
   }, [telemetry])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    window.localStorage.setItem('sockstank.servo.auxExpanded', String(auxExpanded))
+  }, [auxExpanded])
 
   const setAngle = (channel: number, angle: number) => {
     if (channel !== 2 && !clawEnabled) return

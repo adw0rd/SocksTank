@@ -79,7 +79,12 @@ export function PlacesPanel() {
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadPhase, setUploadPhase] = useState<'idle' | 'preparing' | 'uploading'>('idle')
-  const [showGallery, setShowGallery] = useState(false)
+  const [showGallery, setShowGallery] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false
+    }
+    return window.localStorage.getItem('sockstank.places.showGallery') === 'true'
+  })
   const [message, setMessage] = useState<string | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const uploadInputRef = useRef<HTMLInputElement | null>(null)
@@ -145,6 +150,13 @@ export function PlacesPanel() {
     }
     fetchPlaceAssets(selectedPlaceId)
   }, [fetchPlaceAssets, selectedPlaceId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    window.localStorage.setItem('sockstank.places.showGallery', String(showGallery))
+  }, [showGallery])
 
   const selectedPlace = useMemo(
     () => places.find((place) => place.id === selectedPlaceId) ?? null,

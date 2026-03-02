@@ -138,6 +138,9 @@ export default function App() {
         {/* Left sidebar: direct controls */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={panelStyle}>
+            <SensorDisplay telemetry={telemetry} />
+          </div>
+          <div style={panelStyle}>
             <MotorControl send={send} telemetry={telemetry} />
           </div>
           <div style={panelStyle}>
@@ -165,9 +168,6 @@ export default function App() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={panelStyle}>
             <EmergencyStop send={send} telemetry={telemetry} />
-          </div>
-          <div style={panelStyle}>
-            <SensorDisplay telemetry={telemetry} />
           </div>
           <div style={panelStyle}>
             <ModeSelector send={send} telemetry={telemetry} />

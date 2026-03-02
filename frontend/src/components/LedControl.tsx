@@ -14,12 +14,30 @@ const PRESETS = [
 
 export function LedControl({ send, telemetry }: Props) {
   const [color, setColor] = useState('#0064ff')
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(() => {
+    if (typeof window === 'undefined') {
+      return true
+    }
+    const saved = window.localStorage.getItem('sockstank.led.expanded')
+    if (saved === null) {
+      return true
+    }
+    return saved === 'true'
+  })
   const supported = telemetry?.led_supported ?? true
 
   useEffect(() => {
-    setExpanded(supported)
+    if (!supported) {
+      setExpanded(false)
+    }
   }, [supported])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    window.localStorage.setItem('sockstank.led.expanded', String(expanded))
+  }, [expanded])
 
   const applyColor = () => {
     if (!supported) return
