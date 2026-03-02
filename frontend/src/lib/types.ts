@@ -71,3 +71,25 @@ export interface PlaceSummary {
   created_at: string
   updated_at: string
 }
+
+export interface PlaceImageSummary {
+  id: string
+  filename: string
+  path: string
+  width: number
+  height: number
+  annotated: boolean
+  created_at: string
+}
+
+export interface PlaceAnnotationRecord {
+  id: string
+  place_image_id: string
+  label: string
+  x_center: number
+  y_center: number
+  width: number
+  height: number
+  created_at: string
+  updated_at: string
+}
