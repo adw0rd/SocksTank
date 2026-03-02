@@ -7,6 +7,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import cv2
+import numpy as np
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -27,6 +30,11 @@ class PlacesApiTests(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_full_place_flow(self) -> None:
+        image = np.zeros((40, 60, 3), dtype=np.uint8)
+        ok, encoded = cv2.imencode(".jpg", image)
+        self.assertTrue(ok)
+        jpeg_bytes = encoded.tobytes()
+
         create = self.client.post("/api/places", json={"name": "Washing Machine"})
         self.assertEqual(create.status_code, 200)
         place = create.json()
@@ -39,7 +47,7 @@ class PlacesApiTests(unittest.TestCase):
                 "items": [
                     {
                         "filename": "washer.jpg",
-                        "content_base64": base64.b64encode(b"fake-image-bytes").decode("ascii"),
+                        "content_base64": base64.b64encode(jpeg_bytes).decode("ascii"),
                     }
                 ]
             },
@@ -50,7 +58,10 @@ class PlacesApiTests(unittest.TestCase):
 
         image_fetch = self.client.get(f"/api/places/{place_id}/images/{image_id}")
         self.assertEqual(image_fetch.status_code, 200)
-        self.assertEqual(image_fetch.content, b"fake-image-bytes")
+        self.assertEqual(image_fetch.content, jpeg_bytes)
+
+        thumb_fetch = self.client.get(f"/api/places/{place_id}/images/{image_id}/thumb")
+        self.assertEqual(thumb_fetch.status_code, 200)
 
         annotate = self.client.put(
             f"/api/places/{place_id}/images/{image_id}/annotation",
@@ -63,6 +74,38 @@ class PlacesApiTests(unittest.TestCase):
         )
         self.assertEqual(annotate.status_code, 200)
         self.assertEqual(annotate.json()["place_image_id"], image_id)
+
+        delete = self.client.delete(f"/api/places/{place_id}/images/{image_id}")
+        self.assertEqual(delete.status_code, 200)
+
+        images_after_delete = self.client.get(f"/api/places/{place_id}/images")
+        self.assertEqual(images_after_delete.status_code, 200)
+        self.assertEqual(images_after_delete.json()["items"], [])
+
+        upload = self.client.post(
+            f"/api/places/{place_id}/images",
+            json={
+                "items": [
+                    {
+                        "filename": "washer.jpg",
+                        "content_base64": base64.b64encode(jpeg_bytes).decode("ascii"),
+                    }
+                ]
+            },
+        )
+        self.assertEqual(upload.status_code, 200)
+        image_id = upload.json()["items"][0]["id"]
+
+        annotate = self.client.put(
+            f"/api/places/{place_id}/images/{image_id}/annotation",
+            json={
+                "x_center": 0.5,
+                "y_center": 0.5,
+                "width": 0.4,
+                "height": 0.4,
+            },
+        )
+        self.assertEqual(annotate.status_code, 200)
 
         train = self.client.post(f"/api/places/{place_id}/train", json={})
         self.assertEqual(train.status_code, 200)

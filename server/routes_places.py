@@ -110,6 +110,28 @@ async def get_place_image(place_id: str, image_id: str):
     return FileResponse(path)
 
 
+@router.get("/{place_id}/images/{image_id}/thumb")
+async def get_place_image_thumbnail(place_id: str, image_id: str):
+    try:
+        path = _store.get_thumbnail_path(place_id, image_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Place not found") from exc
+    if path is None or not path.exists():
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(path)
+
+
+@router.delete("/{place_id}/images/{image_id}", response_model=OkResponse)
+async def delete_place_image(place_id: str, image_id: str):
+    try:
+        deleted = _store.delete_image(place_id, image_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Place not found") from exc
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return OkResponse()
+
+
 @router.put("/{place_id}/images/{image_id}/annotation", response_model=PlaceAnnotationRecord)
 async def upsert_place_annotation(place_id: str, image_id: str, body: PlaceAnnotationUpsertRequest):
     try:

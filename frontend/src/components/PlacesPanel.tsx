@@ -76,8 +76,13 @@ export function PlacesPanel() {
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
   const [draftBox, setDraftBox] = useState<DraftBox | null>(null)
   const [busy, setBusy] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadPhase, setUploadPhase] = useState<'idle' | 'preparing' | 'uploading'>('idle')
+  const [showGallery, setShowGallery] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
+  const uploadInputRef = useRef<HTMLInputElement | null>(null)
 
   const fetchPlaces = useCallback(() => {
     fetch('/api/places')
@@ -204,14 +209,24 @@ export function PlacesPanel() {
   const uploadImages = async (files: FileList | null) => {
     if (!files || !selectedPlaceId || files.length === 0) return
     setBusy(true)
+    setUploading(true)
+    setUploadProgress(0)
+    setUploadPhase('preparing')
     setMessage(null)
     try {
-      const items = await Promise.all(
-        Array.from(files).map(async (file) => ({
+      setMessage(`Preparing ${files.length} image(s)...`)
+      const sourceFiles = Array.from(files)
+      const items = []
+      for (let index = 0; index < sourceFiles.length; index += 1) {
+        const file = sourceFiles[index]
+        items.push({
           filename: file.name,
           content_base64: await readFileAsBase64(file),
-        })),
-      )
+        })
+        setUploadProgress(Math.round(((index + 1) / sourceFiles.length) * 100))
+      }
+      setUploadPhase('uploading')
+      setMessage(`Uploading ${items.length} image(s)...`)
       const response = await fetch(`/api/places/${selectedPlaceId}/images`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -228,6 +243,9 @@ export function PlacesPanel() {
       setMessage(error instanceof Error ? error.message : 'Failed to upload images')
     } finally {
       setBusy(false)
+      setUploading(false)
+      setUploadProgress(0)
+      setUploadPhase('idle')
     }
   }
 
@@ -282,6 +300,32 @@ export function PlacesPanel() {
       fetchPlaces()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to start training')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const deleteImage = async (imageId: string) => {
+    if (!selectedPlaceId) return
+    setBusy(true)
+    setMessage(null)
+    try {
+      const response = await fetch(`/api/places/${selectedPlaceId}/images/${imageId}`, {
+        method: 'DELETE',
+      })
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(payload.detail || 'Failed to delete image')
+      }
+      if (selectedImageId === imageId) {
+        setSelectedImageId(null)
+        setDraftBox(null)
+      }
+      setMessage('Image deleted')
+      fetchPlaces()
+      fetchPlaceAssets(selectedPlaceId)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Failed to delete image')
     } finally {
       setBusy(false)
     }
@@ -399,24 +443,69 @@ export function PlacesPanel() {
             </button>
           </div>
 
-          <label style={{ display: 'block', marginBottom: 10 }}>
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={(event) => {
-                void uploadImages(event.target.files)
-                event.currentTarget.value = ''
-              }}
-              style={{ display: 'none' }}
-            />
-            <span style={{ ...actionButton, display: 'inline-flex', width: '100%', justifyContent: 'center' }}>
-              Upload Photos
-            </span>
-          </label>
+          <input
+            ref={uploadInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(event) => {
+              void uploadImages(event.target.files)
+              event.currentTarget.value = ''
+            }}
+            style={{ display: 'none' }}
+          />
+          <button
+            type="button"
+            onClick={() => uploadInputRef.current?.click()}
+            disabled={busy || uploading}
+            style={{
+              ...actionButton,
+              width: '100%',
+              justifyContent: 'center',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: 10,
+              opacity: busy || uploading ? 0.6 : 1,
+              cursor: busy || uploading ? 'default' : 'pointer',
+            }}
+          >
+            {uploading && <span style={spinner} />}
+            {uploading ? 'Uploading Photos...' : 'Upload Photos'}
+          </button>
+
+          {uploading && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                <div style={{ color: '#8b93bb', fontSize: 11 }}>
+                  {uploadPhase === 'preparing' ? 'Preparing files' : 'Sending request'}
+                </div>
+                <div style={{ color: '#c9d1ff', fontSize: 11, fontWeight: 700 }}>
+                  {uploadPhase === 'preparing' ? `${uploadProgress}%` : '...'}
+                </div>
+              </div>
+              <div style={progressTrack}>
+                <div
+                  style={{
+                    ...progressFill,
+                    width: uploadPhase === 'preparing' ? `${uploadProgress}%` : '100%',
+                    opacity: uploadPhase === 'preparing' ? 1 : 0.8,
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           {images.length > 0 && (
             <>
+              <button
+                type="button"
+                onClick={() => setShowGallery(true)}
+                style={{ ...actionButton, width: '100%', marginBottom: 10 }}
+              >
+                Photo Library ({images.length})
+              </button>
+
               <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 10, paddingBottom: 2 }}>
                 {images.map((image, index) => (
                   <button
@@ -527,6 +616,80 @@ export function PlacesPanel() {
           {message}
         </div>
       )}
+
+      {showGallery && selectedPlace && (
+        <div style={modalBackdrop} onClick={() => setShowGallery(false)}>
+          <div style={modalCard} onClick={(event) => event.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+              <div>
+                <div style={{ color: '#eef2ff', fontSize: 15, fontWeight: 800 }}>Photo Library</div>
+                <div style={{ color: '#8b93bb', fontSize: 11, marginTop: 4 }}>
+                  Click a thumbnail to switch to that frame. Delete removes the photo and its saved annotation.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGallery(false)}
+                style={{ ...actionButton, padding: '6px 10px' }}
+              >
+                Close
+              </button>
+            </div>
+
+            <div style={galleryGrid}>
+              {images.map((image, index) => (
+                <div
+                  key={image.id}
+                  style={{
+                    ...thumbnailCard,
+                    borderColor: selectedImageId === image.id ? '#4a7dff' : '#232842',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedImageId(image.id)
+                      setDraftBox(null)
+                      setShowGallery(false)
+                    }}
+                    style={{ display: 'block', width: '100%', background: 'transparent', border: 0, padding: 0, cursor: 'pointer' }}
+                  >
+                    <div style={{ position: 'relative', aspectRatio: '1 / 1', borderRadius: 8, overflow: 'hidden', background: '#0b1020' }}>
+                      <img
+                        src={`/api/places/${selectedPlace.id}/images/${image.id}/thumb`}
+                        alt={image.filename}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        loading="lazy"
+                      />
+                      {image.annotated && <div style={thumbBadge}>Annotated</div>}
+                    </div>
+                  </button>
+
+                  <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ color: '#d7defe', fontSize: 11, fontWeight: 700 }}>#{index + 1}</div>
+                    <button
+                      type="button"
+                      onClick={() => void deleteImage(image.id)}
+                      disabled={busy}
+                      style={{
+                        ...actionButton,
+                        padding: '5px 8px',
+                        fontSize: 11,
+                        color: '#ffb8b8',
+                        borderColor: '#5a3340',
+                        background: '#2a1720',
+                        opacity: busy ? 0.6 : 1,
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -604,4 +767,78 @@ const annotationBox: React.CSSProperties = {
   background: 'rgba(77, 208, 225, 0.12)',
   pointerEvents: 'none',
   boxSizing: 'border-box',
+}
+
+const spinner: React.CSSProperties = {
+  width: 12,
+  height: 12,
+  borderRadius: '50%',
+  border: '2px solid rgba(215, 222, 254, 0.28)',
+  borderTopColor: '#d7defe',
+  animation: 'place-spin 0.8s linear infinite',
+}
+
+const progressTrack: React.CSSProperties = {
+  width: '100%',
+  height: 8,
+  borderRadius: 999,
+  overflow: 'hidden',
+  background: '#141931',
+  border: '1px solid #2c3558',
+}
+
+const progressFill: React.CSSProperties = {
+  height: '100%',
+  borderRadius: 999,
+  background: 'linear-gradient(90deg, #2d8cff 0%, #59b7ff 100%)',
+  transition: 'width 0.16s ease',
+}
+
+const modalBackdrop: React.CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(3, 6, 12, 0.72)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 16,
+  zIndex: 1000,
+}
+
+const modalCard: React.CSSProperties = {
+  width: 'min(920px, 100%)',
+  maxHeight: 'min(82vh, 900px)',
+  overflow: 'auto',
+  background: '#11162a',
+  border: '1px solid #2a3352',
+  borderRadius: 16,
+  boxShadow: '0 24px 80px rgba(0, 0, 0, 0.45)',
+  padding: 16,
+}
+
+const galleryGrid: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+  gap: 12,
+}
+
+const thumbnailCard: React.CSSProperties = {
+  background: '#0f1426',
+  border: '1px solid #232842',
+  borderRadius: 12,
+  padding: 8,
+}
+
+const thumbBadge: React.CSSProperties = {
+  position: 'absolute',
+  top: 8,
+  left: 8,
+  padding: '3px 6px',
+  borderRadius: 999,
+  background: 'rgba(76, 175, 80, 0.85)',
+  color: '#f6fff7',
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: '0.04em',
+  textTransform: 'uppercase',
 }

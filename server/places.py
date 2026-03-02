@@ -9,6 +9,9 @@ from datetime import datetime, UTC
 from pathlib import Path
 from uuid import uuid4
 
+import cv2
+import numpy as np
+
 from server.schemas import (
     PlaceAnnotationRecord,
     PlaceAnnotationUpsertRequest,
@@ -86,6 +89,9 @@ class PlaceStore:
     def _images_dir(self, place_id: str) -> Path:
         return self._place_dir(place_id) / "images"
 
+    def _thumbs_dir(self, place_id: str) -> Path:
+        return self._place_dir(place_id) / "thumbs"
+
     def _images_path(self, place_id: str) -> Path:
         return self._place_dir(place_id) / "images.json"
 
@@ -124,6 +130,7 @@ class PlaceStore:
         _write_json(self._images_path(place_id), {"items": []})
         _write_json(self._annotations_path(place_id), {"items": []})
         self._images_dir(place_id).mkdir(parents=True, exist_ok=True)
+        self._thumbs_dir(place_id).mkdir(parents=True, exist_ok=True)
         return place
 
     def update_place(self, place_id: str, name: str) -> PlaceSummary | None:
@@ -199,6 +206,62 @@ class PlaceStore:
             if image.id == image_id:
                 return self._images_dir(place_id) / image.filename
         return None
+
+    def get_thumbnail_path(self, place_id: str, image_id: str, max_side: int = 256) -> Path | None:
+        image_path = self.get_image_path(place_id, image_id)
+        if image_path is None or not image_path.exists():
+            return None
+
+        thumb_dir = self._thumbs_dir(place_id)
+        thumb_dir.mkdir(parents=True, exist_ok=True)
+        thumb_path = thumb_dir / f"{image_id}_{max_side}.jpg"
+        if thumb_path.exists():
+            return thumb_path
+
+        payload = np.fromfile(str(image_path), dtype=np.uint8)
+        image = cv2.imdecode(payload, cv2.IMREAD_COLOR)
+        if image is None:
+            return None
+
+        height, width = image.shape[:2]
+        scale = min(max_side / max(width, 1), max_side / max(height, 1), 1.0)
+        target_w = max(1, int(width * scale))
+        target_h = max(1, int(height * scale))
+        resized = cv2.resize(image, (target_w, target_h), interpolation=cv2.INTER_AREA)
+        ok, encoded = cv2.imencode(".jpg", resized, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+        if not ok:
+            return None
+        thumb_path.write_bytes(encoded.tobytes())
+        return thumb_path
+
+    def delete_image(self, place_id: str, image_id: str) -> bool:
+        place = self.get_place(place_id)
+        if place is None:
+            raise KeyError(place_id)
+
+        images_data = _read_json(self._images_path(place_id), {"items": []})
+        image_entry = next((item for item in images_data["items"] if item["id"] == image_id), None)
+        if image_entry is None:
+            return False
+
+        images_data["items"] = [item for item in images_data["items"] if item["id"] != image_id]
+        _write_json(self._images_path(place_id), images_data)
+
+        image_path = self._images_dir(place_id) / image_entry["filename"]
+        if image_path.exists():
+            image_path.unlink()
+
+        thumbs_dir = self._thumbs_dir(place_id)
+        if thumbs_dir.exists():
+            for thumb_path in thumbs_dir.glob(f"{image_id}_*.jpg"):
+                thumb_path.unlink()
+
+        annotations_data = _read_json(self._annotations_path(place_id), {"items": []})
+        annotations_data["items"] = [item for item in annotations_data["items"] if item["place_image_id"] != image_id]
+        _write_json(self._annotations_path(place_id), annotations_data)
+
+        self._update_place_counters(place_id)
+        return True
 
     def upsert_annotation(self, place_id: str, image_id: str, body: PlaceAnnotationUpsertRequest) -> PlaceAnnotationRecord:
         place = self.get_place(place_id)

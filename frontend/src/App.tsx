@@ -159,6 +159,9 @@ export default function App() {
           <div style={panelStyle}>
             <SensorDisplay telemetry={telemetry} />
           </div>
+          <div style={panelStyle}>
+            <PlacesPanel />
+          </div>
         </div>
 
         {/* Right sidebar: system and inference */}
@@ -174,9 +177,6 @@ export default function App() {
           </div>
           <div style={panelStyle}>
             <ConfigPanel telemetry={telemetry} />
-          </div>
-          <div style={panelStyle}>
-            <PlacesPanel />
           </div>
         </div>
       </div>
