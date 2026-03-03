@@ -25,9 +25,21 @@ class PlacesApiTests(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.store = PlaceStore(Path(self._tmp.name) / "places")
         set_store(self.store)
+        self.inference_router = type(
+            "FakeInferenceRouter",
+            (),
+            {
+                "__init__": lambda self: setattr(self, "reloaded_paths", []),
+                "reload_local_model": lambda self, path: self.reloaded_paths.append(path) or True,
+            },
+        )()
 
         def fake_local_launcher(dataset_path: str, base_model: str):
             job_dir = Path(dataset_path).parent
+            weights_dir = job_dir / "train" / "weights"
+            weights_dir.mkdir(parents=True, exist_ok=True)
+            (weights_dir / "best.pt").write_text("pt", encoding="utf-8")
+            (weights_dir / "best_ncnn_model").mkdir(exist_ok=True)
             (job_dir / "status.json").write_text(
                 json.dumps(
                     {
@@ -44,7 +56,7 @@ class PlacesApiTests(unittest.TestCase):
             )
             return {"ok": True}
 
-        set_dependencies(None, local_training_launcher=fake_local_launcher)
+        set_dependencies(None, local_training_launcher=fake_local_launcher, inference_router=self.inference_router)
         app = FastAPI()
         app.include_router(router)
         self.client = TestClient(app)
@@ -141,6 +153,8 @@ class PlacesApiTests(unittest.TestCase):
         self.assertEqual(job.json()["status"], "ready")
         self.assertTrue(job.json()["dataset_path"].endswith("/dataset"))
         self.assertTrue(job.json()["result_ncnn_path"].endswith("/best_ncnn_model"))
+        self.assertTrue(self.inference_router.reloaded_paths)
+        self.assertEqual(self.inference_router.reloaded_paths[-1], job.json()["result_ncnn_path"])
 
         activate = self.client.put("/api/places/active", json={"place_id": place_id})
         self.assertEqual(activate.status_code, 200)

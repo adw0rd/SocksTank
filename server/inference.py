@@ -345,3 +345,41 @@ class InferenceRouter:
     def close(self):
         """Close the underlying HTTP client."""
         self._client.close()
+
+    def reload_local_model(self, model_path: str) -> bool:
+        """Hot-reload the local inference backend to use a new model path."""
+        model = None
+        cpp_detector = None
+        class_names: dict[int, str] | None = None
+
+        if not os.path.exists(model_path):
+            log.warning("Cannot reload missing model: %s", model_path)
+            return False
+
+        try:
+            if settings.ncnn_cpp:
+                cpp_detector, class_names = _try_load_ncnn_native(model_path, settings.ncnn_threads)
+                if cpp_detector is None:
+                    from ultralytics import YOLO
+
+                    model = YOLO(model_path)
+                    log.info("YOLO model hot-reloaded (fallback): %s", model_path)
+            else:
+                from ultralytics import YOLO
+
+                model = YOLO(model_path)
+                log.info("YOLO model hot-reloaded: %s", model_path)
+        except Exception:
+            log.exception("Failed to hot-reload model: %s", model_path)
+            return False
+
+        with self._lock:
+            self._model = model
+            self._cpp_detector = cpp_detector
+            self._class_names = class_names or {}
+            self._active_backend = "local"
+            self._error = None
+            settings.model_path = model_path
+
+        log.info("Local inference model switched to %s", model_path)
+        return True

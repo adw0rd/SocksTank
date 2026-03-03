@@ -11,6 +11,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
+from server.config import settings
 from server.places import PlaceStore
 from server.schemas import (
     OkResponse,
@@ -37,6 +38,7 @@ router = APIRouter(prefix="/api/places", tags=["places"])
 _store = PlaceStore()
 _gpu_manager = None
 _local_training_launcher = None
+_inference_router = None
 
 
 def set_store(store: PlaceStore) -> None:
@@ -45,12 +47,14 @@ def set_store(store: PlaceStore) -> None:
     _store = store
 
 
-def set_dependencies(gpu_manager, local_training_launcher=None) -> None:
+def set_dependencies(gpu_manager, local_training_launcher=None, inference_router=None) -> None:
     """Inject shared dependencies from app.py."""
-    global _gpu_manager, _local_training_launcher
+    global _gpu_manager, _local_training_launcher, _inference_router
     _gpu_manager = gpu_manager
     if local_training_launcher is not None:
         _local_training_launcher = local_training_launcher
+    if inference_router is not None:
+        _inference_router = inference_router
 
 
 def _select_training_server(preferred_host: str | None):
@@ -167,6 +171,23 @@ def _fallback_job_to_local(job, reason: str):
             error=f"Local fallback start failed after remote error: {launch_result.get('error', 'unknown error')}",
         )
     return updated or job
+
+
+def _local_artifact_path(job) -> str | None:
+    candidates = [job.result_ncnn_path, job.result_model_path]
+    for candidate in candidates:
+        if candidate and Path(candidate).exists():
+            return candidate
+    return None
+
+
+def _maybe_activate_trained_model(job) -> None:
+    if job.status is not PlaceJobStatus.READY or _inference_router is None:
+        return
+    target_path = _local_artifact_path(job)
+    if target_path is None or settings.model_path == target_path:
+        return
+    _inference_router.reload_local_model(target_path)
 
 
 @router.get("", response_model=PlacesListResponse)
@@ -387,4 +408,5 @@ async def get_place_job(job_id: str):
             )
             if updated is not None:
                 job = updated
+    _maybe_activate_trained_model(job)
     return job

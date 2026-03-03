@@ -80,7 +80,7 @@ async def lifespan(app: FastAPI):
     ws_set_deps(hardware, camera_manager)
     api_set_deps(hardware, camera_manager)
     gpu_set_deps(inference_router, gpu_manager)
-    places_set_deps(gpu_manager)
+    places_set_deps(gpu_manager, inference_router=inference_router)
 
     log.info("SocksTank server started on %s:%d (mock=%s)", settings.host, settings.port, settings.mock)
 
