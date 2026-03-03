@@ -26,6 +26,7 @@ interface PlaceTrainingJob {
   status: string
   executor: string
   dataset_path?: string | null
+  remote_dataset_path?: string | null
   error?: string | null
   detail?: string
 }
@@ -730,6 +731,11 @@ export function PlacesPanel() {
               {trainingJob.dataset_path && (
                 <div style={{ color: '#8b93bb', fontSize: 11, lineHeight: 1.5, marginTop: 4 }}>
                   Dataset: <span style={{ color: '#d7defe' }}>{trainingJob.dataset_path}</span>
+                </div>
+              )}
+              {trainingJob.remote_dataset_path && (
+                <div style={{ color: '#8b93bb', fontSize: 11, lineHeight: 1.5, marginTop: 4 }}>
+                  Remote dataset: <span style={{ color: '#d7defe' }}>{trainingJob.remote_dataset_path}</span>
                 </div>
               )}
               {trainingJob.error && (

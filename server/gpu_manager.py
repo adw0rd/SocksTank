@@ -3,6 +3,8 @@
 import json
 import logging
 import os
+import posixpath
+from pathlib import Path
 import threading
 import time
 
@@ -236,6 +238,34 @@ class GPUServerManager:
             log.error("SSH stop failed on %s: %s", host, e)
             return {"ok": False, "error": str(e)}
 
+    def stage_place_training_dataset(self, host: str, dataset_path: str | Path, job_id: str) -> dict:
+        """Upload a prepared dataset bundle to a remote GPU host."""
+        server = self.get_server(host)
+        if not server:
+            return {"ok": False, "error": f"Server {host} not found"}
+
+        local_dataset = Path(dataset_path)
+        if not local_dataset.exists():
+            return {"ok": False, "error": f"Dataset path does not exist: {local_dataset}"}
+
+        remote_root = f"~/sockstank/user_data/place_jobs/{job_id}"
+        remote_dataset = f"{remote_root}/dataset"
+        try:
+            ssh = self._ssh_connect(server)
+            ssh.exec_command(f"mkdir -p {remote_root}")
+            ssh.exec_command(f"rm -rf {remote_dataset}")
+            ssh.exec_command(f"mkdir -p {remote_dataset}")
+
+            sftp = ssh.open_sftp()
+            self._sftp_upload_dir(sftp, local_dataset, remote_dataset)
+            sftp.close()
+            ssh.close()
+            log.info("Staged place dataset on %s:%s", host, remote_dataset)
+            return {"ok": True, "remote_dataset_path": remote_dataset}
+        except Exception as e:
+            log.error("Failed to stage place dataset on %s: %s", host, e)
+            return {"ok": False, "error": str(e)}
+
     def _ssh_connect(self, server: GPUServerSchema) -> paramiko.SSHClient:
         """Create an SSH connection."""
         ssh = paramiko.SSHClient()
@@ -250,6 +280,27 @@ class GPUServerManager:
 
         ssh.connect(**kwargs)
         return ssh
+
+    def _sftp_upload_dir(self, sftp: paramiko.SFTPClient, local_dir: Path, remote_dir: str) -> None:
+        """Recursively upload a local directory to a remote SFTP path."""
+        self._sftp_mkdirs(sftp, remote_dir)
+        for entry in local_dir.iterdir():
+            remote_path = posixpath.join(remote_dir, entry.name)
+            if entry.is_dir():
+                self._sftp_upload_dir(sftp, entry, remote_path)
+            else:
+                sftp.put(str(entry), remote_path)
+
+    def _sftp_mkdirs(self, sftp: paramiko.SFTPClient, remote_dir: str) -> None:
+        """Recursively create a remote directory tree if it does not exist."""
+        parts = [part for part in remote_dir.split("/") if part and part != "."]
+        current = "/" if remote_dir.startswith("/") else ""
+        for part in parts:
+            current = posixpath.join(current, part) if current else part
+            try:
+                sftp.stat(current)
+            except FileNotFoundError:
+                sftp.mkdir(current)
 
     def start_health_loop(self, inference_router):
         """Start the background health-check loop."""

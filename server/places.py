@@ -332,6 +332,7 @@ class PlaceStore:
             executor=executor,
             status=PlaceJobStatus.READY,
             dataset_path=str(dataset_path),
+            remote_dataset_path=None,
             queued_at=now,
             started_at=now,
             finished_at=now,
@@ -345,6 +346,32 @@ class PlaceStore:
         self._save_jobs(jobs)
         self._set_place_ready(place_id, model_version)
         return job
+
+    def update_job(
+        self,
+        job_id: str,
+        *,
+        executor: str | None = None,
+        remote_dataset_path: str | None = None,
+        error: str | None = None,
+    ) -> PlaceTrainingJob | None:
+        jobs = self._load_jobs()
+        updated = None
+        for item in jobs["jobs"]:
+            if item["id"] != job_id:
+                continue
+            if executor is not None:
+                item["executor"] = executor
+            if remote_dataset_path is not None:
+                item["remote_dataset_path"] = remote_dataset_path
+            if error is not None:
+                item["error"] = error
+            updated = PlaceTrainingJob.model_validate(item)
+            break
+        if updated is None:
+            return None
+        self._save_jobs(jobs)
+        return updated
 
     def _build_training_dataset(
         self,

@@ -43,18 +43,17 @@ def set_dependencies(gpu_manager) -> None:
     _gpu_manager = gpu_manager
 
 
-def _select_training_executor(preferred_host: str | None) -> str:
+def _select_training_server(preferred_host: str | None):
     if _gpu_manager:
         servers = list(_gpu_manager.servers)
         online_servers = [server for server in servers if server.status == "online"]
         if preferred_host:
             for server in online_servers:
                 if preferred_host in {server.host, server.name}:
-                    return f"remote:{server.name or server.host}"
+                    return server
         if online_servers:
-            server = online_servers[0]
-            return f"remote:{server.name or server.host}"
-    return "local:rpi5"
+            return online_servers[0]
+    return None
 
 
 @router.get("", response_model=PlacesListResponse)
@@ -174,13 +173,28 @@ async def list_place_annotations(place_id: str):
 
 @router.post("/{place_id}/train", response_model=PlaceTrainResponse)
 async def train_place(place_id: str, body: PlaceTrainRequest):
-    executor = _select_training_executor(body.gpu_host)
+    remote_server = _select_training_server(body.gpu_host)
+    executor = f"remote:{remote_server.name or remote_server.host}" if remote_server else "local:rpi5"
     try:
         job = _store.train_place(place_id, base_model="models/yolo11_best.pt", executor=executor)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Place not found") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if remote_server and _gpu_manager:
+        stage_result = _gpu_manager.stage_place_training_dataset(remote_server.host, job.dataset_path, job.id)
+        if stage_result.get("ok"):
+            updated = _store.update_job(job.id, remote_dataset_path=stage_result["remote_dataset_path"])
+            if updated is not None:
+                job = updated
+        else:
+            updated = _store.update_job(
+                job.id,
+                executor="local:rpi5",
+                error=f"Remote dataset staging failed: {stage_result.get('error', 'unknown error')}",
+            )
+            if updated is not None:
+                job = updated
     return PlaceTrainResponse(job_id=job.id, status=job.status, executor=job.executor)
 
 

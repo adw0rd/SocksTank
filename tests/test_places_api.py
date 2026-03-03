@@ -144,6 +144,10 @@ class PlacesApiTests(unittest.TestCase):
                     )
                 ]
 
+            def stage_place_training_dataset(self, host: str, dataset_path: str, job_id: str):
+                self.last_stage = (host, dataset_path, job_id)
+                return {"ok": True, "remote_dataset_path": f"/remote/{job_id}/dataset"}
+
         set_dependencies(FakeGpuManager())
 
         image = np.zeros((20, 20, 3), dtype=np.uint8)
@@ -173,6 +177,61 @@ class PlacesApiTests(unittest.TestCase):
         train = self.client.post(f"/api/places/{place_id}/train", json={})
         self.assertEqual(train.status_code, 200)
         self.assertEqual(train.json()["executor"], "remote:blackops")
+
+        job = self.client.get(f"/api/places/jobs/{train.json()['job_id']}")
+        self.assertEqual(job.status_code, 200)
+        self.assertEqual(job.json()["remote_dataset_path"], f"/remote/{train.json()['job_id']}/dataset")
+
+    def test_training_falls_back_to_local_when_remote_staging_fails(self) -> None:
+        class FakeGpuManager:
+            def __init__(self):
+                self.servers = [
+                    GPUServerSchema(
+                        name="blackops",
+                        host="192.168.0.124",
+                        username="user",
+                        status="online",
+                        gpu="RTX",
+                    )
+                ]
+
+            def stage_place_training_dataset(self, host: str, dataset_path: str, job_id: str):
+                return {"ok": False, "error": "SSH failed"}
+
+        set_dependencies(FakeGpuManager())
+
+        image = np.zeros((20, 20, 3), dtype=np.uint8)
+        ok, encoded = cv2.imencode(".jpg", image)
+        self.assertTrue(ok)
+
+        create = self.client.post("/api/places", json={"name": "Dryer"})
+        place_id = create.json()["id"]
+        upload = self.client.post(
+            f"/api/places/{place_id}/images",
+            json={
+                "items": [
+                    {
+                        "filename": "dryer.jpg",
+                        "content_base64": base64.b64encode(encoded.tobytes()).decode("ascii"),
+                    }
+                ]
+            },
+        )
+        image_id = upload.json()["items"][0]["id"]
+        annotate = self.client.put(
+            f"/api/places/{place_id}/images/{image_id}/annotation",
+            json={"x_center": 0.5, "y_center": 0.5, "width": 0.4, "height": 0.4},
+        )
+        self.assertEqual(annotate.status_code, 200)
+
+        train = self.client.post(f"/api/places/{place_id}/train", json={})
+        self.assertEqual(train.status_code, 200)
+        self.assertEqual(train.json()["executor"], "local:rpi5")
+
+        job = self.client.get(f"/api/places/jobs/{train.json()['job_id']}")
+        self.assertEqual(job.status_code, 200)
+        self.assertIsNone(job.json()["remote_dataset_path"])
+        self.assertIn("Remote dataset staging failed", job.json()["error"])
 
     def test_training_requires_annotations(self) -> None:
         create = self.client.post("/api/places", json={"name": "Laundry Basket"})
