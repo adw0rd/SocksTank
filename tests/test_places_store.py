@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from datetime import UTC, datetime
 import tempfile
 import unittest
 from pathlib import Path
@@ -124,6 +125,32 @@ class PlaceStoreTests(unittest.TestCase):
 
         self.assertIsNotNone(thumb_path)
         self.assertTrue(thumb_path.exists())
+
+    def test_update_job_can_clear_finished_at(self) -> None:
+        place = self.store.create_place("Washing Machine")
+        images = self.store.add_images(
+            place.id,
+            [
+                PlaceImageUploadItem(
+                    filename="washer.jpg",
+                    content_base64=base64.b64encode(b"fake-image-bytes").decode("ascii"),
+                )
+            ],
+        )
+        self.store.upsert_annotation(
+            place.id,
+            images[0].id,
+            PlaceAnnotationUpsertRequest(x_center=0.5, y_center=0.5, width=0.4, height=0.4),
+        )
+        job = self.store.train_place(place.id, "models/yolo11_best.pt", "local:rpi5")
+        finished = datetime.now(UTC)
+        updated = self.store.update_job(job.id, status=PlaceJobStatus.FAILED, finished_at=finished)
+        self.assertIsNotNone(updated)
+        self.assertEqual(updated.finished_at, finished)
+
+        updated = self.store.update_job(job.id, status=PlaceJobStatus.TRAINING, clear_finished_at=True)
+        self.assertIsNotNone(updated)
+        self.assertIsNone(updated.finished_at)
 
 
 if __name__ == "__main__":

@@ -358,6 +358,7 @@ class PlaceStore:
         error: str | None = None,
         started_at: datetime | None = None,
         finished_at: datetime | None = None,
+        clear_finished_at: bool = False,
         result_model_version: str | None = None,
         result_model_path: str | None = None,
         result_ncnn_path: str | None = None,
@@ -381,6 +382,8 @@ class PlaceStore:
                 item["started_at"] = started_at.isoformat()
             if finished_at is not None:
                 item["finished_at"] = finished_at.isoformat()
+            elif clear_finished_at:
+                item["finished_at"] = None
             if result_model_version is not None:
                 item["result_model_version"] = result_model_version
             if result_model_path is not None:

@@ -119,6 +119,7 @@ def _sync_job_from_status(job, status_payload: dict):
         status=status,
         started_at=datetime.fromisoformat(started_at) if started_at else None,
         finished_at=datetime.fromisoformat(finished_at) if finished_at else None,
+        clear_finished_at=status is PlaceJobStatus.TRAINING and not finished_at,
         result_model_version=result_model_version,
         result_model_path=result_model_path,
         result_ncnn_path=result_ncnn_path,
@@ -153,6 +154,7 @@ def _fallback_job_to_local(job, reason: str):
             executor="local:rpi5",
             status=PlaceJobStatus.TRAINING,
             started_at=datetime.now(UTC),
+            clear_finished_at=True,
             finished_at=None,
             error=f"Remote training fallback: {reason}",
         )
