@@ -250,13 +250,13 @@ class GPUServerManager:
         if not local_dataset.exists():
             return {"ok": False, "error": f"Dataset path does not exist: {local_dataset}"}
 
-        remote_root = f"~/sockstank/user_data/place_jobs/{job_id}"
-        remote_dataset = f"{remote_root}/dataset"
+        remote_root = self._expand_remote_path(server, f"~/sockstank/user_data/place_jobs/{job_id}")
+        remote_dataset = posixpath.join(remote_root, "dataset")
         try:
             ssh = self._ssh_connect(server)
-            ssh.exec_command(f"mkdir -p {remote_root}")
-            ssh.exec_command(f"rm -rf {remote_dataset}")
-            ssh.exec_command(f"mkdir -p {remote_dataset}")
+            ssh.exec_command(f"mkdir -p {shlex.quote(remote_root)}")
+            ssh.exec_command(f"rm -rf {shlex.quote(remote_dataset)}")
+            ssh.exec_command(f"mkdir -p {shlex.quote(remote_dataset)}")
 
             sftp = ssh.open_sftp()
             self._sftp_upload_dir(sftp, local_dataset, remote_dataset)
@@ -301,7 +301,7 @@ class GPUServerManager:
         if not server:
             return {"ok": False, "error": f"Server {host} not found"}
 
-        remote_status = f"~/sockstank/user_data/place_jobs/{job_id}/status.json"
+        remote_status = self._expand_remote_path(server, f"~/sockstank/user_data/place_jobs/{job_id}/status.json")
         try:
             ssh = self._ssh_connect(server)
             _, stdout, _ = ssh.exec_command(f"cat {shlex.quote(remote_status)} 2>/dev/null || true")

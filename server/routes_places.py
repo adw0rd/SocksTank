@@ -127,6 +127,46 @@ def _sync_job_from_status(job, status_payload: dict):
     return updated or job
 
 
+def _should_fallback_remote_training(job, status_payload: dict) -> bool:
+    if not job.executor.startswith("remote:"):
+        return False
+    if status_payload.get("status") != PlaceJobStatus.FAILED.value:
+        return False
+    error = (status_payload.get("error") or "").lower()
+    fallback_markers = (
+        "cuda-capable device(s) is/are busy or unavailable",
+        "cudaerrordevicesunavailable",
+        "cuda device busy",
+        "device unavailable",
+        "invalid cuda 'device=0' requested",
+        "torch.cuda.is_available(): false",
+    )
+    return any(marker in error for marker in fallback_markers)
+
+
+def _fallback_job_to_local(job, reason: str):
+    launcher = _local_training_launcher or _default_local_training_launcher
+    launch_result = launcher(job.dataset_path, job.base_model)
+    if launch_result.get("ok"):
+        updated = _store.update_job(
+            job.id,
+            executor="local:rpi5",
+            status=PlaceJobStatus.TRAINING,
+            started_at=datetime.now(UTC),
+            finished_at=None,
+            error=f"Remote training fallback: {reason}",
+        )
+    else:
+        updated = _store.update_job(
+            job.id,
+            executor="local:rpi5",
+            status=PlaceJobStatus.FAILED,
+            finished_at=datetime.now(UTC),
+            error=f"Local fallback start failed after remote error: {launch_result.get('error', 'unknown error')}",
+        )
+    return updated or job
+
+
 @router.get("", response_model=PlacesListResponse)
 async def list_places():
     active_id, places = _store.list_places()
@@ -315,7 +355,10 @@ async def get_place_job(job_id: str):
         if job.executor.startswith("remote:") and _gpu_manager and job.remote_host:
             result = _gpu_manager.read_place_training_status(job.remote_host, job.id)
             if result.get("ok"):
-                job = _sync_job_from_status(job, result["status"])
+                status_payload = result["status"]
+                job = _sync_job_from_status(job, status_payload)
+                if _should_fallback_remote_training(job, status_payload):
+                    job = _fallback_job_to_local(job, status_payload.get("error", "remote training failed"))
         elif job.executor == "local:rpi5":
             status_payload = _load_local_training_status(job)
             if status_payload:

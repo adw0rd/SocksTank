@@ -9,7 +9,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from server.place_train_worker import _augment_training_set
+from server.place_train_worker import _augment_training_set, _normalize_data_yaml
 
 
 class PlaceTrainWorkerTests(unittest.TestCase):
@@ -39,6 +39,31 @@ class PlaceTrainWorkerTests(unittest.TestCase):
                 (labels_dir / "sample_flip.txt").read_text(encoding="utf-8").strip(),
                 "0 0.750000 0.500000 0.300000 0.400000",
             )
+
+    def test_normalize_data_yaml_sets_dataset_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            dataset = Path(tmp) / "dataset"
+            dataset.mkdir(parents=True)
+            (dataset / "data.yaml").write_text(
+                "\n".join(
+                    [
+                        "path: .",
+                        "train: images/train",
+                        "val: images/train",
+                        "test: images/train",
+                        "names:",
+                        "  0: place_base1",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            _normalize_data_yaml(dataset)
+
+            payload = (dataset / "data.yaml").read_text(encoding="utf-8")
+            self.assertIn(f"path: {dataset.resolve()}", payload)
+            self.assertIn("train: images/train", payload)
 
 
 if __name__ == "__main__":

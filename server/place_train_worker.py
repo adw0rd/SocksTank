@@ -9,6 +9,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import yaml
 
 
 def _now() -> str:
@@ -78,6 +79,16 @@ def _augment_training_set(dataset: Path) -> None:
         _write_label(labels_dir / f"{image_path.stem}_flip.txt", flipped_label)
 
 
+def _normalize_data_yaml(dataset: Path) -> None:
+    data_yaml = dataset / "data.yaml"
+    payload = yaml.safe_load(data_yaml.read_text(encoding="utf-8")) or {}
+    payload["path"] = str(dataset.resolve())
+    payload.setdefault("train", "images/train")
+    payload.setdefault("val", "images/train")
+    payload.setdefault("test", "images/train")
+    data_yaml.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+
 def run_worker(dataset: Path, job_dir: Path, base_model: str, device: str, epochs: int) -> int:
     _write_status(
         job_dir,
@@ -96,6 +107,7 @@ def run_worker(dataset: Path, job_dir: Path, base_model: str, device: str, epoch
         from ultralytics import YOLO
 
         _augment_training_set(dataset)
+        _normalize_data_yaml(dataset)
 
         model = YOLO(base_model)
         model.train(
