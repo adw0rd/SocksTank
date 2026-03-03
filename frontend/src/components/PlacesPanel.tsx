@@ -14,6 +14,22 @@ interface PlaceAnnotationsResponse {
   items: PlaceAnnotationRecord[]
 }
 
+interface PlaceTrainResponse {
+  job_id: string
+  status: string
+  executor: string
+  detail?: string
+}
+
+interface PlaceTrainingJob {
+  id: string
+  status: string
+  executor: string
+  dataset_path?: string | null
+  error?: string | null
+  detail?: string
+}
+
 type DraftBox = {
   startX: number
   startY: number
@@ -107,6 +123,8 @@ export function PlacesPanel() {
     return window.localStorage.getItem('sockstank.places.showGallery') === 'true'
   })
   const [message, setMessage] = useState<string | null>(null)
+  const [trainingJob, setTrainingJob] = useState<PlaceTrainingJob | null>(null)
+  const [training, setTraining] = useState(false)
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const uploadInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -209,6 +227,36 @@ export function PlacesPanel() {
       window.localStorage.removeItem('sockstank.places.selectedImageId')
     }
   }, [selectedImageId])
+
+  useEffect(() => {
+    if (!trainingJob || !selectedPlaceId) {
+      return
+    }
+    if (trainingJob.status === 'ready' || trainingJob.status === 'failed') {
+      setTraining(false)
+      return
+    }
+
+    const timer = window.setInterval(async () => {
+      try {
+        const response = await fetch(`/api/places/jobs/${trainingJob.id}`)
+        const payload = (await response.json()) as PlaceTrainingJob
+        if (!response.ok) {
+          throw new Error((payload as { detail?: string }).detail || 'Failed to refresh training status')
+        }
+        setTrainingJob(payload)
+        if (payload.status === 'ready' || payload.status === 'failed') {
+          setTraining(false)
+          fetchPlaces()
+        }
+      } catch (error) {
+        setTraining(false)
+        setMessage(error instanceof Error ? error.message : 'Failed to refresh training status')
+      }
+    }, 1500)
+
+    return () => window.clearInterval(timer)
+  }, [fetchPlaces, selectedPlaceId, trainingJob])
 
   const selectedPlace = useMemo(
     () => places.find((place) => place.id === selectedPlaceId) ?? null,
@@ -363,6 +411,7 @@ export function PlacesPanel() {
   const triggerTrain = async () => {
     if (!selectedPlaceId) return
     setBusy(true)
+    setTraining(true)
     setMessage(null)
     try {
       const response = await fetch(`/api/places/${selectedPlaceId}/train`, {
@@ -370,13 +419,26 @@ export function PlacesPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       })
-      const payload = await response.json()
+      const payload = (await response.json()) as PlaceTrainResponse
       if (!response.ok) {
         throw new Error(payload.detail || 'Failed to start training')
       }
-      setMessage(`Training job ${payload.job_id} finished as ${payload.status}`)
+      const jobResponse = await fetch(`/api/places/jobs/${payload.job_id}`)
+      const nextJob = jobResponse.ok
+        ? ((await jobResponse.json()) as PlaceTrainingJob)
+        : ({
+            id: payload.job_id,
+            status: payload.status,
+            executor: payload.executor,
+          } satisfies PlaceTrainingJob)
+      setTrainingJob(nextJob)
+      setMessage(`Training job ${payload.job_id} started on ${payload.executor}`)
+      if (payload.status === 'ready' || payload.status === 'failed') {
+        setTraining(false)
+      }
       fetchPlaces()
     } catch (error) {
+      setTraining(false)
       setMessage(error instanceof Error ? error.message : 'Failed to start training')
     } finally {
       setBusy(false)
@@ -642,12 +704,39 @@ export function PlacesPanel() {
             </button>
             <button
               onClick={triggerTrain}
-              disabled={busy}
-              style={{ ...actionButton, opacity: busy ? 0.6 : 1 }}
+              disabled={busy || training}
+              style={{
+                ...actionButton,
+                opacity: busy || training ? 0.6 : 1,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
             >
-              Train
+              {training && <span style={spinner} />}
+              {training ? 'Training...' : 'Train'}
             </button>
           </div>
+
+          {trainingJob && (
+            <div style={{ ...trainingCard, marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ color: '#eef2ff', fontSize: 12, fontWeight: 700 }}>Training Job</div>
+                <div style={badge}>{trainingJob.status}</div>
+              </div>
+              <div style={{ color: '#8b93bb', fontSize: 11, lineHeight: 1.5, marginTop: 6 }}>
+                Executor: <span style={{ color: '#d7defe', fontWeight: 700 }}>{trainingJob.executor}</span>
+              </div>
+              {trainingJob.dataset_path && (
+                <div style={{ color: '#8b93bb', fontSize: 11, lineHeight: 1.5, marginTop: 4 }}>
+                  Dataset: <span style={{ color: '#d7defe' }}>{trainingJob.dataset_path}</span>
+                </div>
+              )}
+              {trainingJob.error && (
+                <div style={{ color: '#ffb8b8', fontSize: 11, lineHeight: 1.5, marginTop: 6 }}>{trainingJob.error}</div>
+              )}
+            </div>
+          )}
 
           <input
             ref={uploadInputRef}
@@ -1015,6 +1104,13 @@ const actionButton: React.CSSProperties = {
   border: '1px solid #343d62',
   borderRadius: 8,
   cursor: 'pointer',
+}
+
+const trainingCard: React.CSSProperties = {
+  background: '#0f1426',
+  border: '1px solid #2a3352',
+  borderRadius: 10,
+  padding: '10px 12px',
 }
 
 const emptyState: React.CSSProperties = {
