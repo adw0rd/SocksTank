@@ -7,6 +7,9 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+import cv2
+import numpy as np
+
 
 def _now() -> str:
     return datetime.now(UTC).isoformat()
@@ -16,6 +19,63 @@ def _write_status(job_dir: Path, payload: dict) -> None:
     job_dir.mkdir(parents=True, exist_ok=True)
     status_path = job_dir / "status.json"
     status_path.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
+
+
+def _read_label(label_path: Path) -> tuple[int, float, float, float, float] | None:
+    raw = label_path.read_text(encoding="utf-8").strip()
+    if not raw:
+        return None
+    parts = raw.split()
+    if len(parts) != 5:
+        return None
+    class_id = int(parts[0])
+    x_center, y_center, width, height = map(float, parts[1:])
+    return class_id, x_center, y_center, width, height
+
+
+def _write_label(label_path: Path, label: tuple[int, float, float, float, float]) -> None:
+    class_id, x_center, y_center, width, height = label
+    label_path.write_text(
+        f"{class_id} {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}\n",
+        encoding="utf-8",
+    )
+
+
+def _augment_training_set(dataset: Path) -> None:
+    images_dir = dataset / "images" / "train"
+    labels_dir = dataset / "labels" / "train"
+    source_images = sorted(
+        path for path in images_dir.iterdir() if path.is_file() and not path.stem.endswith(("_bright", "_dark", "_flip"))
+    )
+
+    for image_path in source_images:
+        label_path = labels_dir / f"{image_path.stem}.txt"
+        if not label_path.exists():
+            continue
+
+        label = _read_label(label_path)
+        if label is None:
+            continue
+
+        payload = np.fromfile(str(image_path), dtype=np.uint8)
+        image = cv2.imdecode(payload, cv2.IMREAD_COLOR)
+        if image is None:
+            continue
+
+        class_id, x_center, y_center, width, height = label
+
+        bright = cv2.convertScaleAbs(image, alpha=1.08, beta=12)
+        cv2.imwrite(str(images_dir / f"{image_path.stem}_bright.jpg"), bright)
+        _write_label(labels_dir / f"{image_path.stem}_bright.txt", label)
+
+        dark = cv2.convertScaleAbs(image, alpha=0.92, beta=-12)
+        cv2.imwrite(str(images_dir / f"{image_path.stem}_dark.jpg"), dark)
+        _write_label(labels_dir / f"{image_path.stem}_dark.txt", label)
+
+        flipped = cv2.flip(image, 1)
+        cv2.imwrite(str(images_dir / f"{image_path.stem}_flip.jpg"), flipped)
+        flipped_label = (class_id, 1.0 - x_center, y_center, width, height)
+        _write_label(labels_dir / f"{image_path.stem}_flip.txt", flipped_label)
 
 
 def run_worker(dataset: Path, job_dir: Path, base_model: str, device: str, epochs: int) -> int:
@@ -33,6 +93,8 @@ def run_worker(dataset: Path, job_dir: Path, base_model: str, device: str, epoch
 
     try:
         from ultralytics import YOLO
+
+        _augment_training_set(dataset)
 
         model = YOLO(base_model)
         model.train(
