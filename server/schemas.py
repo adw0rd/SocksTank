@@ -215,6 +215,7 @@ class PlaceTrainingJob(BaseModel):
     status: PlaceJobStatus
     dataset_path: str | None = None
     remote_dataset_path: str | None = None
+    remote_host: str | None = None
     queued_at: datetime
     started_at: datetime | None = None
     finished_at: datetime | None = None

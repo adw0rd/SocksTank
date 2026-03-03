@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import posixpath
+import shlex
 from pathlib import Path
 import threading
 import time
@@ -264,6 +265,51 @@ class GPUServerManager:
             return {"ok": True, "remote_dataset_path": remote_dataset}
         except Exception as e:
             log.error("Failed to stage place dataset on %s: %s", host, e)
+            return {"ok": False, "error": str(e)}
+
+    def start_place_training(self, host: str, job_id: str, remote_dataset_path: str, base_model: str) -> dict:
+        """Start a background place-training worker on a remote host."""
+        server = self.get_server(host)
+        if not server:
+            return {"ok": False, "error": f"Server {host} not found"}
+
+        remote_job_dir = posixpath.dirname(remote_dataset_path)
+        cmd = (
+            "cd ~/sockstank && "
+            f"nohup python3 -m server.place_train_worker "
+            f"--dataset {shlex.quote(remote_dataset_path)} "
+            f"--job-dir {shlex.quote(remote_job_dir)} "
+            f"--base-model {shlex.quote(base_model)} "
+            "--device 0 "
+            f"> {shlex.quote(posixpath.join(remote_job_dir, 'worker.log'))} 2>&1 &"
+        )
+        try:
+            ssh = self._ssh_connect(server)
+            stdin, stdout, stderr = ssh.exec_command(cmd)
+            stdout.channel.recv_exit_status()
+            ssh.close()
+            log.info("Started remote place training on %s for job %s", host, job_id)
+            return {"ok": True}
+        except Exception as e:
+            log.error("Failed to start remote place training on %s: %s", host, e)
+            return {"ok": False, "error": str(e)}
+
+    def read_place_training_status(self, host: str, job_id: str) -> dict:
+        """Read a remote place-training status.json if it exists."""
+        server = self.get_server(host)
+        if not server:
+            return {"ok": False, "error": f"Server {host} not found"}
+
+        remote_status = f"~/sockstank/user_data/place_jobs/{job_id}/status.json"
+        try:
+            ssh = self._ssh_connect(server)
+            _, stdout, _ = ssh.exec_command(f"cat {shlex.quote(remote_status)} 2>/dev/null || true")
+            raw = stdout.read().decode().strip()
+            ssh.close()
+            if not raw:
+                return {"ok": False, "error": "Status file not found"}
+            return {"ok": True, "status": json.loads(raw)}
+        except Exception as e:
             return {"ok": False, "error": str(e)}
 
     def _ssh_connect(self, server: GPUServerSchema) -> paramiko.SSHClient:

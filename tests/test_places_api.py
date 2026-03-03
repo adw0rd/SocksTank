@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import base64
+import json
 import tempfile
 import unittest
 from pathlib import Path
+from datetime import UTC, datetime
 
 import cv2
 import numpy as np
@@ -23,7 +25,25 @@ class PlacesApiTests(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.store = PlaceStore(Path(self._tmp.name) / "places")
         set_store(self.store)
-        set_dependencies(None)
+
+        def fake_local_launcher(dataset_path: str, base_model: str):
+            job_dir = Path(dataset_path).parent
+            (job_dir / "status.json").write_text(
+                json.dumps(
+                    {
+                        "status": "ready",
+                        "started_at": datetime.now(UTC).isoformat(),
+                        "finished_at": datetime.now(UTC).isoformat(),
+                        "error": None,
+                        "result_model_version": f"{job_dir.name}-v1",
+                        "result_model_path": str(job_dir / "train" / "weights" / "best.pt"),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            return {"ok": True}
+
+        set_dependencies(None, local_training_launcher=fake_local_launcher)
         app = FastAPI()
         app.include_router(router)
         self.client = TestClient(app)
@@ -112,7 +132,7 @@ class PlacesApiTests(unittest.TestCase):
         train = self.client.post(f"/api/places/{place_id}/train", json={})
         self.assertEqual(train.status_code, 200)
         train_payload = train.json()
-        self.assertEqual(train_payload["status"], "ready")
+        self.assertEqual(train_payload["status"], "training")
         self.assertEqual(train_payload["executor"], "local:rpi5")
 
         job = self.client.get(f"/api/places/jobs/{train_payload['job_id']}")
@@ -148,6 +168,20 @@ class PlacesApiTests(unittest.TestCase):
                 self.last_stage = (host, dataset_path, job_id)
                 return {"ok": True, "remote_dataset_path": f"/remote/{job_id}/dataset"}
 
+            def start_place_training(self, host: str, job_id: str, remote_dataset_path: str, base_model: str):
+                self.remote_status = {
+                    "status": "ready",
+                    "started_at": datetime.now(UTC).isoformat(),
+                    "finished_at": datetime.now(UTC).isoformat(),
+                    "error": None,
+                    "result_model_version": f"{job_id}-v1",
+                    "result_model_path": f"/remote/{job_id}/weights/best.pt",
+                }
+                return {"ok": True}
+
+            def read_place_training_status(self, host: str, job_id: str):
+                return {"ok": True, "status": self.remote_status}
+
         set_dependencies(FakeGpuManager())
 
         image = np.zeros((20, 20, 3), dtype=np.uint8)
@@ -177,10 +211,12 @@ class PlacesApiTests(unittest.TestCase):
         train = self.client.post(f"/api/places/{place_id}/train", json={})
         self.assertEqual(train.status_code, 200)
         self.assertEqual(train.json()["executor"], "remote:blackops")
+        self.assertEqual(train.json()["status"], "training")
 
         job = self.client.get(f"/api/places/jobs/{train.json()['job_id']}")
         self.assertEqual(job.status_code, 200)
         self.assertEqual(job.json()["remote_dataset_path"], f"/remote/{train.json()['job_id']}/dataset")
+        self.assertEqual(job.json()["status"], "ready")
 
     def test_training_falls_back_to_local_when_remote_staging_fails(self) -> None:
         class FakeGpuManager:

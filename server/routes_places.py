@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import json
+import subprocess
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
@@ -15,6 +21,7 @@ from server.schemas import (
     PlaceImagesUploadRequest,
     PlaceImagesListResponse,
     PlaceImagesUploadResponse,
+    PlaceJobStatus,
     PlacesListResponse,
     PlaceSetActiveRequest,
     PlaceSetActiveResponse,
@@ -29,6 +36,7 @@ router = APIRouter(prefix="/api/places", tags=["places"])
 
 _store = PlaceStore()
 _gpu_manager = None
+_local_training_launcher = None
 
 
 def set_store(store: PlaceStore) -> None:
@@ -37,10 +45,12 @@ def set_store(store: PlaceStore) -> None:
     _store = store
 
 
-def set_dependencies(gpu_manager) -> None:
+def set_dependencies(gpu_manager, local_training_launcher=None) -> None:
     """Inject shared dependencies from app.py."""
-    global _gpu_manager
+    global _gpu_manager, _local_training_launcher
     _gpu_manager = gpu_manager
+    if local_training_launcher is not None:
+        _local_training_launcher = local_training_launcher
 
 
 def _select_training_server(preferred_host: str | None):
@@ -54,6 +64,65 @@ def _select_training_server(preferred_host: str | None):
         if online_servers:
             return online_servers[0]
     return None
+
+
+def _default_local_training_launcher(dataset_path: str, base_model: str) -> dict:
+    job_dir = str(Path(dataset_path).parent)
+    cmd = [
+        sys.executable,
+        "-m",
+        "server.place_train_worker",
+        "--dataset",
+        dataset_path,
+        "--job-dir",
+        job_dir,
+        "--base-model",
+        base_model,
+        "--device",
+        "cpu",
+    ]
+    subprocess.Popen(
+        cmd,
+        cwd=Path(__file__).resolve().parents[1],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    return {"ok": True}
+
+
+def _load_local_training_status(job) -> dict | None:
+    if not job.dataset_path:
+        return None
+    status_path = Path(job.dataset_path).parent / "status.json"
+    if not status_path.exists():
+        return None
+    try:
+        return json.loads(status_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _sync_job_from_status(job, status_payload: dict):
+    status_value = status_payload.get("status")
+    if status_value not in PlaceJobStatus._value2member_map_:
+        return job
+    status = PlaceJobStatus(status_value)
+    started_at = status_payload.get("started_at")
+    finished_at = status_payload.get("finished_at")
+    result_model_version = status_payload.get("result_model_version")
+    result_model_path = status_payload.get("result_model_path")
+    error = status_payload.get("error")
+    updated = _store.update_job(
+        job.id,
+        status=status,
+        started_at=datetime.fromisoformat(started_at) if started_at else None,
+        finished_at=datetime.fromisoformat(finished_at) if finished_at else None,
+        result_model_version=result_model_version,
+        result_model_path=result_model_path,
+        error=error,
+    )
+    return updated or job
 
 
 @router.get("", response_model=PlacesListResponse)
@@ -184,14 +253,51 @@ async def train_place(place_id: str, body: PlaceTrainRequest):
     if remote_server and _gpu_manager:
         stage_result = _gpu_manager.stage_place_training_dataset(remote_server.host, job.dataset_path, job.id)
         if stage_result.get("ok"):
-            updated = _store.update_job(job.id, remote_dataset_path=stage_result["remote_dataset_path"])
-            if updated is not None:
-                job = updated
+            start_result = _gpu_manager.start_place_training(
+                remote_server.host,
+                job.id,
+                stage_result["remote_dataset_path"],
+                job.base_model,
+            )
+            if start_result.get("ok"):
+                updated = _store.update_job(
+                    job.id,
+                    status=PlaceJobStatus.TRAINING,
+                    started_at=datetime.now(UTC),
+                    remote_dataset_path=stage_result["remote_dataset_path"],
+                    remote_host=remote_server.host,
+                )
+                if updated is not None:
+                    job = updated
+            else:
+                updated = _store.update_job(
+                    job.id,
+                    executor="local:rpi5",
+                    error=f"Remote training start failed: {start_result.get('error', 'unknown error')}",
+                )
+                if updated is not None:
+                    job = updated
         else:
             updated = _store.update_job(
                 job.id,
                 executor="local:rpi5",
                 error=f"Remote dataset staging failed: {stage_result.get('error', 'unknown error')}",
+            )
+            if updated is not None:
+                job = updated
+    if job.executor == "local:rpi5":
+        launcher = _local_training_launcher or _default_local_training_launcher
+        launch_result = launcher(job.dataset_path, job.base_model)
+        if launch_result.get("ok"):
+            updated = _store.update_job(job.id, status=PlaceJobStatus.TRAINING, started_at=datetime.now(UTC))
+            if updated is not None:
+                job = updated
+        else:
+            updated = _store.update_job(
+                job.id,
+                status=PlaceJobStatus.FAILED,
+                finished_at=datetime.now(UTC),
+                error=f"Local training start failed: {launch_result.get('error', 'unknown error')}",
             )
             if updated is not None:
                 job = updated
@@ -203,4 +309,13 @@ async def get_place_job(job_id: str):
     job = _store.get_job(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
+    if job.status not in (PlaceJobStatus.READY, PlaceJobStatus.FAILED):
+        if job.executor.startswith("remote:") and _gpu_manager and job.remote_host:
+            result = _gpu_manager.read_place_training_status(job.remote_host, job.id)
+            if result.get("ok"):
+                job = _sync_job_from_status(job, result["status"])
+        elif job.executor == "local:rpi5":
+            status_payload = _load_local_training_status(job)
+            if status_payload:
+                job = _sync_job_from_status(job, status_payload)
     return job

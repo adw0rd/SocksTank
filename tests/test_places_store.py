@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 
 from server.places import PlaceStore
-from server.schemas import PlaceAnnotationUpsertRequest, PlaceImageUploadItem
+from server.schemas import PlaceAnnotationUpsertRequest, PlaceImageUploadItem, PlaceJobStatus
 
 
 class PlaceStoreTests(unittest.TestCase):
@@ -44,13 +44,22 @@ class PlaceStoreTests(unittest.TestCase):
         self.assertEqual(record.place_image_id, images[0].id)
 
         job = self.store.train_place(place.id, "models/yolo11_best.pt", "local:rpi5")
-        self.assertEqual(job.status.value, "ready")
+        self.assertEqual(job.status.value, "queued")
         self.assertEqual(job.executor, "local:rpi5")
         self.assertIsNotNone(job.dataset_path)
         dataset_path = Path(job.dataset_path)
         self.assertTrue((dataset_path / "data.yaml").exists())
         self.assertTrue((dataset_path / "images" / "train" / images[0].filename).exists())
         self.assertTrue((dataset_path / "labels" / "train" / f"{Path(images[0].filename).stem}.txt").exists())
+        self.assertEqual(self.store.get_place(place.id).status.value, "queued")
+
+        updated = self.store.update_job(
+            job.id,
+            status=PlaceJobStatus.READY,
+            result_model_version=f"{job.id}-v1",
+            result_model_path=f"models/{job.id}.pt",
+        )
+        self.assertIsNotNone(updated)
         self.assertEqual(self.store.get_place(place.id).status.value, "ready")
 
         active = self.store.set_active_target(place.id)

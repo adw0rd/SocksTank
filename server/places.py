@@ -325,26 +325,26 @@ class PlaceStore:
         now = _now()
         job_id = f"job_{uuid4().hex[:8]}"
         dataset_path = self._build_training_dataset(job_id, place, images, annotations)
-        model_version = f"{now.strftime('%Y%m%dT%H%M%SZ')}-{place_id}-v1"
         job = PlaceTrainingJob(
             id=job_id,
             place_id=place_id,
             executor=executor,
-            status=PlaceJobStatus.READY,
+            status=PlaceJobStatus.QUEUED,
             dataset_path=str(dataset_path),
             remote_dataset_path=None,
+            remote_host=None,
             queued_at=now,
-            started_at=now,
-            finished_at=now,
+            started_at=None,
+            finished_at=None,
             error=None,
             base_model=base_model,
-            result_model_version=model_version,
-            result_model_path=f"models/{model_version}.pt",
-            result_ncnn_path=f"models/{model_version}_ncnn_model",
+            result_model_version=None,
+            result_model_path=None,
+            result_ncnn_path=None,
         )
         jobs["jobs"].append(job.model_dump(mode="json"))
         self._save_jobs(jobs)
-        self._set_place_ready(place_id, model_version)
+        self._set_place_status(place_id, PlaceStatus.QUEUED)
         return job
 
     def update_job(
@@ -352,8 +352,14 @@ class PlaceStore:
         job_id: str,
         *,
         executor: str | None = None,
+        status: PlaceJobStatus | None = None,
         remote_dataset_path: str | None = None,
+        remote_host: str | None = None,
         error: str | None = None,
+        started_at: datetime | None = None,
+        finished_at: datetime | None = None,
+        result_model_version: str | None = None,
+        result_model_path: str | None = None,
     ) -> PlaceTrainingJob | None:
         jobs = self._load_jobs()
         updated = None
@@ -362,15 +368,36 @@ class PlaceStore:
                 continue
             if executor is not None:
                 item["executor"] = executor
+            if status is not None:
+                item["status"] = status.value
             if remote_dataset_path is not None:
                 item["remote_dataset_path"] = remote_dataset_path
+            if remote_host is not None:
+                item["remote_host"] = remote_host
             if error is not None:
                 item["error"] = error
+            if started_at is not None:
+                item["started_at"] = started_at.isoformat()
+            if finished_at is not None:
+                item["finished_at"] = finished_at.isoformat()
+            if result_model_version is not None:
+                item["result_model_version"] = result_model_version
+            if result_model_path is not None:
+                item["result_model_path"] = result_model_path
             updated = PlaceTrainingJob.model_validate(item)
             break
         if updated is None:
             return None
         self._save_jobs(jobs)
+        if status is not None:
+            if status is PlaceJobStatus.READY:
+                self._set_place_ready(updated.place_id, updated.result_model_version or "")
+            elif status is PlaceJobStatus.FAILED:
+                self._set_place_status(updated.place_id, PlaceStatus.FAILED)
+            elif status is PlaceJobStatus.TRAINING:
+                self._set_place_status(updated.place_id, PlaceStatus.TRAINING)
+            elif status is PlaceJobStatus.QUEUED:
+                self._set_place_status(updated.place_id, PlaceStatus.QUEUED)
         return updated
 
     def _build_training_dataset(
@@ -475,6 +502,7 @@ class PlaceStore:
         for item in data["places"]:
             if item["id"] == place_id:
                 item["status"] = PlaceStatus.READY.value
-                item["model_version"] = model_version
+                if model_version:
+                    item["model_version"] = model_version
                 item["updated_at"] = _now().isoformat()
         self._save_index(data)
