@@ -112,6 +112,7 @@ def _sync_job_from_status(job, status_payload: dict):
     finished_at = status_payload.get("finished_at")
     result_model_version = status_payload.get("result_model_version")
     result_model_path = status_payload.get("result_model_path")
+    result_ncnn_path = status_payload.get("result_ncnn_path")
     error = status_payload.get("error")
     updated = _store.update_job(
         job.id,
@@ -120,6 +121,7 @@ def _sync_job_from_status(job, status_payload: dict):
         finished_at=datetime.fromisoformat(finished_at) if finished_at else None,
         result_model_version=result_model_version,
         result_model_path=result_model_path,
+        result_ncnn_path=result_ncnn_path,
         error=error,
     )
     return updated or job
@@ -318,4 +320,26 @@ async def get_place_job(job_id: str):
             status_payload = _load_local_training_status(job)
             if status_payload:
                 job = _sync_job_from_status(job, status_payload)
+    if (
+        job.status is PlaceJobStatus.READY
+        and job.executor.startswith("remote:")
+        and _gpu_manager
+        and job.remote_host
+        and job.result_model_path
+        and not Path(job.result_model_path).exists()
+    ):
+        fetch_result = _gpu_manager.fetch_place_training_artifacts(
+            job.remote_host,
+            remote_model_path=job.result_model_path,
+            remote_ncnn_path=job.result_ncnn_path,
+            local_job_dir=Path(job.dataset_path).parent if job.dataset_path else Path("user_data/places/jobs") / job.id,
+        )
+        if fetch_result.get("ok"):
+            updated = _store.update_job(
+                job.id,
+                result_model_path=fetch_result.get("result_model_path"),
+                result_ncnn_path=fetch_result.get("result_ncnn_path"),
+            )
+            if updated is not None:
+                job = updated
     return job

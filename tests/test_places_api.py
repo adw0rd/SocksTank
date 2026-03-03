@@ -37,6 +37,7 @@ class PlacesApiTests(unittest.TestCase):
                         "error": None,
                         "result_model_version": f"{job_dir.name}-v1",
                         "result_model_path": str(job_dir / "train" / "weights" / "best.pt"),
+                        "result_ncnn_path": str(job_dir / "train" / "weights" / "best_ncnn_model"),
                     }
                 ),
                 encoding="utf-8",
@@ -139,6 +140,7 @@ class PlacesApiTests(unittest.TestCase):
         self.assertEqual(job.status_code, 200)
         self.assertEqual(job.json()["status"], "ready")
         self.assertTrue(job.json()["dataset_path"].endswith("/dataset"))
+        self.assertTrue(job.json()["result_ncnn_path"].endswith("/best_ncnn_model"))
 
         activate = self.client.put("/api/places/active", json={"place_id": place_id})
         self.assertEqual(activate.status_code, 200)
@@ -182,6 +184,26 @@ class PlacesApiTests(unittest.TestCase):
             def read_place_training_status(self, host: str, job_id: str):
                 return {"ok": True, "status": self.remote_status}
 
+            def fetch_place_training_artifacts(
+                self,
+                host: str,
+                *,
+                remote_model_path: str | None,
+                remote_ncnn_path: str | None,
+                local_job_dir,
+            ):
+                local_root = Path(local_job_dir) / "artifacts"
+                local_root.mkdir(parents=True, exist_ok=True)
+                model_path = local_root / "best.pt"
+                ncnn_path = local_root / "best_ncnn_model"
+                model_path.write_text("pt", encoding="utf-8")
+                ncnn_path.mkdir(exist_ok=True)
+                return {
+                    "ok": True,
+                    "result_model_path": str(model_path),
+                    "result_ncnn_path": str(ncnn_path),
+                }
+
         set_dependencies(FakeGpuManager())
 
         image = np.zeros((20, 20, 3), dtype=np.uint8)
@@ -217,6 +239,8 @@ class PlacesApiTests(unittest.TestCase):
         self.assertEqual(job.status_code, 200)
         self.assertEqual(job.json()["remote_dataset_path"], f"/remote/{train.json()['job_id']}/dataset")
         self.assertEqual(job.json()["status"], "ready")
+        self.assertTrue(job.json()["result_model_path"].endswith("/artifacts/best.pt"))
+        self.assertTrue(job.json()["result_ncnn_path"].endswith("/artifacts/best_ncnn_model"))
 
     def test_training_falls_back_to_local_when_remote_staging_fails(self) -> None:
         class FakeGpuManager:

@@ -360,6 +360,7 @@ class PlaceStore:
         finished_at: datetime | None = None,
         result_model_version: str | None = None,
         result_model_path: str | None = None,
+        result_ncnn_path: str | None = None,
     ) -> PlaceTrainingJob | None:
         jobs = self._load_jobs()
         updated = None
@@ -384,6 +385,8 @@ class PlaceStore:
                 item["result_model_version"] = result_model_version
             if result_model_path is not None:
                 item["result_model_path"] = result_model_path
+            if result_ncnn_path is not None:
+                item["result_ncnn_path"] = result_ncnn_path
             updated = PlaceTrainingJob.model_validate(item)
             break
         if updated is None:

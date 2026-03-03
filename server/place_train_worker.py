@@ -88,6 +88,7 @@ def run_worker(dataset: Path, job_dir: Path, base_model: str, device: str, epoch
             "error": None,
             "result_model_version": None,
             "result_model_path": None,
+            "result_ncnn_path": None,
         },
     )
 
@@ -111,6 +112,11 @@ def run_worker(dataset: Path, job_dir: Path, base_model: str, device: str, epoch
         save_dir = Path(model.trainer.save_dir)
         best_path = save_dir / "weights" / "best.pt"
         result_model_path = str(best_path if best_path.exists() else save_dir)
+        result_ncnn_path = None
+        if best_path.exists():
+            export_model = YOLO(str(best_path))
+            export_result = export_model.export(format="ncnn", imgsz=640)
+            result_ncnn_path = str(export_result) if export_result is not None else None
         model_version = f"{job_dir.name}-v1"
         _write_status(
             job_dir,
@@ -121,6 +127,7 @@ def run_worker(dataset: Path, job_dir: Path, base_model: str, device: str, epoch
                 "error": None,
                 "result_model_version": model_version,
                 "result_model_path": result_model_path,
+                "result_ncnn_path": result_ncnn_path,
             },
         )
         return 0
@@ -134,6 +141,7 @@ def run_worker(dataset: Path, job_dir: Path, base_model: str, device: str, epoch
                 "error": str(exc),
                 "result_model_version": None,
                 "result_model_path": None,
+                "result_ncnn_path": None,
             },
         )
         return 1

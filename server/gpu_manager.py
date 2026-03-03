@@ -5,6 +5,7 @@ import logging
 import os
 import posixpath
 import shlex
+import stat
 from pathlib import Path
 import threading
 import time
@@ -312,6 +313,45 @@ class GPUServerManager:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    def fetch_place_training_artifacts(
+        self,
+        host: str,
+        *,
+        remote_model_path: str | None,
+        remote_ncnn_path: str | None,
+        local_job_dir: str | Path,
+    ) -> dict:
+        """Download trained artifacts from a remote GPU host into a local job directory."""
+        server = self.get_server(host)
+        if not server:
+            return {"ok": False, "error": f"Server {host} not found"}
+
+        local_root = Path(local_job_dir) / "artifacts"
+        local_root.mkdir(parents=True, exist_ok=True)
+
+        try:
+            ssh = self._ssh_connect(server)
+            sftp = ssh.open_sftp()
+            local_model_path = None
+            local_ncnn_path = None
+            if remote_model_path:
+                model_name = Path(remote_model_path).name
+                local_model_path = local_root / model_name
+                sftp.get(self._expand_remote_path(server, remote_model_path), str(local_model_path))
+            if remote_ncnn_path:
+                ncnn_name = Path(remote_ncnn_path).name
+                local_ncnn_path = local_root / ncnn_name
+                self._sftp_download_dir(sftp, self._expand_remote_path(server, remote_ncnn_path), local_ncnn_path)
+            sftp.close()
+            ssh.close()
+            return {
+                "ok": True,
+                "result_model_path": str(local_model_path) if local_model_path else None,
+                "result_ncnn_path": str(local_ncnn_path) if local_ncnn_path else None,
+            }
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     def _ssh_connect(self, server: GPUServerSchema) -> paramiko.SSHClient:
         """Create an SSH connection."""
         ssh = paramiko.SSHClient()
@@ -347,6 +387,23 @@ class GPUServerManager:
                 sftp.stat(current)
             except FileNotFoundError:
                 sftp.mkdir(current)
+
+    def _sftp_download_dir(self, sftp: paramiko.SFTPClient, remote_dir: str, local_dir: Path) -> None:
+        """Recursively download a remote directory tree."""
+        local_dir.mkdir(parents=True, exist_ok=True)
+        for entry in sftp.listdir_attr(remote_dir):
+            remote_path = posixpath.join(remote_dir, entry.filename)
+            local_path = local_dir / entry.filename
+            if stat.S_ISDIR(entry.st_mode):
+                self._sftp_download_dir(sftp, remote_path, local_path)
+            else:
+                sftp.get(remote_path, str(local_path))
+
+    def _expand_remote_path(self, server: GPUServerSchema, remote_path: str) -> str:
+        """Expand ~/ paths for the current remote user."""
+        if remote_path.startswith("~/"):
+            return remote_path.replace("~", f"/home/{server.username}", 1)
+        return remote_path
 
     def start_health_loop(self, inference_router):
         """Start the background health-check loop."""
