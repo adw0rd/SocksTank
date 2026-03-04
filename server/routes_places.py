@@ -47,6 +47,11 @@ def set_store(store: PlaceStore) -> None:
     _store = store
 
 
+def get_store() -> PlaceStore:
+    """Expose the shared place store to other modules."""
+    return _store
+
+
 def set_dependencies(gpu_manager, local_training_launcher=None, inference_router=None) -> None:
     """Inject shared dependencies from app.py."""
     global _gpu_manager, _local_training_launcher, _inference_router

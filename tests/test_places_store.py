@@ -152,6 +152,15 @@ class PlaceStoreTests(unittest.TestCase):
         self.assertIsNotNone(updated)
         self.assertIsNone(updated.finished_at)
 
+    def test_get_active_target_label_returns_selected_place_label(self) -> None:
+        place = self.store.create_place("Washing Machine")
+        self.assertIsNone(self.store.get_active_target_label())
+
+        self.store._set_place_ready(place.id, "test-v1")
+        self.store.set_active_target(place.id)
+
+        self.assertEqual(self.store.get_active_target_label(), "place_washing_machine")
+
 
 if __name__ == "__main__":
     unittest.main()

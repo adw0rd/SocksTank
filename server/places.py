@@ -117,6 +117,21 @@ class PlaceStore:
                 return place
         return None
 
+    def get_active_target(self) -> PlaceSummary | None:
+        active_id, places = self.list_places()
+        if active_id is None:
+            return None
+        for place in places:
+            if place.id == active_id:
+                return place
+        return None
+
+    def get_active_target_label(self) -> str | None:
+        active_place = self.get_active_target()
+        if active_place is None:
+            return None
+        return active_place.label
+
     def create_place(self, name: str) -> PlaceSummary:
         data = self._load_index()
         place_id = f"place_{uuid4().hex[:8]}"

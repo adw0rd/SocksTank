@@ -27,6 +27,9 @@ interface PlaceTrainingJob {
   executor: string
   dataset_path?: string | null
   remote_dataset_path?: string | null
+  result_model_version?: string | null
+  result_model_path?: string | null
+  result_ncnn_path?: string | null
   error?: string | null
   detail?: string
 }
@@ -625,6 +628,7 @@ export function PlacesPanel() {
   }, [draftBox])
 
   const activeTargetName = places.find((place) => place.id === activeTargetId)?.name ?? activeTargetId
+  const trainedArtifactPath = trainingJob?.result_ncnn_path || trainingJob?.result_model_path || null
 
   return (
     <div style={{ padding: 16 }}>
@@ -740,6 +744,20 @@ export function PlacesPanel() {
               )}
               {trainingJob.error && (
                 <div style={{ color: '#ffb8b8', fontSize: 11, lineHeight: 1.5, marginTop: 6 }}>{trainingJob.error}</div>
+              )}
+              {trainingJob.status === 'ready' && (
+                <>
+                  {trainingJob.result_model_version && (
+                    <div style={{ color: '#8b93bb', fontSize: 11, lineHeight: 1.5, marginTop: 4 }}>
+                      Model version: <span style={{ color: '#d7defe', fontWeight: 700 }}>{trainingJob.result_model_version}</span>
+                    </div>
+                  )}
+                  {trainedArtifactPath && (
+                    <div style={{ color: '#9ff7b4', fontSize: 11, lineHeight: 1.5, marginTop: 6 }}>
+                      Active model switched to: <span style={{ color: '#d7defe' }}>{trainedArtifactPath}</span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

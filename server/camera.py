@@ -30,6 +30,7 @@ class CameraManager:
         self._inference = inference_router
         self._mock_camera = bool(getattr(camera, "is_mock", False))
         self._hardware = None
+        self._place_store = None
         self._lock = threading.Lock()
         self._frame_jpeg: bytes | None = None
         self._running = False
@@ -53,9 +54,22 @@ class CameraManager:
     def ai_state(self) -> str:
         return self._ai_state
 
+    @property
+    def ai_target_label(self) -> str | None:
+        if self._place_store is None:
+            return None
+        try:
+            return self._place_store.get_active_target_label()
+        except Exception:
+            return None
+
     def set_hardware(self, hardware):
         """Attach the hardware controller for AI behavior."""
         self._hardware = hardware
+
+    def set_place_store(self, place_store):
+        """Attach the place store for AI delivery targeting."""
+        self._place_store = place_store
 
     @property
     def fps(self) -> float:
@@ -163,7 +177,7 @@ class CameraManager:
             self._tick_grab(now)
             return
         if self._ai_stage == "return":
-            self._tick_return(now)
+            self._tick_return(frame, detections, now)
             return
         if self._ai_stage == "drop":
             self._tick_drop(now)
@@ -171,8 +185,12 @@ class CameraManager:
 
         target = self._select_target(detections)
         if target is None:
+            if self._ai_has_payload and not self.ai_target_label:
+                self._ai_state = "awaiting-target"
+                self._set_motor_once(0, 0)
+                return
             self._ai_state = "searching"
-            self._search_for_sock(now)
+            self._search_for_target(now)
             return
 
         self._track_target(frame, target)
@@ -190,15 +208,23 @@ class CameraManager:
         self._last_motor = None
 
     def _select_target(self, detections: list[dict]) -> dict | None:
-        """Pick the highest-confidence sock-like detection."""
-        socks = [det for det in detections if "sock" in det.get("class", "").lower()]
-        candidates = socks or detections
-        if not candidates:
-            return None
-        return max(candidates, key=lambda det: det.get("confidence", 0.0))
+        """Pick a sock before grab and the active place target after grab."""
+        if self._ai_has_payload:
+            target_label = self.ai_target_label
+            if not target_label:
+                return None
+            targets = [det for det in detections if det.get("class") == target_label]
+            if not targets:
+                return None
+            return max(targets, key=lambda det: det.get("confidence", 0.0))
 
-    def _search_for_sock(self, now: float):
-        """Rotate in place and sweep the camera while looking for a target."""
+        socks = [det for det in detections if "sock" in det.get("class", "").lower()]
+        if not socks:
+            return None
+        return max(socks, key=lambda det: det.get("confidence", 0.0))
+
+    def _search_for_target(self, now: float):
+        """Rotate in place and sweep the camera while looking for the current target."""
         if self._hardware is None:
             return
         if now < self._ai_next_search_update:
@@ -264,10 +290,47 @@ class CameraManager:
             self._ai_stage_started = False
             self._ai_stage_until = 0.0
 
-    def _tick_return(self, now: float):
-        """Back away from the pickup point to simulate returning to base."""
+    def _tick_return(self, frame: np.ndarray, detections: list[dict], now: float):
+        """Seek the active place target and fall back to a simple reverse retreat."""
         if self._hardware is None:
             return
+        target_label = self.ai_target_label
+        if target_label:
+            target = self._select_target(detections)
+            if target is None:
+                self._ai_state = "searching-for-target"
+                self._search_for_target(now)
+                return
+
+            x1, y1, x2, y2 = target["bbox"]
+            frame_h, frame_w = frame.shape[:2]
+            target_x = (x1 + x2) / 2
+            offset = (target_x - frame_w / 2) / max(frame_w / 2, 1)
+            bbox_area = max(0, x2 - x1) * max(0, y2 - y1)
+            bbox_ratio = bbox_area / max(frame_w * frame_h, 1)
+
+            if abs(offset) > self.AI_CENTER_TOLERANCE:
+                self._ai_state = "aligning-to-target"
+                if offset < 0:
+                    self._set_motor_once(-self.AI_TURN_SPEED, self.AI_TURN_SPEED)
+                    self._hardware.set_servo(2, 105)
+                else:
+                    self._set_motor_once(self.AI_TURN_SPEED, -self.AI_TURN_SPEED)
+                    self._hardware.set_servo(2, 75)
+                return
+
+            if bbox_ratio < self.AI_CLOSE_ENOUGH_RATIO:
+                self._ai_state = "delivering"
+                self._hardware.set_servo(2, 90)
+                self._set_motor_once(self.AI_FORWARD_SPEED, self.AI_FORWARD_SPEED)
+                return
+
+            self._set_motor_once(0, 0)
+            self._ai_stage = "drop"
+            self._ai_stage_started = False
+            self._ai_stage_until = 0.0
+            return
+
         if not self._ai_stage_started:
             self._ai_state = "returning"
             self._set_motor_once(-self.AI_FORWARD_SPEED, -self.AI_FORWARD_SPEED)

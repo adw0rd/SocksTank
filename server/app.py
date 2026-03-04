@@ -22,6 +22,7 @@ from server.routes_gpu import router as gpu_router
 from server.routes_gpu import set_dependencies as gpu_set_deps
 from server.routes_places import router as places_router
 from server.routes_places import set_dependencies as places_set_deps
+from server.routes_places import get_store as get_places_store
 
 log = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ async def lifespan(app: FastAPI):
     camera = load_camera()
     camera_manager = CameraManager(camera, inference_router)
     camera_manager.set_hardware(hardware)
+    camera_manager.set_place_store(get_places_store())
     camera_manager.start()
 
     # Wire shared dependencies into the routers
