@@ -25,7 +25,7 @@ from server.schemas import GPUServerSchema
 class PlacesApiTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
-        self.store = PlaceStore(Path(self._tmp.name) / "places")
+        self.store = PlaceStore(Path(self._tmp.name) / "places", base_dataset_root=None)
         set_store(self.store)
         self.inference_router = type(
             "FakeInferenceRouter",

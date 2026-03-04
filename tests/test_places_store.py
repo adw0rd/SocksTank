@@ -18,7 +18,7 @@ from server.schemas import PlaceAnnotationUpsertRequest, PlaceImageUploadItem, P
 class PlaceStoreTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
-        self.store = PlaceStore(Path(self._tmp.name) / "places")
+        self.store = PlaceStore(Path(self._tmp.name) / "places", base_dataset_root=None)
 
     def tearDown(self) -> None:
         self._tmp.cleanup()
@@ -49,9 +49,10 @@ class PlaceStoreTests(unittest.TestCase):
         self.assertEqual(job.executor, "local:rpi5")
         self.assertIsNotNone(job.dataset_path)
         dataset_path = Path(job.dataset_path)
+        prefixed_name = f"{place.id}_{images[0].filename}"
         self.assertTrue((dataset_path / "data.yaml").exists())
-        self.assertTrue((dataset_path / "images" / "train" / images[0].filename).exists())
-        self.assertTrue((dataset_path / "labels" / "train" / f"{Path(images[0].filename).stem}.txt").exists())
+        self.assertTrue((dataset_path / "images" / "train" / prefixed_name).exists())
+        self.assertTrue((dataset_path / "labels" / "train" / f"{Path(prefixed_name).stem}.txt").exists())
         self.assertEqual(self.store.get_place(place.id).status.value, "queued")
 
         updated = self.store.update_job(
@@ -160,6 +161,45 @@ class PlaceStoreTests(unittest.TestCase):
         self.store.set_active_target(place.id)
 
         self.assertEqual(self.store.get_active_target_label(), "place_washing_machine")
+
+    def test_build_training_dataset_merges_base_sock_dataset(self) -> None:
+        base_root = Path(self._tmp.name) / "base_dataset"
+        for split in ("train", "valid", "test"):
+            (base_root / split / "images").mkdir(parents=True, exist_ok=True)
+            (base_root / split / "labels").mkdir(parents=True, exist_ok=True)
+            image_path = base_root / split / "images" / f"{split}_sock.jpg"
+            label_path = base_root / split / "labels" / f"{split}_sock.txt"
+            image_path.write_bytes(b"sock-image")
+            label_path.write_text("0 0.5 0.5 0.2 0.2\n", encoding="utf-8")
+
+        self.store = PlaceStore(Path(self._tmp.name) / "places2", base_dataset_root=base_root)
+        place = self.store.create_place("Washing Machine")
+        images = self.store.add_images(
+            place.id,
+            [
+                PlaceImageUploadItem(
+                    filename="washer.jpg",
+                    content_base64=base64.b64encode(b"place-image").decode("ascii"),
+                )
+            ],
+        )
+        self.store.upsert_annotation(
+            place.id,
+            images[0].id,
+            PlaceAnnotationUpsertRequest(x_center=0.5, y_center=0.5, width=0.4, height=0.4),
+        )
+
+        job = self.store.train_place(place.id, "models/yolo11_best.pt", "remote:blackops")
+        dataset_path = Path(job.dataset_path)
+
+        self.assertTrue((dataset_path / "images" / "train" / "train_sock.jpg").exists())
+        self.assertTrue((dataset_path / "labels" / "train" / "train_sock.txt").exists())
+        self.assertTrue((dataset_path / "images" / "valid" / f"{place.id}_{images[0].filename}").exists())
+        place_label = (dataset_path / "labels" / "train" / f"{place.id}_{Path(images[0].filename).stem}.txt").read_text(encoding="utf-8")
+        self.assertTrue(place_label.startswith("1 "))
+        data_yaml = (dataset_path / "data.yaml").read_text(encoding="utf-8")
+        self.assertIn("0: sock", data_yaml)
+        self.assertIn("1: place_washing_machine", data_yaml)
 
 
 if __name__ == "__main__":

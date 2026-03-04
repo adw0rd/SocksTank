@@ -51,8 +51,9 @@ def _slugify(name: str) -> str:
 class PlaceStore:
     """Persist places, images, annotations, and training jobs under user_data/."""
 
-    def __init__(self, root: str | Path = "user_data/places") -> None:
+    def __init__(self, root: str | Path = "user_data/places", base_dataset_root: str | Path | None = "dataset") -> None:
         self.root = Path(root)
+        self.base_dataset_root = Path(base_dataset_root) if base_dataset_root is not None else None
         self._ensure_layout()
 
     def _ensure_layout(self) -> None:
@@ -433,23 +434,25 @@ class PlaceStore:
             shutil.rmtree(job_dir)
 
         dataset_dir = job_dir / "dataset"
-        images_dir = dataset_dir / "images" / "train"
-        labels_dir = dataset_dir / "labels" / "train"
-        images_dir.mkdir(parents=True, exist_ok=True)
-        labels_dir.mkdir(parents=True, exist_ok=True)
+        for split in ("train", "valid", "test"):
+            (dataset_dir / "images" / split).mkdir(parents=True, exist_ok=True)
+            (dataset_dir / "labels" / split).mkdir(parents=True, exist_ok=True)
+
+        self._copy_base_sock_dataset(dataset_dir)
 
         annotations_by_image = {record.place_image_id: record for record in annotations}
         for image in images:
             source_path = self._images_dir(place.id) / image.filename
-            target_path = images_dir / image.filename
-            shutil.copy2(source_path, target_path)
-
             record = annotations_by_image.get(image.id)
             if record is None:
                 raise ValueError(f"Missing annotation for image {image.id}")
-            label_path = labels_dir / f"{Path(image.filename).stem}.txt"
-            label_line = f"0 {record.x_center:.6f} {record.y_center:.6f} {record.width:.6f} {record.height:.6f}\n"
-            label_path.write_text(label_line, encoding="utf-8")
+            prefixed_name = f"{place.id}_{image.filename}"
+            for split in ("train", "valid"):
+                target_path = dataset_dir / "images" / split / prefixed_name
+                shutil.copy2(source_path, target_path)
+                label_path = dataset_dir / "labels" / split / f"{Path(prefixed_name).stem}.txt"
+                label_line = f"1 {record.x_center:.6f} {record.y_center:.6f} {record.width:.6f} {record.height:.6f}\n"
+                label_path.write_text(label_line, encoding="utf-8")
 
         data_yaml = dataset_dir / "data.yaml"
         data_yaml.write_text(
@@ -457,16 +460,42 @@ class PlaceStore:
                 [
                     "path: .",
                     "train: images/train",
-                    "val: images/train",
-                    "test: images/train",
+                    "val: images/valid",
+                    "test: images/test",
                     "names:",
-                    f"  0: {place.label}",
+                    "  0: sock",
+                    f"  1: {place.label}",
                     "",
                 ]
             ),
             encoding="utf-8",
         )
         return dataset_dir
+
+    def _copy_base_sock_dataset(self, dataset_dir: Path) -> None:
+        if self.base_dataset_root is None:
+            return
+        if not self.base_dataset_root.exists():
+            return
+
+        for source_split, target_split in (("train", "train"), ("valid", "valid"), ("test", "test")):
+            source_images = self.base_dataset_root / source_split / "images"
+            source_labels = self.base_dataset_root / source_split / "labels"
+            if not source_images.exists() or not source_labels.exists():
+                continue
+
+            target_images = dataset_dir / "images" / target_split
+            target_labels = dataset_dir / "labels" / target_split
+
+            for image_path in sorted(source_images.iterdir()):
+                if not image_path.is_file():
+                    continue
+                shutil.copy2(image_path, target_images / image_path.name)
+
+            for label_path in sorted(source_labels.iterdir()):
+                if not label_path.is_file():
+                    continue
+                shutil.copy2(label_path, target_labels / label_path.name)
 
     def get_job(self, job_id: str) -> PlaceTrainingJob | None:
         jobs = self._load_jobs()
