@@ -10,7 +10,7 @@ import numpy as np
 import httpx
 import yaml
 
-from server.config import settings
+from server.config import persist_model_path, settings
 
 log = logging.getLogger(__name__)
 
@@ -380,6 +380,7 @@ class InferenceRouter:
             self._active_backend = "local"
             self._error = None
             settings.model_path = model_path
+            persist_model_path(model_path)
 
         log.info("Local inference model switched to %s", model_path)
         return True

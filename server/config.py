@@ -1,11 +1,13 @@
 """SocksTank web server configuration."""
 
+import json
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
 
 DEFAULT_DEV_MODEL_PATH = "models/yolo11_best.pt"
 DEFAULT_RPI_MODEL_PATH = "models/yolo11_best_ncnn_model"
+INFERENCE_STATE_PATH = Path("user_data/inference_state.json")
 
 
 def _is_raspberry_pi() -> bool:
@@ -38,6 +40,29 @@ def resolve_model_path(
     if _is_raspberry_pi():
         return DEFAULT_RPI_MODEL_PATH
     return DEFAULT_DEV_MODEL_PATH
+
+
+def load_persisted_model_path() -> str | None:
+    """Load a persisted model path if it exists and still points to a valid path."""
+    if not INFERENCE_STATE_PATH.exists():
+        return None
+    try:
+        payload = json.loads(INFERENCE_STATE_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+    model_path = payload.get("model_path")
+    if not model_path:
+        return None
+    if not Path(model_path).exists():
+        return None
+    return str(model_path)
+
+
+def persist_model_path(model_path: str) -> None:
+    """Persist the currently active local model path across restarts."""
+    INFERENCE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    INFERENCE_STATE_PATH.write_text(json.dumps({"model_path": model_path}, indent=2), encoding="utf-8")
 
 
 class Settings(BaseSettings):

@@ -165,11 +165,12 @@ def serve(
     import logging
     import uvicorn
 
-    from server.config import resolve_model_path, settings
+    from server.config import load_persisted_model_path, resolve_model_path, settings
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
-    resolved_model = resolve_model_path(model, settings.model_path, runtime_role="serve", mock=mock)
+    configured_model = settings.model_path or load_persisted_model_path()
+    resolved_model = resolve_model_path(model, configured_model, runtime_role="serve", mock=mock)
 
     # Apply CLI parameters to settings
     settings.model_path = resolved_model
