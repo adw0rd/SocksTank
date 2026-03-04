@@ -114,7 +114,7 @@ def run_worker(dataset: Path, job_dir: Path, base_model: str, device: str, epoch
             data=str(dataset / "data.yaml"),
             epochs=epochs,
             imgsz=640,
-            batch=8 if device != "cpu" else 4,
+            batch=8 if device != "cpu" else 2,
             device=device,
             project=str(job_dir),
             name="train",

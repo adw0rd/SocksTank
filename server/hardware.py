@@ -32,6 +32,8 @@ class HardwareController:
         self._claw_servos_enabled = saved_state.get("claw_servos_enabled", True)
         self._motor_left = 0
         self._motor_right = 0
+        # Force both motor channels low as soon as the driver is initialized.
+        self._motor.setMotorModel(0, 0)
         if not self._claw_servos_enabled:
             self._servo.setServoEnabled(0, False)
             self._servo.setServoEnabled(1, False)

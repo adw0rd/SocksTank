@@ -71,7 +71,9 @@ def _select_training_server(preferred_host: str | None):
 
 
 def _default_local_training_launcher(dataset_path: str, base_model: str) -> dict:
-    job_dir = str(Path(dataset_path).parent)
+    job_dir_path = Path(dataset_path).parent
+    job_dir = str(job_dir_path)
+    log_path = job_dir_path / "worker.log"
     cmd = [
         sys.executable,
         "-m",
@@ -84,14 +86,17 @@ def _default_local_training_launcher(dataset_path: str, base_model: str) -> dict
         base_model,
         "--device",
         "cpu",
+        "--epochs",
+        "5",
     ]
-    subprocess.Popen(
-        cmd,
-        cwd=Path(__file__).resolve().parents[1],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
+    with log_path.open("ab") as log_file:
+        subprocess.Popen(
+            cmd,
+            cwd=Path(__file__).resolve().parents[1],
+            stdout=log_file,
+            stderr=log_file,
+            start_new_session=True,
+        )
     return {"ok": True}
 
 

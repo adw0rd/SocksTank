@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from datetime import UTC, datetime
+from unittest import mock
 
 import cv2
 import numpy as np
@@ -15,6 +16,7 @@ import numpy as np
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+import server.routes_places as routes_places
 from server.places import PlaceStore
 from server.routes_places import router, set_dependencies, set_store
 from server.schemas import GPUServerSchema
@@ -411,6 +413,21 @@ class PlacesApiTests(unittest.TestCase):
 
         activate = self.client.put("/api/places/active", json={"place_id": place_id})
         self.assertEqual(activate.status_code, 409)
+
+    def test_default_local_training_launcher_writes_worker_log(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            dataset_path = Path(tmp) / "job" / "dataset"
+            dataset_path.mkdir(parents=True)
+            worker_log = dataset_path.parent / "worker.log"
+
+            with mock.patch.object(routes_places.subprocess, "Popen") as popen:
+                result = routes_places._default_local_training_launcher(str(dataset_path), "models/yolo11_best.pt")
+
+            self.assertTrue(result["ok"])
+            self.assertTrue(worker_log.exists())
+            _, kwargs = popen.call_args
+            self.assertIsNotNone(kwargs["stdout"])
+            self.assertIs(kwargs["stdout"], kwargs["stderr"])
 
 
 if __name__ == "__main__":
