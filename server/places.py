@@ -51,9 +51,21 @@ def _slugify(name: str) -> str:
 class PlaceStore:
     """Persist places, images, annotations, and training jobs under user_data/."""
 
-    def __init__(self, root: str | Path = "user_data/places", base_dataset_root: str | Path | None = "dataset") -> None:
+    def __init__(
+        self,
+        root: str | Path = "user_data/places",
+        base_dataset_root: str | Path | None = "dataset",
+        base_train_limit: int = 250,
+        base_valid_limit: int = 80,
+        base_test_limit: int = 80,
+        place_train_repeat: int = 6,
+    ) -> None:
         self.root = Path(root)
         self.base_dataset_root = Path(base_dataset_root) if base_dataset_root is not None else None
+        self.base_train_limit = max(0, int(base_train_limit))
+        self.base_valid_limit = max(0, int(base_valid_limit))
+        self.base_test_limit = max(0, int(base_test_limit))
+        self.place_train_repeat = max(1, int(place_train_repeat))
         self._ensure_layout()
 
     def _ensure_layout(self) -> None:
@@ -448,11 +460,16 @@ class PlaceStore:
                 raise ValueError(f"Missing annotation for image {image.id}")
             prefixed_name = f"{place.id}_{image.filename}"
             for split in ("train", "valid"):
-                target_path = dataset_dir / "images" / split / prefixed_name
-                shutil.copy2(source_path, target_path)
-                label_path = dataset_dir / "labels" / split / f"{Path(prefixed_name).stem}.txt"
-                label_line = f"1 {record.x_center:.6f} {record.y_center:.6f} {record.width:.6f} {record.height:.6f}\n"
-                label_path.write_text(label_line, encoding="utf-8")
+                repeat = self.place_train_repeat if split == "train" else 1
+                for i in range(repeat):
+                    stem = Path(prefixed_name).stem
+                    suffix = Path(prefixed_name).suffix
+                    repeated_name = f"{stem}_p{i}{suffix}" if split == "train" else prefixed_name
+                    target_path = dataset_dir / "images" / split / repeated_name
+                    shutil.copy2(source_path, target_path)
+                    label_path = dataset_dir / "labels" / split / f"{Path(repeated_name).stem}.txt"
+                    label_line = f"1 {record.x_center:.6f} {record.y_center:.6f} {record.width:.6f} {record.height:.6f}\n"
+                    label_path.write_text(label_line, encoding="utf-8")
 
         data_yaml = dataset_dir / "data.yaml"
         data_yaml.write_text(
@@ -478,6 +495,12 @@ class PlaceStore:
         if not self.base_dataset_root.exists():
             return
 
+        split_limits = {
+            "train": self.base_train_limit,
+            "valid": self.base_valid_limit,
+            "test": self.base_test_limit,
+        }
+
         for source_split, target_split in (("train", "train"), ("valid", "valid"), ("test", "test")):
             source_images = self.base_dataset_root / source_split / "images"
             source_labels = self.base_dataset_root / source_split / "labels"
@@ -487,12 +510,19 @@ class PlaceStore:
             target_images = dataset_dir / "images" / target_split
             target_labels = dataset_dir / "labels" / target_split
 
-            for image_path in sorted(source_images.iterdir()):
+            image_paths = [p for p in sorted(source_images.iterdir()) if p.is_file()]
+            label_paths = [p for p in sorted(source_labels.iterdir()) if p.is_file()]
+            limit = split_limits.get(source_split, 0)
+            if limit > 0:
+                image_paths = image_paths[:limit]
+                label_paths = label_paths[:limit]
+
+            for image_path in image_paths:
                 if not image_path.is_file():
                     continue
                 shutil.copy2(image_path, target_images / image_path.name)
 
-            for label_path in sorted(source_labels.iterdir()):
+            for label_path in label_paths:
                 if not label_path.is_file():
                     continue
                 shutil.copy2(label_path, target_labels / label_path.name)

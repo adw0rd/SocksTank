@@ -51,8 +51,8 @@ class PlaceStoreTests(unittest.TestCase):
         dataset_path = Path(job.dataset_path)
         prefixed_name = f"{place.id}_{images[0].filename}"
         self.assertTrue((dataset_path / "data.yaml").exists())
-        self.assertTrue((dataset_path / "images" / "train" / prefixed_name).exists())
-        self.assertTrue((dataset_path / "labels" / "train" / f"{Path(prefixed_name).stem}.txt").exists())
+        self.assertTrue((dataset_path / "images" / "train" / f"{Path(prefixed_name).stem}_p0{Path(prefixed_name).suffix}").exists())
+        self.assertTrue((dataset_path / "labels" / "train" / f"{Path(prefixed_name).stem}_p0.txt").exists())
         self.assertEqual(self.store.get_place(place.id).status.value, "queued")
 
         updated = self.store.update_job(
@@ -195,7 +195,7 @@ class PlaceStoreTests(unittest.TestCase):
         self.assertTrue((dataset_path / "images" / "train" / "train_sock.jpg").exists())
         self.assertTrue((dataset_path / "labels" / "train" / "train_sock.txt").exists())
         self.assertTrue((dataset_path / "images" / "valid" / f"{place.id}_{images[0].filename}").exists())
-        place_label = (dataset_path / "labels" / "train" / f"{place.id}_{Path(images[0].filename).stem}.txt").read_text(encoding="utf-8")
+        place_label = (dataset_path / "labels" / "train" / f"{place.id}_{Path(images[0].filename).stem}_p0.txt").read_text(encoding="utf-8")
         self.assertTrue(place_label.startswith("1 "))
         data_yaml = (dataset_path / "data.yaml").read_text(encoding="utf-8")
         self.assertIn("0: sock", data_yaml)
