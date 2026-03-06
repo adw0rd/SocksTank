@@ -198,6 +198,26 @@ def _local_artifact_path(job) -> str | None:
 def _maybe_activate_trained_model(job) -> None:
     if job.status is not PlaceJobStatus.READY or _inference_router is None:
         return
+    if not settings.auto_accept_enabled:
+        return
+    quick_check = job.quick_check or {}
+    if quick_check.get("status") != "ok":
+        return
+
+    place_result = quick_check.get("place") or {}
+    sock_result = quick_check.get("sock") or {}
+    place_hits = int(place_result.get("hits", 0))
+    place_total = int(place_result.get("total", 0))
+    sock_hits = int(sock_result.get("hits", 0))
+    sock_total = int(sock_result.get("total", 0))
+
+    min_samples = max(1, int(settings.auto_accept_quick_check_samples))
+    if place_total < min_samples or sock_total < min_samples:
+        return
+    if place_hits < int(settings.auto_accept_place_min_hits):
+        return
+    if sock_hits < int(settings.auto_accept_sock_min_hits):
+        return
     target_path = _local_artifact_path(job)
     if target_path is None or settings.model_path == target_path:
         return
@@ -341,7 +361,7 @@ def _maybe_store_quick_check(job: PlaceTrainingJob) -> PlaceTrainingJob:
     try:
         result = _run_quick_check(
             place_id=job.place_id,
-            samples=5,
+            samples=max(1, int(settings.auto_accept_quick_check_samples)),
             sock_split="train",
             confidence=0.25,
             imgsz=640,
@@ -603,6 +623,6 @@ async def get_place_job(job_id: str):
             )
             if updated is not None:
                 job = updated
-    _maybe_activate_trained_model(job)
     job = _maybe_store_quick_check(job)
+    _maybe_activate_trained_model(job)
     return job

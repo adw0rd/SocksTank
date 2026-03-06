@@ -20,7 +20,12 @@ from fastapi.testclient import TestClient
 import server.routes_places as routes_places
 from server.places import PlaceStore
 from server.routes_places import router, set_dependencies, set_store
-from server.schemas import GPUServerSchema
+from server.schemas import (
+    GPUServerSchema,
+    PlaceQuickCheckClassSummary,
+    PlaceQuickCheckImageResult,
+    PlaceQuickCheckResponse,
+)
 
 
 class PlacesApiTests(unittest.TestCase):
@@ -66,6 +71,18 @@ class PlacesApiTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self._tmp.cleanup()
+
+    def _ok_quick_check(self, place_id: str, label: str) -> PlaceQuickCheckResponse:
+        return PlaceQuickCheckResponse(
+            model_path="/tmp/best.pt",
+            model_version="test-v1",
+            place_id=place_id,
+            place_label=label,
+            place=PlaceQuickCheckClassSummary(hits=5, total=5),
+            sock=PlaceQuickCheckClassSummary(hits=5, total=5),
+            place_images=[PlaceQuickCheckImageResult(filename="p.jpg", ok=True)],
+            sock_images=[PlaceQuickCheckImageResult(filename="s.jpg", ok=True)],
+        )
 
     def test_full_place_flow(self) -> None:
         image = np.zeros((40, 60, 3), dtype=np.uint8)
@@ -151,7 +168,8 @@ class PlacesApiTests(unittest.TestCase):
         self.assertEqual(train_payload["status"], "training")
         self.assertEqual(train_payload["executor"], "local:rpi5")
 
-        job = self.client.get(f"/api/places/jobs/{train_payload['job_id']}")
+        with mock.patch.object(routes_places, "_run_quick_check", return_value=self._ok_quick_check(place_id, place["label"])):
+            job = self.client.get(f"/api/places/jobs/{train_payload['job_id']}")
         self.assertEqual(job.status_code, 200)
         self.assertEqual(job.json()["status"], "ready")
         self.assertTrue(job.json()["dataset_path"].endswith("/dataset"))
@@ -495,6 +513,52 @@ class PlacesApiTests(unittest.TestCase):
 
         activate = self.client.put("/api/places/active", json={"place_id": place_id})
         self.assertEqual(activate.status_code, 409)
+
+    def test_ready_job_does_not_auto_activate_when_quick_check_below_threshold(self) -> None:
+        image = np.zeros((32, 32, 3), dtype=np.uint8)
+        ok, encoded = cv2.imencode(".jpg", image)
+        self.assertTrue(ok)
+        jpeg_bytes = encoded.tobytes()
+
+        create = self.client.post("/api/places", json={"name": "Washer"})
+        place = create.json()
+        place_id = place["id"]
+        upload = self.client.post(
+            f"/api/places/{place_id}/images",
+            json={
+                "items": [
+                    {
+                        "filename": "washer.jpg",
+                        "content_base64": base64.b64encode(jpeg_bytes).decode("ascii"),
+                    }
+                ]
+            },
+        )
+        image_id = upload.json()["items"][0]["id"]
+        annotate = self.client.put(
+            f"/api/places/{place_id}/images/{image_id}/annotation",
+            json={"x_center": 0.5, "y_center": 0.5, "width": 0.4, "height": 0.4},
+        )
+        self.assertEqual(annotate.status_code, 200)
+
+        train = self.client.post(f"/api/places/{place_id}/train", json={})
+        self.assertEqual(train.status_code, 200)
+        job_id = train.json()["job_id"]
+        low_score = PlaceQuickCheckResponse(
+            model_path="/tmp/best.pt",
+            model_version="test-v1",
+            place_id=place_id,
+            place_label=place["label"],
+            place=PlaceQuickCheckClassSummary(hits=3, total=5),
+            sock=PlaceQuickCheckClassSummary(hits=5, total=5),
+            place_images=[PlaceQuickCheckImageResult(filename="p.jpg", ok=True)],
+            sock_images=[PlaceQuickCheckImageResult(filename="s.jpg", ok=True)],
+        )
+        with mock.patch.object(routes_places, "_run_quick_check", return_value=low_score):
+            job = self.client.get(f"/api/places/jobs/{job_id}")
+        self.assertEqual(job.status_code, 200)
+        self.assertEqual(job.json()["status"], "ready")
+        self.assertEqual(self.inference_router.reloaded_paths, [])
 
     def test_default_local_training_launcher_writes_worker_log(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

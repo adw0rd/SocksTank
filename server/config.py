@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     # NcnnNativeDetector (pip ncnn + OMP workaround)
     ncnn_cpp: bool = False  # Use NcnnNativeDetector instead of ultralytics
     ncnn_threads: int = 2  # OMP thread count for ncnn
+    auto_accept_enabled: bool = True
+    auto_accept_quick_check_samples: int = 5
+    auto_accept_place_min_hits: int = 4
+    auto_accept_sock_min_hits: int = 4
 
     model_config = {"env_prefix": "SOCKSTANK_"}
 
