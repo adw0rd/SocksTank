@@ -225,6 +225,9 @@ class PlaceTrainingJob(BaseModel):
     result_model_path: str | None = None
     result_ncnn_path: str | None = None
     quick_check: dict | None = None
+    training_config: dict | None = None
+    dataset_summary: dict | None = None
+    recommendation: str | None = None
 
 
 class PlaceQuickCheckRequest(BaseModel):

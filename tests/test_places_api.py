@@ -714,6 +714,31 @@ class PlacesApiTests(unittest.TestCase):
         kwargs = run_qc.call_args.kwargs
         self.assertFalse(kwargs["strict"])
 
+    def test_can_delete_finished_job(self) -> None:
+        place_id, place = self._create_annotated_place("DeleteDone")
+        train = self.client.post(f"/api/places/{place_id}/train", json={})
+        self.assertEqual(train.status_code, 200)
+        job_id = train.json()["job_id"]
+
+        with mock.patch.object(routes_places, "_run_quick_check", return_value=self._ok_quick_check(place_id, place["label"])):
+            self.client.get(f"/api/places/jobs/{job_id}")
+
+        delete = self.client.delete(f"/api/places/jobs/{job_id}")
+        self.assertEqual(delete.status_code, 200)
+        self.assertTrue(delete.json()["ok"])
+
+        get_after = self.client.get(f"/api/places/jobs/{job_id}")
+        self.assertEqual(get_after.status_code, 404)
+
+    def test_cannot_delete_running_job(self) -> None:
+        place_id, _place = self._create_annotated_place("DeleteRunning")
+        train = self.client.post(f"/api/places/{place_id}/train", json={})
+        self.assertEqual(train.status_code, 200)
+        job_id = train.json()["job_id"]
+
+        delete = self.client.delete(f"/api/places/jobs/{job_id}")
+        self.assertEqual(delete.status_code, 409)
+
     def test_default_local_training_launcher_writes_worker_log(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             dataset_path = Path(tmp) / "job" / "dataset"

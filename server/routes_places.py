@@ -412,6 +412,27 @@ def _maybe_backfill_quick_check_threshold(job: PlaceTrainingJob) -> PlaceTrainin
     return updated or job
 
 
+def _job_recommendation(job: PlaceTrainingJob) -> str | None:
+    summary = job.dataset_summary or {}
+    splits = summary.get("splits") or {}
+    train_split = splits.get("train") or {}
+    place_train = int(train_split.get("place_images", 0))
+    base_train = int(train_split.get("base_sock_images", 0))
+    quick_check = job.quick_check or {}
+
+    if quick_check.get("status") == "failed":
+        return "Quick-check failed. Re-run training or inspect worker logs."
+    if quick_check.get("status") == "ok":
+        if not quick_check.get("passes_threshold"):
+            return "Quick-check below threshold. Add more place photos or increase place augmentation."
+        return "Quick-check passed. Suitable for auto activation."
+    if place_train < 20:
+        return "Place training set is small. Add more annotated place images for better generalization."
+    if place_train <= base_train // 6:
+        return "Place class may be underrepresented. Increase place repeats or reduce base sock limits."
+    return None
+
+
 @router.get("", response_model=PlacesListResponse)
 async def list_places():
     active_id, places = _store.list_places()
@@ -534,6 +555,7 @@ async def list_place_jobs(place_id: str, limit: int = 10):
     safe_limit = max(1, min(limit, 100))
     jobs = _store.list_jobs(place_id=place_id, limit=safe_limit)
     jobs = [_maybe_backfill_quick_check_threshold(job) for job in jobs]
+    jobs = [job.model_copy(update={"recommendation": _job_recommendation(job)}) for job in jobs]
     return PlaceTrainingJobsResponse(
         items=jobs,
         auto_accept_enabled=settings.auto_accept_enabled,
@@ -541,6 +563,17 @@ async def list_place_jobs(place_id: str, limit: int = 10):
         auto_accept_place_min_hits=settings.auto_accept_place_min_hits,
         auto_accept_sock_min_hits=settings.auto_accept_sock_min_hits,
     )
+
+
+@router.delete("/jobs/{job_id}", response_model=OkResponse)
+async def delete_place_job(job_id: str):
+    try:
+        deleted = _store.delete_job(job_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return OkResponse()
 
 
 @router.post("/quick-check", response_model=PlaceQuickCheckResponse)
@@ -661,5 +694,6 @@ async def get_place_job(job_id: str):
                 job = updated
     job = _maybe_store_quick_check(job)
     job = _maybe_backfill_quick_check_threshold(job)
+    job = job.model_copy(update={"recommendation": _job_recommendation(job)})
     _maybe_activate_trained_model(job)
     return job

@@ -352,7 +352,7 @@ class PlaceStore:
         jobs = self._load_jobs()
         now = _now()
         job_id = f"job_{uuid4().hex[:8]}"
-        dataset_path = self._build_training_dataset(job_id, place, images, annotations)
+        dataset_path, dataset_summary = self._build_training_dataset(job_id, place, images, annotations)
         job = PlaceTrainingJob(
             id=job_id,
             place_id=place_id,
@@ -370,6 +370,13 @@ class PlaceStore:
             result_model_path=None,
             result_ncnn_path=None,
             quick_check=None,
+            training_config={
+                "place_train_repeat": self.place_train_repeat,
+                "base_train_limit": self.base_train_limit,
+                "base_valid_limit": self.base_valid_limit,
+                "base_test_limit": self.base_test_limit,
+            },
+            dataset_summary=dataset_summary,
         )
         jobs["jobs"].append(job.model_dump(mode="json"))
         self._save_jobs(jobs)
@@ -444,7 +451,7 @@ class PlaceStore:
         place: PlaceSummary,
         images: list[PlaceImageSummary],
         annotations: list[PlaceAnnotationRecord],
-    ) -> Path:
+    ) -> tuple[Path, dict]:
         job_dir = self._job_dir(job_id)
         if job_dir.exists():
             shutil.rmtree(job_dir)
@@ -454,7 +461,18 @@ class PlaceStore:
             (dataset_dir / "images" / split).mkdir(parents=True, exist_ok=True)
             (dataset_dir / "labels" / split).mkdir(parents=True, exist_ok=True)
 
-        self._copy_base_sock_dataset(dataset_dir)
+        summary = {
+            "place_source_images": len(images),
+            "splits": {
+                "train": {"place_images": 0, "base_sock_images": 0, "total_images": 0},
+                "valid": {"place_images": 0, "base_sock_images": 0, "total_images": 0},
+                "test": {"place_images": 0, "base_sock_images": 0, "total_images": 0},
+            },
+        }
+
+        base_copied = self._copy_base_sock_dataset(dataset_dir)
+        for split, count in base_copied.items():
+            summary["splits"][split]["base_sock_images"] = count
 
         annotations_by_image = {record.place_image_id: record for record in annotations}
         for image in images:
@@ -474,6 +492,7 @@ class PlaceStore:
                     label_path = dataset_dir / "labels" / split / f"{Path(repeated_name).stem}.txt"
                     label_line = f"1 {record.x_center:.6f} {record.y_center:.6f} {record.width:.6f} {record.height:.6f}\n"
                     label_path.write_text(label_line, encoding="utf-8")
+                    summary["splits"][split]["place_images"] += 1
 
         data_yaml = dataset_dir / "data.yaml"
         data_yaml.write_text(
@@ -491,13 +510,18 @@ class PlaceStore:
             ),
             encoding="utf-8",
         )
-        return dataset_dir
+        for split in ("train", "valid", "test"):
+            split_item = summary["splits"][split]
+            split_item["total_images"] = split_item["place_images"] + split_item["base_sock_images"]
 
-    def _copy_base_sock_dataset(self, dataset_dir: Path) -> None:
+        return dataset_dir, summary
+
+    def _copy_base_sock_dataset(self, dataset_dir: Path) -> dict:
+        copied = {"train": 0, "valid": 0, "test": 0}
         if self.base_dataset_root is None:
-            return
+            return copied
         if not self.base_dataset_root.exists():
-            return
+            return copied
 
         split_limits = {
             "train": self.base_train_limit,
@@ -525,11 +549,13 @@ class PlaceStore:
                 if not image_path.is_file():
                     continue
                 shutil.copy2(image_path, target_images / image_path.name)
+                copied[target_split] += 1
 
             for label_path in label_paths:
                 if not label_path.is_file():
                     continue
                 shutil.copy2(label_path, target_labels / label_path.name)
+        return copied
 
     def get_job(self, job_id: str) -> PlaceTrainingJob | None:
         jobs = self._load_jobs()
@@ -563,6 +589,24 @@ class PlaceStore:
         if limit > 0:
             items = items[:limit]
         return [PlaceTrainingJob.model_validate(item) for item in items]
+
+    def delete_job(self, job_id: str) -> bool:
+        jobs = self._load_jobs()
+        target = None
+        for item in jobs["jobs"]:
+            if item.get("id") == job_id:
+                target = item
+                break
+        if target is None:
+            return False
+        if target.get("status") in {PlaceJobStatus.QUEUED.value, PlaceJobStatus.TRAINING.value}:
+            raise ValueError("Cannot delete a running training job")
+        jobs["jobs"] = [item for item in jobs["jobs"] if item.get("id") != job_id]
+        self._save_jobs(jobs)
+        job_dir = self._job_dir(job_id)
+        if job_dir.exists():
+            shutil.rmtree(job_dir, ignore_errors=True)
+        return True
 
     def set_active_target(self, place_id: str | None) -> str | None:
         data = self._load_index()

@@ -39,6 +39,17 @@ interface PlaceTrainingJob {
     place?: { hits: number; total: number }
     sock?: { hits: number; total: number }
   } | null
+  training_config?: {
+    place_train_repeat?: number
+    base_train_limit?: number
+    base_valid_limit?: number
+    base_test_limit?: number
+  } | null
+  dataset_summary?: {
+    place_source_images?: number
+    splits?: Record<string, { place_images?: number; base_sock_images?: number; total_images?: number }>
+  } | null
+  recommendation?: string | null
   error?: string | null
   detail?: string
 }
@@ -540,6 +551,7 @@ export function PlacesPanel() {
         setTraining(false)
       }
       fetchPlaces()
+      fetchPlaceJobs(selectedPlaceId)
     } catch (error) {
       setTraining(false)
       setMessage(error instanceof Error ? error.message : 'Failed to start training')
@@ -598,6 +610,28 @@ export function PlacesPanel() {
       fetchPlaceAssets(selectedPlaceId)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to delete image')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const deleteJob = async (jobId: string) => {
+    if (!selectedPlaceId) return
+    setBusy(true)
+    setMessage(null)
+    try {
+      const response = await fetch(`/api/places/jobs/${jobId}`, { method: 'DELETE' })
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(payload.detail || 'Failed to delete job')
+      }
+      if (trainingJob?.id === jobId) {
+        setTrainingJob(null)
+      }
+      setMessage(`Job ${jobId} deleted`)
+      fetchPlaceJobs(selectedPlaceId)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Failed to delete job')
     } finally {
       setBusy(false)
     }
@@ -937,6 +971,20 @@ export function PlacesPanel() {
                   Remote dataset: <span style={{ color: '#d7defe' }}>{trainingJob.remote_dataset_path}</span>
                 </div>
               )}
+              {trainingJob.dataset_summary?.splits?.train && (
+                <div style={{ color: '#8b93bb', fontSize: 11, lineHeight: 1.5, marginTop: 4 }}>
+                  Used images: train {trainingJob.dataset_summary.splits.train.total_images ?? 0} (place{' '}
+                  {trainingJob.dataset_summary.splits.train.place_images ?? 0} + sock{' '}
+                  {trainingJob.dataset_summary.splits.train.base_sock_images ?? 0})
+                </div>
+              )}
+              {trainingJob.training_config && (
+                <div style={{ color: '#8892bf', fontSize: 11, lineHeight: 1.5, marginTop: 4 }}>
+                  Aug: repeat={trainingJob.training_config.place_train_repeat ?? 1}, base limits t/v/test=
+                  {trainingJob.training_config.base_train_limit ?? 0}/{trainingJob.training_config.base_valid_limit ?? 0}/
+                  {trainingJob.training_config.base_test_limit ?? 0}
+                </div>
+              )}
               {trainingJob.error && (
                 <div style={{ color: '#ffb8b8', fontSize: 11, lineHeight: 1.5, marginTop: 6 }}>{trainingJob.error}</div>
               )}
@@ -965,6 +1013,9 @@ export function PlacesPanel() {
                       Auto quick-check failed: {trainingJob.quick_check.error || 'unknown error'}
                     </div>
                   )}
+                  {trainingJob.recommendation && (
+                    <div style={{ color: '#9fd1ff', fontSize: 11, lineHeight: 1.5, marginTop: 6 }}>{trainingJob.recommendation}</div>
+                  )}
                 </>
               )}
             </div>
@@ -990,14 +1041,49 @@ export function PlacesPanel() {
                   const regressed = hasRegression(job, idx)
                   return (
                     <div key={job.id} style={{ ...rowCard, borderColor: regressed ? '#6a3340' : '#2a3352' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                        <div style={{ color: '#d7defe', fontSize: 11, fontWeight: 700 }}>{job.id}</div>
-                        <div style={{ ...miniBadge, background: '#202742', borderColor: '#33406e' }}>{job.status}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
+                        <div style={{ color: '#d7defe', fontSize: 11, fontWeight: 700, lineHeight: 1.3 }}>{job.id}</div>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <div style={{ ...miniBadge, background: '#202742', borderColor: '#33406e' }}>{job.status}</div>
+                          {(job.status === 'ready' || job.status === 'failed') && (
+                            <button
+                              type="button"
+                              onClick={() => void deleteJob(job.id)}
+                              disabled={busy}
+                              style={{ ...actionButton, padding: '4px 7px', fontSize: 10, opacity: busy ? 0.6 : 1 }}
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div style={{ color: '#8b93bb', fontSize: 11, marginTop: 4 }}>
                         {job.executor}
                         {job.finished_at ? ` · ${new Date(job.finished_at).toLocaleString()}` : ''}
                       </div>
+                      {job.dataset_summary?.splits?.train && (
+                        <div style={{ color: '#8b93bb', fontSize: 11, marginTop: 4, lineHeight: 1.35 }}>
+                          Used images: train {job.dataset_summary.splits.train.total_images ?? 0} (place{' '}
+                          {job.dataset_summary.splits.train.place_images ?? 0} + sock {job.dataset_summary.splits.train.base_sock_images ?? 0})
+                          {job.dataset_summary.splits.valid && (
+                            <>
+                              {' · '}valid {job.dataset_summary.splits.valid.total_images ?? 0}
+                            </>
+                          )}
+                          {job.dataset_summary.splits.test && (
+                            <>
+                              {' · '}test {job.dataset_summary.splits.test.total_images ?? 0}
+                            </>
+                          )}
+                        </div>
+                      )}
+                      {job.training_config && (
+                        <div style={{ color: '#8892bf', fontSize: 11, marginTop: 4, lineHeight: 1.35 }}>
+                          Aug: repeat={job.training_config.place_train_repeat ?? 1}, base limits t/v/test=
+                          {job.training_config.base_train_limit ?? 0}/{job.training_config.base_valid_limit ?? 0}/
+                          {job.training_config.base_test_limit ?? 0}
+                        </div>
+                      )}
                       {quick?.status === 'ok' && quick.place && quick.sock && (
                         <div style={{ color: passed ? '#9ff7b4' : '#ffd59a', fontSize: 11, marginTop: 4 }}>
                           QC: place {quick.place.hits}/{quick.place.total}, sock {quick.sock.hits}/{quick.sock.total}
@@ -1006,6 +1092,9 @@ export function PlacesPanel() {
                         </div>
                       )}
                       {failed && <div style={{ color: '#ffb8b8', fontSize: 11, marginTop: 4 }}>QC failed</div>}
+                      {job.recommendation && (
+                        <div style={{ color: '#9fd1ff', fontSize: 11, marginTop: 4, lineHeight: 1.35 }}>{job.recommendation}</div>
+                      )}
                     </div>
                   )
                 })}
@@ -1067,169 +1156,14 @@ export function PlacesPanel() {
           )}
 
           {images.length > 0 && (
-            <>
-              <button
-                type="button"
-                onClick={() => setShowGallery(true)}
-                style={{ ...actionButton, width: '100%', marginBottom: 10 }}
-              >
-                Photo Library ({images.length})
+            <div style={{ marginBottom: 10 }}>
+              <button type="button" onClick={() => setShowGallery(true)} style={{ ...actionButton, width: '100%', marginBottom: 6 }}>
+                Open Photo Library ({images.length})
               </button>
-
-              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 10, paddingBottom: 2 }}>
-                {images.map((image, index) => (
-                  <button
-                    key={image.id}
-                    onClick={() => {
-                      setSelectedImageId(image.id)
-                      setDraftBox(null)
-                    }}
-                    style={{
-                      minWidth: 40,
-                      padding: '6px 8px',
-                      borderRadius: 8,
-                      border: selectedImageId === image.id ? '1px solid #4a7dff' : '1px solid #2c3558',
-                      background: image.annotated ? 'rgba(76, 175, 80, 0.12)' : '#141931',
-                      color: image.annotated ? '#b8ffbf' : '#d7defe',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
+              <div style={{ color: '#8b93bb', fontSize: 11, lineHeight: 1.45 }}>
+                Annotation editor moved to Photo Library modal to keep this panel compact.
               </div>
-
-              {selectedImage && (
-                <>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 10,
-                      marginBottom: 8,
-                    }}
-                  >
-                    <div style={{ color: '#8b93bb', fontSize: 11 }}>
-                      Draw a box around the place, then press <strong>Save Box</strong>.
-                    </div>
-                    {images.length > 1 && (
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        <button
-                          onClick={() => selectRelativeImage(-1)}
-                          disabled={selectedImageIndex <= 0}
-                          style={{ ...actionButton, padding: '6px 8px', opacity: selectedImageIndex <= 0 ? 0.5 : 1 }}
-                        >
-                          Prev
-                        </button>
-                        <button
-                          onClick={() => selectRelativeImage(1)}
-                          disabled={selectedImageIndex >= images.length - 1}
-                          style={{ ...actionButton, padding: '6px 8px', opacity: selectedImageIndex >= images.length - 1 ? 0.5 : 1 }}
-                        >
-                          Next
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <div
-                    ref={canvasRef}
-                    onPointerDown={onPointerDown}
-                    onPointerMove={onPointerMove}
-                    onPointerUp={onPointerUp}
-                    onPointerLeave={onPointerUp}
-                    style={{
-                      position: 'relative',
-                      width: '100%',
-                      borderRadius: 10,
-                      overflow: 'hidden',
-                      border: '1px solid #2c3558',
-                      background: '#0b1020',
-                      marginBottom: 10,
-                      cursor: 'crosshair',
-                    }}
-                  >
-                    <img
-                      src={`/api/places/${selectedPlace.id}/images/${selectedImage.id}`}
-                      alt={selectedImage.filename}
-                      style={{ display: 'block', width: '100%', height: 'auto' }}
-                      draggable={false}
-                    />
-
-                    {selectedAnnotation && !draftBox && (
-                      <div
-                        style={{
-                          ...annotationBox,
-                          ...toOverlayBox(selectedAnnotation),
-                        }}
-                      />
-                    )}
-
-                    {draftStyle && (
-                      <div
-                        style={{
-                          ...annotationBox,
-                          left: draftStyle.left,
-                          top: draftStyle.top,
-                          width: draftStyle.width,
-                          height: draftStyle.height,
-                          borderColor: '#ffe082',
-                          background: 'rgba(255, 224, 130, 0.14)',
-                        }}
-                      >
-                        {(['nw', 'ne', 'sw', 'se'] as const).map((handle) => (
-                          <div
-                            key={handle}
-                            style={{
-                              ...draftHandle,
-                              ...(handle === 'nw' ? { left: -6, top: -6 } : {}),
-                              ...(handle === 'ne' ? { right: -6, top: -6 } : {}),
-                              ...(handle === 'sw' ? { left: -6, bottom: -6 } : {}),
-                              ...(handle === 'se' ? { right: -6, bottom: -6 } : {}),
-                            }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {selectedAnnotation && !draftBox && (
-                      <button
-                        onClick={loadSavedAnnotationIntoDraft}
-                        disabled={busy}
-                        style={{ ...actionButton, opacity: busy ? 0.6 : 1 }}
-                      >
-                        Edit Saved
-                      </button>
-                    )}
-                    <button
-                      onClick={() => void saveAnnotation(false)}
-                      disabled={busy || !draftBox}
-                      style={{ ...actionButton, flex: 1, opacity: busy || !draftBox ? 0.6 : 1 }}
-                    >
-                      Save Box
-                    </button>
-                    <button
-                      onClick={() => void saveAnnotation(true)}
-                      disabled={busy || !draftBox || selectedImageIndex >= images.length - 1}
-                      style={{ ...actionButton, opacity: busy || !draftBox || selectedImageIndex >= images.length - 1 ? 0.6 : 1 }}
-                    >
-                      Save & Next
-                    </button>
-                    <button
-                      onClick={() => setDraftBox(null)}
-                      disabled={busy || !draftBox}
-                      style={{ ...actionButton, opacity: busy || !draftBox ? 0.6 : 1 }}
-                    >
-                      Reset
-                    </button>
-                  </div>
-                </>
-              )}
-            </>
+            </div>
           )}
         </div>
       )}
@@ -1263,6 +1197,127 @@ export function PlacesPanel() {
               </button>
             </div>
 
+            {selectedImage && (
+              <div style={{ ...trainingCard, marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+                  <div style={{ color: '#8b93bb', fontSize: 11 }}>
+                    Draw a box around the place, then press <strong>Save Box</strong>.
+                  </div>
+                  {images.length > 1 && (
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button
+                        onClick={() => selectRelativeImage(-1)}
+                        disabled={selectedImageIndex <= 0}
+                        style={{ ...actionButton, padding: '6px 8px', opacity: selectedImageIndex <= 0 ? 0.5 : 1 }}
+                      >
+                        Prev
+                      </button>
+                      <button
+                        onClick={() => selectRelativeImage(1)}
+                        disabled={selectedImageIndex >= images.length - 1}
+                        style={{ ...actionButton, padding: '6px 8px', opacity: selectedImageIndex >= images.length - 1 ? 0.5 : 1 }}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div
+                  ref={canvasRef}
+                  onPointerDown={onPointerDown}
+                  onPointerMove={onPointerMove}
+                  onPointerUp={onPointerUp}
+                  onPointerLeave={onPointerUp}
+                  style={{
+                    position: 'relative',
+                    width: '100%',
+                    borderRadius: 10,
+                    overflow: 'hidden',
+                    border: '1px solid #2c3558',
+                    background: '#0b1020',
+                    marginBottom: 10,
+                    cursor: 'crosshair',
+                  }}
+                >
+                  <img
+                    src={`/api/places/${selectedPlace.id}/images/${selectedImage.id}`}
+                    alt={selectedImage.filename}
+                    style={{ display: 'block', width: '100%', height: 'auto' }}
+                    draggable={false}
+                  />
+
+                  {selectedAnnotation && !draftBox && (
+                    <div
+                      style={{
+                        ...annotationBox,
+                        ...toOverlayBox(selectedAnnotation),
+                      }}
+                    />
+                  )}
+
+                  {draftStyle && (
+                    <div
+                      style={{
+                        ...annotationBox,
+                        left: draftStyle.left,
+                        top: draftStyle.top,
+                        width: draftStyle.width,
+                        height: draftStyle.height,
+                        borderColor: '#ffe082',
+                        background: 'rgba(255, 224, 130, 0.14)',
+                      }}
+                    >
+                      {(['nw', 'ne', 'sw', 'se'] as const).map((handle) => (
+                        <div
+                          key={handle}
+                          style={{
+                            ...draftHandle,
+                            ...(handle === 'nw' ? { left: -6, top: -6 } : {}),
+                            ...(handle === 'ne' ? { right: -6, top: -6 } : {}),
+                            ...(handle === 'sw' ? { left: -6, bottom: -6 } : {}),
+                            ...(handle === 'se' ? { right: -6, bottom: -6 } : {}),
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {selectedAnnotation && !draftBox && (
+                    <button
+                      onClick={loadSavedAnnotationIntoDraft}
+                      disabled={busy}
+                      style={{ ...actionButton, opacity: busy ? 0.6 : 1 }}
+                    >
+                      Edit Saved
+                    </button>
+                  )}
+                  <button
+                    onClick={() => void saveAnnotation(false)}
+                    disabled={busy || !draftBox}
+                    style={{ ...actionButton, flex: 1, opacity: busy || !draftBox ? 0.6 : 1 }}
+                  >
+                    Save Box
+                  </button>
+                  <button
+                    onClick={() => void saveAnnotation(true)}
+                    disabled={busy || !draftBox || selectedImageIndex >= images.length - 1}
+                    style={{ ...actionButton, opacity: busy || !draftBox || selectedImageIndex >= images.length - 1 ? 0.6 : 1 }}
+                  >
+                    Save & Next
+                  </button>
+                  <button
+                    onClick={() => setDraftBox(null)}
+                    disabled={busy || !draftBox}
+                    style={{ ...actionButton, opacity: busy || !draftBox ? 0.6 : 1 }}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div style={galleryGrid}>
               {images.map((image, index) => (
                 <div
@@ -1277,7 +1332,6 @@ export function PlacesPanel() {
                     onClick={() => {
                       setSelectedImageId(image.id)
                       setDraftBox(null)
-                      setShowGallery(false)
                     }}
                     style={{ display: 'block', width: '100%', background: 'transparent', border: 0, padding: 0, cursor: 'pointer' }}
                   >
