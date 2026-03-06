@@ -369,6 +369,7 @@ class PlaceStore:
             result_model_version=None,
             result_model_path=None,
             result_ncnn_path=None,
+            quick_check=None,
         )
         jobs["jobs"].append(job.model_dump(mode="json"))
         self._save_jobs(jobs)
@@ -390,6 +391,7 @@ class PlaceStore:
         result_model_version: str | None = None,
         result_model_path: str | None = None,
         result_ncnn_path: str | None = None,
+        quick_check: dict | None = None,
     ) -> PlaceTrainingJob | None:
         jobs = self._load_jobs()
         updated = None
@@ -418,6 +420,8 @@ class PlaceStore:
                 item["result_model_path"] = result_model_path
             if result_ncnn_path is not None:
                 item["result_ncnn_path"] = result_ncnn_path
+            if quick_check is not None:
+                item["quick_check"] = quick_check
             updated = PlaceTrainingJob.model_validate(item)
             break
         if updated is None:

@@ -224,6 +224,7 @@ class PlaceTrainingJob(BaseModel):
     result_model_version: str | None = None
     result_model_path: str | None = None
     result_ncnn_path: str | None = None
+    quick_check: dict | None = None
 
 
 class PlaceQuickCheckRequest(BaseModel):

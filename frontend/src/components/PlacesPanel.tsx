@@ -30,6 +30,13 @@ interface PlaceTrainingJob {
   result_model_version?: string | null
   result_model_path?: string | null
   result_ncnn_path?: string | null
+  quick_check?: {
+    status?: string
+    checked_at?: string
+    error?: string
+    place?: { hits: number; total: number }
+    sock?: { hits: number; total: number }
+  } | null
   error?: string | null
   detail?: string
 }
@@ -890,6 +897,19 @@ export function PlacesPanel() {
                   {trainedArtifactPath && (
                     <div style={{ color: '#9ff7b4', fontSize: 11, lineHeight: 1.5, marginTop: 6 }}>
                       Active model switched to: <span style={{ color: '#d7defe' }}>{trainedArtifactPath}</span>
+                    </div>
+                  )}
+                  {trainingJob.quick_check?.status === 'ok' &&
+                    trainingJob.quick_check.place &&
+                    trainingJob.quick_check.sock && (
+                      <div style={{ color: '#9ff7b4', fontSize: 11, lineHeight: 1.5, marginTop: 6 }}>
+                        Auto quick-check: place {trainingJob.quick_check.place.hits}/{trainingJob.quick_check.place.total}, sock{' '}
+                        {trainingJob.quick_check.sock.hits}/{trainingJob.quick_check.sock.total}
+                      </div>
+                    )}
+                  {trainingJob.quick_check?.status === 'failed' && (
+                    <div style={{ color: '#ffb8b8', fontSize: 11, lineHeight: 1.5, marginTop: 6 }}>
+                      Auto quick-check failed: {trainingJob.quick_check.error || 'unknown error'}
                     </div>
                   )}
                 </>

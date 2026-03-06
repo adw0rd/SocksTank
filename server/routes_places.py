@@ -232,6 +232,146 @@ def _resolve_quick_check_model(place_id: str, explicit_model_path: str | None):
     return str(model_path), latest_job.result_model_version
 
 
+def _run_quick_check(
+    *,
+    place_id: str,
+    samples: int,
+    sock_split: str,
+    confidence: float,
+    imgsz: int,
+    model_path_override: str | None = None,
+    strict: bool = True,
+) -> PlaceQuickCheckResponse:
+    place = _store.get_place(place_id)
+    if place is None:
+        raise HTTPException(status_code=404, detail="Place not found")
+
+    model_path, model_version = _resolve_quick_check_model(place_id, model_path_override)
+    place_images = _store.list_images(place_id)
+    place_sample_size = samples if strict else min(samples, len(place_images))
+    if place_sample_size <= 0:
+        raise HTTPException(status_code=400, detail="No place images available for quick check")
+    if strict and len(place_images) < samples:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Not enough place images for quick check: found {len(place_images)}, need {samples}",
+        )
+
+    place_paths: list[Path] = []
+    for image in place_images[:place_sample_size]:
+        path = _store.get_image_path(place_id, image.id)
+        if path and path.exists():
+            place_paths.append(path)
+    if strict and len(place_paths) < place_sample_size:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing place image files: found {len(place_paths)}, need {place_sample_size}",
+        )
+    if not strict and not place_paths:
+        raise HTTPException(status_code=400, detail="No readable place image files for quick check")
+
+    sock_root = Path("dataset") / sock_split / "images"
+    if not sock_root.exists():
+        raise HTTPException(status_code=400, detail=f"Sock dataset split not found: {sock_root}")
+    allowed = {".jpg", ".jpeg", ".png", ".webp"}
+    sock_paths = [path for path in sorted(sock_root.iterdir()) if path.is_file() and path.suffix.lower() in allowed]
+    sock_sample_size = samples if strict else min(samples, len(sock_paths))
+    if strict and len(sock_paths) < samples:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Not enough sock images in {sock_root}: found {len(sock_paths)}, need {samples}",
+        )
+    if sock_sample_size <= 0:
+        raise HTTPException(status_code=400, detail=f"No sock images available in {sock_root}")
+    sock_paths = sock_paths[:sock_sample_size]
+
+    from ultralytics import YOLO
+
+    yolo = YOLO(model_path)
+    classes = yolo.names if isinstance(yolo.names, dict) else {index: name for index, name in enumerate(yolo.names)}
+    sock_class = next((int(k) for k, v in classes.items() if str(v) == "sock"), None)
+    place_class = next((int(k) for k, v in classes.items() if str(v).startswith("place")), None)
+    if sock_class is None or place_class is None:
+        raise HTTPException(status_code=400, detail=f"Unexpected model classes: {classes}")
+
+    def _detect(image_path: Path, target_class: int) -> bool:
+        result = yolo.predict(
+            source=str(image_path),
+            conf=confidence,
+            iou=0.45,
+            imgsz=imgsz,
+            max_det=20,
+            verbose=False,
+        )[0]
+        if result.boxes is None or len(result.boxes) == 0:
+            return False
+        predicted_classes = [int(value) for value in result.boxes.cls.tolist()]
+        return target_class in predicted_classes
+
+    place_results: list[PlaceQuickCheckImageResult] = []
+    sock_results: list[PlaceQuickCheckImageResult] = []
+    place_hits = 0
+    sock_hits = 0
+
+    for image_path in place_paths:
+        ok = _detect(image_path, place_class)
+        place_hits += int(ok)
+        place_results.append(PlaceQuickCheckImageResult(filename=image_path.name, ok=ok))
+
+    for image_path in sock_paths:
+        ok = _detect(image_path, sock_class)
+        sock_hits += int(ok)
+        sock_results.append(PlaceQuickCheckImageResult(filename=image_path.name, ok=ok))
+
+    return PlaceQuickCheckResponse(
+        model_path=model_path,
+        model_version=model_version,
+        place_id=place.id,
+        place_label=place.label,
+        place=PlaceQuickCheckClassSummary(hits=place_hits, total=len(place_paths)),
+        sock=PlaceQuickCheckClassSummary(hits=sock_hits, total=len(sock_paths)),
+        place_images=place_results,
+        sock_images=sock_results,
+    )
+
+
+def _maybe_store_quick_check(job: PlaceTrainingJob) -> PlaceTrainingJob:
+    if job.status is not PlaceJobStatus.READY or job.quick_check is not None:
+        return job
+    try:
+        result = _run_quick_check(
+            place_id=job.place_id,
+            samples=5,
+            sock_split="train",
+            confidence=0.25,
+            imgsz=640,
+            model_path_override=job.result_model_path,
+            strict=False,
+        )
+        payload = {
+            "status": "ok",
+            "checked_at": datetime.now(UTC).isoformat(),
+            "place_id": result.place_id,
+            "place_label": result.place_label,
+            "model_path": result.model_path,
+            "model_version": result.model_version,
+            "place": result.place.model_dump(),
+            "sock": result.sock.model_dump(),
+            "samples_used": {
+                "place": result.place.total,
+                "sock": result.sock.total,
+            },
+        }
+    except Exception as exc:
+        payload = {
+            "status": "failed",
+            "checked_at": datetime.now(UTC).isoformat(),
+            "error": str(exc),
+        }
+    updated = _store.update_job(job.id, quick_check=payload)
+    return updated or job
+
+
 @router.get("", response_model=PlacesListResponse)
 async def list_places():
     active_id, places = _store.list_places()
@@ -349,88 +489,14 @@ async def list_place_annotations(place_id: str):
 
 @router.post("/quick-check", response_model=PlaceQuickCheckResponse)
 async def quick_check_place(body: PlaceQuickCheckRequest):
-    place = _store.get_place(body.place_id)
-    if place is None:
-        raise HTTPException(status_code=404, detail="Place not found")
-
-    model_path, model_version = _resolve_quick_check_model(body.place_id, body.model_path)
-    place_images = _store.list_images(body.place_id)
-    if len(place_images) < body.samples:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Not enough place images for quick check: found {len(place_images)}, need {body.samples}",
-        )
-
-    place_paths: list[Path] = []
-    for image in place_images[: body.samples]:
-        path = _store.get_image_path(body.place_id, image.id)
-        if path and path.exists():
-            place_paths.append(path)
-    if len(place_paths) < body.samples:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Missing place image files: found {len(place_paths)}, need {body.samples}",
-        )
-
-    sock_root = Path("dataset") / body.sock_split / "images"
-    if not sock_root.exists():
-        raise HTTPException(status_code=400, detail=f"Sock dataset split not found: {sock_root}")
-    allowed = {".jpg", ".jpeg", ".png", ".webp"}
-    sock_paths = [path for path in sorted(sock_root.iterdir()) if path.is_file() and path.suffix.lower() in allowed]
-    if len(sock_paths) < body.samples:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Not enough sock images in {sock_root}: found {len(sock_paths)}, need {body.samples}",
-        )
-    sock_paths = sock_paths[: body.samples]
-
-    from ultralytics import YOLO
-
-    yolo = YOLO(model_path)
-    classes = yolo.names if isinstance(yolo.names, dict) else {index: name for index, name in enumerate(yolo.names)}
-    sock_class = next((int(k) for k, v in classes.items() if str(v) == "sock"), None)
-    place_class = next((int(k) for k, v in classes.items() if str(v).startswith("place")), None)
-    if sock_class is None or place_class is None:
-        raise HTTPException(status_code=400, detail=f"Unexpected model classes: {classes}")
-
-    def _detect(image_path: Path, target_class: int) -> bool:
-        result = yolo.predict(
-            source=str(image_path),
-            conf=body.confidence,
-            iou=0.45,
-            imgsz=body.imgsz,
-            max_det=20,
-            verbose=False,
-        )[0]
-        if result.boxes is None or len(result.boxes) == 0:
-            return False
-        predicted_classes = [int(value) for value in result.boxes.cls.tolist()]
-        return target_class in predicted_classes
-
-    place_results: list[PlaceQuickCheckImageResult] = []
-    sock_results: list[PlaceQuickCheckImageResult] = []
-    place_hits = 0
-    sock_hits = 0
-
-    for image_path in place_paths:
-        ok = _detect(image_path, place_class)
-        place_hits += int(ok)
-        place_results.append(PlaceQuickCheckImageResult(filename=image_path.name, ok=ok))
-
-    for image_path in sock_paths:
-        ok = _detect(image_path, sock_class)
-        sock_hits += int(ok)
-        sock_results.append(PlaceQuickCheckImageResult(filename=image_path.name, ok=ok))
-
-    return PlaceQuickCheckResponse(
-        model_path=model_path,
-        model_version=model_version,
-        place_id=place.id,
-        place_label=place.label,
-        place=PlaceQuickCheckClassSummary(hits=place_hits, total=len(place_paths)),
-        sock=PlaceQuickCheckClassSummary(hits=sock_hits, total=len(sock_paths)),
-        place_images=place_results,
-        sock_images=sock_results,
+    return _run_quick_check(
+        place_id=body.place_id,
+        samples=body.samples,
+        sock_split=body.sock_split,
+        confidence=body.confidence,
+        imgsz=body.imgsz,
+        model_path_override=body.model_path,
+        strict=True,
     )
 
 
@@ -538,4 +604,5 @@ async def get_place_job(job_id: str):
             if updated is not None:
                 job = updated
     _maybe_activate_trained_model(job)
+    job = _maybe_store_quick_check(job)
     return job
