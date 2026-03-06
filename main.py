@@ -2,7 +2,9 @@
 """SocksTank robot tank for sock detection with computer vision."""
 
 import code
+import json
 import time
+from pathlib import Path
 
 import typer
 
@@ -404,6 +406,105 @@ def shell():
         raise typer.Exit("IPython is not installed. Install it to use `main.py shell`.") from exc
 
     start_ipython(argv=[])
+
+
+@app.command("quick-check")
+def quick_check(
+    model: str | None = typer.Option(None, help="Model path (.pt). If omitted, last ready place model is used."),
+    place_dir: str = typer.Option(
+        "user_data/places/place_da27beb5/images",
+        help="Directory with place images used for quick check.",
+    ),
+    sock_dir: str = typer.Option(
+        "dataset/train/images",
+        help="Directory with sock images used for quick check.",
+    ),
+    samples: int = typer.Option(5, min=1, max=50, help="Number of images per class."),
+    conf: float = typer.Option(0.25, min=0.01, max=0.99, help="Confidence threshold."),
+    imgsz: int = typer.Option(640, min=64, max=2048, help="Inference image size."),
+):
+    """Run a quick quality check for place/sock classes (X/Y for each)."""
+    from ultralytics import YOLO
+
+    root = Path(".")
+    selected_model = model
+
+    if selected_model is None:
+        jobs_path = root / "user_data/places/jobs.json"
+        if not jobs_path.exists():
+            raise typer.Exit("jobs.json not found. Pass --model explicitly.")
+        jobs_data = json.loads(jobs_path.read_text(encoding="utf-8"))
+        ready_jobs = [job for job in jobs_data.get("jobs", []) if job.get("status") == "ready" and job.get("result_model_path")]
+        ready_jobs.sort(key=lambda item: item.get("finished_at") or "")
+        if not ready_jobs:
+            raise typer.Exit("No ready place jobs found. Pass --model explicitly.")
+        selected_model = ready_jobs[-1]["result_model_path"]
+        typer.echo(f"Using model from last ready job: {selected_model}")
+
+    model_path = Path(selected_model)
+    if not model_path.is_absolute():
+        model_path = root / model_path
+    if not model_path.exists():
+        raise typer.Exit(f"Model not found: {model_path}")
+
+    place_root = Path(place_dir)
+    if not place_root.is_absolute():
+        place_root = root / place_root
+    sock_root = Path(sock_dir)
+    if not sock_root.is_absolute():
+        sock_root = root / sock_root
+
+    if not place_root.exists():
+        raise typer.Exit(f"Place directory not found: {place_root}")
+    if not sock_root.exists():
+        raise typer.Exit(f"Sock directory not found: {sock_root}")
+
+    allowed = {".jpg", ".jpeg", ".png", ".webp"}
+    place_samples = sorted([p for p in place_root.iterdir() if p.is_file() and p.suffix.lower() in allowed])[:samples]
+    sock_samples = sorted([p for p in sock_root.iterdir() if p.is_file() and p.suffix.lower() in allowed])[:samples]
+    if len(place_samples) < samples:
+        raise typer.Exit(f"Not enough place images in {place_root}: found {len(place_samples)}, need {samples}")
+    if len(sock_samples) < samples:
+        raise typer.Exit(f"Not enough sock images in {sock_root}: found {len(sock_samples)}, need {samples}")
+
+    yolo = YOLO(str(model_path))
+    class_names = yolo.names if isinstance(yolo.names, dict) else {i: n for i, n in enumerate(yolo.names)}
+    sock_cls = next((int(k) for k, v in class_names.items() if str(v) == "sock"), None)
+    place_cls = next((int(k) for k, v in class_names.items() if str(v).startswith("place")), None)
+    if sock_cls is None or place_cls is None:
+        raise typer.Exit(f"Expected classes 'sock' and 'place*'. Model classes: {class_names}")
+
+    def has_class(image_path: Path, target_cls: int) -> tuple[bool, list[tuple[int, float]]]:
+        result = yolo.predict(
+            source=str(image_path),
+            conf=conf,
+            iou=0.45,
+            imgsz=imgsz,
+            max_det=20,
+            verbose=False,
+        )[0]
+        if result.boxes is None or len(result.boxes) == 0:
+            return False, []
+        pred_classes = [int(v) for v in result.boxes.cls.tolist()]
+        pred_conf = [float(v) for v in result.boxes.conf.tolist()]
+        return target_cls in pred_classes, list(zip(pred_classes, pred_conf))
+
+    place_ok = 0
+    for image_path in place_samples:
+        ok, detections = has_class(image_path, place_cls)
+        place_ok += int(ok)
+        status = "OK" if ok else "MISS"
+        typer.echo(f"PLACE {image_path.name}: {status} {detections[:3]}")
+
+    sock_ok = 0
+    for image_path in sock_samples:
+        ok, detections = has_class(image_path, sock_cls)
+        sock_ok += int(ok)
+        status = "OK" if ok else "MISS"
+        typer.echo(f"SOCK  {image_path.name}: {status} {detections[:3]}")
+
+    typer.echo(f"RESULT place: {place_ok}/{samples}")
+    typer.echo(f"RESULT sock:  {sock_ok}/{samples}")
 
 
 if __name__ == "__main__":
