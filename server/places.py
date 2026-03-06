@@ -534,6 +534,20 @@ class PlaceStore:
                 return PlaceTrainingJob.model_validate(item)
         return None
 
+    def get_latest_ready_job(self, place_id: str | None = None) -> PlaceTrainingJob | None:
+        jobs = self._load_jobs()
+        candidates: list[dict] = []
+        for item in jobs["jobs"]:
+            if item.get("status") != PlaceJobStatus.READY.value:
+                continue
+            if place_id and item.get("place_id") != place_id:
+                continue
+            candidates.append(item)
+        if not candidates:
+            return None
+        candidates.sort(key=lambda job: job.get("finished_at") or "")
+        return PlaceTrainingJob.model_validate(candidates[-1])
+
     def set_active_target(self, place_id: str | None) -> str | None:
         data = self._load_index()
         if place_id is not None:

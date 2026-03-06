@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -406,6 +407,87 @@ class PlacesApiTests(unittest.TestCase):
         train = self.client.post(f"/api/places/{place_id}/train", json={})
         self.assertEqual(train.status_code, 400)
         self.assertIn("annotated", train.json()["detail"])
+
+    def test_quick_check_uses_selected_place_id(self) -> None:
+        image = np.zeros((24, 24, 3), dtype=np.uint8)
+        ok, encoded = cv2.imencode(".jpg", image)
+        self.assertTrue(ok)
+        jpeg_bytes = encoded.tobytes()
+
+        create = self.client.post("/api/places", json={"name": "Base1"})
+        self.assertEqual(create.status_code, 200)
+        place_id = create.json()["id"]
+        upload = self.client.post(
+            f"/api/places/{place_id}/images",
+            json={
+                "items": [
+                    {
+                        "filename": "base1.jpg",
+                        "content_base64": base64.b64encode(jpeg_bytes).decode("ascii"),
+                    }
+                ]
+            },
+        )
+        self.assertEqual(upload.status_code, 200)
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            model_path = tmp_path / "best.pt"
+            model_path.write_text("fake", encoding="utf-8")
+            sock_dir = tmp_path / "dataset" / "train" / "images"
+            sock_dir.mkdir(parents=True, exist_ok=True)
+            (sock_dir / "sock.jpg").write_bytes(jpeg_bytes)
+
+            class _FakeList:
+                def __init__(self, values):
+                    self._values = values
+
+                def tolist(self):
+                    return self._values
+
+            class _FakeBoxes:
+                def __init__(self, cls_values):
+                    self.cls = _FakeList(cls_values)
+
+                def __len__(self):
+                    return len(self.cls.tolist())
+
+            class _FakeResult:
+                def __init__(self, cls_values):
+                    self.boxes = _FakeBoxes(cls_values)
+
+            class FakeYOLO:
+                def __init__(self, _model_path):
+                    self.names = {0: "sock", 1: "place_base1"}
+
+                def predict(self, source: str, **_kwargs):
+                    normalized = source.replace("\\", "/")
+                    if "/places/" in normalized:
+                        return [_FakeResult([1])]
+                    return [_FakeResult([0])]
+
+            prev_cwd = os.getcwd()
+            os.chdir(tmp_path)
+            try:
+                with mock.patch("ultralytics.YOLO", FakeYOLO):
+                    response = self.client.post(
+                        "/api/places/quick-check",
+                        json={
+                            "place_id": place_id,
+                            "samples": 1,
+                            "model_path": str(model_path),
+                            "sock_split": "train",
+                        },
+                    )
+            finally:
+                os.chdir(prev_cwd)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["place"]["hits"], 1)
+        self.assertEqual(payload["place"]["total"], 1)
+        self.assertEqual(payload["sock"]["hits"], 1)
+        self.assertEqual(payload["sock"]["total"], 1)
 
     def test_activate_requires_ready_place(self) -> None:
         create = self.client.post("/api/places", json={"name": "Dryer"})

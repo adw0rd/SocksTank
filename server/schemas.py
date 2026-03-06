@@ -226,6 +226,36 @@ class PlaceTrainingJob(BaseModel):
     result_ncnn_path: str | None = None
 
 
+class PlaceQuickCheckRequest(BaseModel):
+    place_id: str
+    samples: int = Field(default=5, ge=1, le=50)
+    model_path: str | None = None
+    confidence: float = Field(default=0.25, ge=0.01, le=0.99)
+    imgsz: int = Field(default=640, ge=64, le=2048)
+    sock_split: str = Field(default="train", pattern="^(train|valid|test)$")
+
+
+class PlaceQuickCheckClassSummary(BaseModel):
+    hits: int
+    total: int
+
+
+class PlaceQuickCheckImageResult(BaseModel):
+    filename: str
+    ok: bool
+
+
+class PlaceQuickCheckResponse(BaseModel):
+    model_path: str
+    model_version: str | None = None
+    place_id: str
+    place_label: str
+    place: PlaceQuickCheckClassSummary
+    sock: PlaceQuickCheckClassSummary
+    place_images: list[PlaceQuickCheckImageResult]
+    sock_images: list[PlaceQuickCheckImageResult]
+
+
 class PlaceSetActiveRequest(BaseModel):
     place_id: str | None = None
 

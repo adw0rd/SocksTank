@@ -34,6 +34,29 @@ interface PlaceTrainingJob {
   detail?: string
 }
 
+interface PlaceQuickCheckImageResult {
+  filename: string
+  ok: boolean
+}
+
+interface PlaceQuickCheckResponse {
+  model_path: string
+  model_version?: string | null
+  place_id: string
+  place_label: string
+  place: {
+    hits: number
+    total: number
+  }
+  sock: {
+    hits: number
+    total: number
+  }
+  place_images: PlaceQuickCheckImageResult[]
+  sock_images: PlaceQuickCheckImageResult[]
+  detail?: string
+}
+
 type DraftBox = {
   startX: number
   startY: number
@@ -129,6 +152,14 @@ export function PlacesPanel() {
   const [message, setMessage] = useState<string | null>(null)
   const [trainingJob, setTrainingJob] = useState<PlaceTrainingJob | null>(null)
   const [training, setTraining] = useState(false)
+  const [quickCheckPlaceId, setQuickCheckPlaceId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') {
+      return null
+    }
+    return window.localStorage.getItem('sockstank.places.quickCheckPlaceId')
+  })
+  const [quickChecking, setQuickChecking] = useState(false)
+  const [quickCheckResult, setQuickCheckResult] = useState<PlaceQuickCheckResponse | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const uploadInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -185,6 +216,20 @@ export function PlacesPanel() {
   }, [places, selectedPlaceId])
 
   useEffect(() => {
+    if (!quickCheckPlaceId && selectedPlaceId) {
+      setQuickCheckPlaceId(selectedPlaceId)
+      return
+    }
+    if (!quickCheckPlaceId && places.length > 0) {
+      setQuickCheckPlaceId(places[0].id)
+      return
+    }
+    if (quickCheckPlaceId && !places.some((place) => place.id === quickCheckPlaceId)) {
+      setQuickCheckPlaceId(selectedPlaceId ?? places[0]?.id ?? null)
+    }
+  }, [places, quickCheckPlaceId, selectedPlaceId])
+
+  useEffect(() => {
     if (!selectedPlaceId) {
       return
     }
@@ -231,6 +276,17 @@ export function PlacesPanel() {
       window.localStorage.removeItem('sockstank.places.selectedImageId')
     }
   }, [selectedImageId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    if (quickCheckPlaceId) {
+      window.localStorage.setItem('sockstank.places.quickCheckPlaceId', quickCheckPlaceId)
+    } else {
+      window.localStorage.removeItem('sockstank.places.quickCheckPlaceId')
+    }
+  }, [quickCheckPlaceId])
 
   useEffect(() => {
     if (!trainingJob || !selectedPlaceId) {
@@ -449,6 +505,35 @@ export function PlacesPanel() {
     }
   }
 
+  const runQuickCheck = async () => {
+    if (!quickCheckPlaceId) return
+    setBusy(true)
+    setQuickChecking(true)
+    setMessage(null)
+    try {
+      const response = await fetch('/api/places/quick-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          place_id: quickCheckPlaceId,
+          samples: 5,
+          sock_split: 'train',
+        }),
+      })
+      const payload = (await response.json()) as PlaceQuickCheckResponse
+      if (!response.ok) {
+        throw new Error(payload.detail || 'Failed to run quick check')
+      }
+      setQuickCheckResult(payload)
+      setMessage(`Quick check done: place ${payload.place.hits}/${payload.place.total}, sock ${payload.sock.hits}/${payload.sock.total}`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Failed to run quick check')
+    } finally {
+      setBusy(false)
+      setQuickChecking(false)
+    }
+  }
+
   const deleteImage = async (imageId: string) => {
     if (!selectedPlaceId) return
     setBusy(true)
@@ -628,6 +713,7 @@ export function PlacesPanel() {
   }, [draftBox])
 
   const activeTargetName = places.find((place) => place.id === activeTargetId)?.name ?? activeTargetId
+  const quickCheckPlaceName = places.find((place) => place.id === quickCheckPlaceId)?.name ?? quickCheckPlaceId
   const trainedArtifactPath = trainingJob?.result_ncnn_path || trainingJob?.result_model_path || null
 
   return (
@@ -721,6 +807,55 @@ export function PlacesPanel() {
               {training && <span style={spinner} />}
               {training ? 'Training...' : 'Train'}
             </button>
+          </div>
+
+          <div style={{ ...trainingCard, marginBottom: 10 }}>
+            <div style={{ color: '#eef2ff', fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Quick Check</div>
+            <div style={{ color: '#8b93bb', fontSize: 11, lineHeight: 1.45, marginBottom: 8 }}>
+              Choose which place photo set to validate against. This removes the hardcoded place dataset.
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <select
+                value={quickCheckPlaceId ?? ''}
+                onChange={(event) => setQuickCheckPlaceId(event.target.value || null)}
+                disabled={busy || quickChecking || places.length === 0}
+                style={{
+                  ...inputStyle,
+                  flex: 1,
+                  padding: '8px 10px',
+                  fontSize: 12,
+                }}
+              >
+                {places.map((place) => (
+                  <option key={place.id} value={place.id}>
+                    {place.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={runQuickCheck}
+                disabled={busy || quickChecking || !quickCheckPlaceId}
+                style={{
+                  ...actionButton,
+                  minWidth: 130,
+                  opacity: busy || quickChecking || !quickCheckPlaceId ? 0.6 : 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+              >
+                {quickChecking && <span style={spinner} />}
+                {quickChecking ? 'Checking...' : 'Run Check'}
+              </button>
+            </div>
+            {quickCheckResult && (
+              <div style={{ color: '#9ff7b4', fontSize: 11, lineHeight: 1.5 }}>
+                Place set: <span style={{ color: '#d7defe', fontWeight: 700 }}>{quickCheckPlaceName}</span>
+                {' · '}Result: place {quickCheckResult.place.hits}/{quickCheckResult.place.total}, sock {quickCheckResult.sock.hits}/
+                {quickCheckResult.sock.total}
+              </div>
+            )}
           </div>
 
           {trainingJob && (
