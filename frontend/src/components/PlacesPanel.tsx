@@ -27,6 +27,7 @@ interface PlaceTrainingJob {
   executor: string
   dataset_path?: string | null
   remote_dataset_path?: string | null
+  finished_at?: string | null
   result_model_version?: string | null
   result_model_path?: string | null
   result_ncnn_path?: string | null
@@ -34,6 +35,7 @@ interface PlaceTrainingJob {
     status?: string
     checked_at?: string
     error?: string
+    passes_threshold?: boolean
     place?: { hits: number; total: number }
     sock?: { hits: number; total: number }
   } | null
@@ -62,6 +64,14 @@ interface PlaceQuickCheckResponse {
   place_images: PlaceQuickCheckImageResult[]
   sock_images: PlaceQuickCheckImageResult[]
   detail?: string
+}
+
+interface PlaceTrainingJobsResponse {
+  items: PlaceTrainingJob[]
+  auto_accept_enabled: boolean
+  auto_accept_quick_check_samples: number
+  auto_accept_place_min_hits: number
+  auto_accept_sock_min_hits: number
 }
 
 type DraftBox = {
@@ -167,6 +177,13 @@ export function PlacesPanel() {
   })
   const [quickChecking, setQuickChecking] = useState(false)
   const [quickCheckResult, setQuickCheckResult] = useState<PlaceQuickCheckResponse | null>(null)
+  const [recentJobs, setRecentJobs] = useState<PlaceTrainingJob[]>([])
+  const [autoAcceptPolicy, setAutoAcceptPolicy] = useState<{
+    enabled: boolean
+    samples: number
+    placeMinHits: number
+    sockMinHits: number
+  } | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const uploadInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -208,6 +225,24 @@ export function PlacesPanel() {
         setAnnotations(next)
       })
       .catch(() => setAnnotations({}))
+  }, [])
+
+  const fetchPlaceJobs = useCallback((placeId: string) => {
+    fetch(`/api/places/${placeId}/jobs?limit=10`)
+      .then((r) => r.json())
+      .then((data: PlaceTrainingJobsResponse) => {
+        setRecentJobs(data.items ?? [])
+        setAutoAcceptPolicy({
+          enabled: Boolean(data.auto_accept_enabled),
+          samples: Number(data.auto_accept_quick_check_samples ?? 5),
+          placeMinHits: Number(data.auto_accept_place_min_hits ?? 4),
+          sockMinHits: Number(data.auto_accept_sock_min_hits ?? 4),
+        })
+      })
+      .catch(() => {
+        setRecentJobs([])
+        setAutoAcceptPolicy(null)
+      })
   }, [])
 
   useEffect(() => {
@@ -253,7 +288,8 @@ export function PlacesPanel() {
       return
     }
     fetchPlaceAssets(selectedPlaceId)
-  }, [fetchPlaceAssets, selectedPlaceId])
+    fetchPlaceJobs(selectedPlaceId)
+  }, [fetchPlaceAssets, fetchPlaceJobs, selectedPlaceId])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -722,6 +758,23 @@ export function PlacesPanel() {
   const activeTargetName = places.find((place) => place.id === activeTargetId)?.name ?? activeTargetId
   const quickCheckPlaceName = places.find((place) => place.id === quickCheckPlaceId)?.name ?? quickCheckPlaceId
   const trainedArtifactPath = trainingJob?.result_ncnn_path || trainingJob?.result_model_path || null
+  const recentReadyJobs = useMemo(
+    () => recentJobs.filter((job) => job.status === 'ready' && job.quick_check?.status === 'ok'),
+    [recentJobs],
+  )
+  const hasRegression = (job: PlaceTrainingJob, index: number) => {
+    const current = job.quick_check
+    if (!current?.place || !current.sock) {
+      return false
+    }
+    const previous = recentReadyJobs.slice(index + 1).find((item) => item.quick_check?.place && item.quick_check?.sock)
+    if (!previous?.quick_check?.place || !previous.quick_check?.sock) {
+      return false
+    }
+    return (
+      current.place.hits < previous.quick_check.place.hits || current.sock.hits < previous.quick_check.sock.hits
+    )
+  }
 
   return (
     <div style={{ padding: 16 }}>
@@ -914,6 +967,49 @@ export function PlacesPanel() {
                   )}
                 </>
               )}
+            </div>
+          )}
+
+          {recentJobs.length > 0 && (
+            <div style={{ ...trainingCard, marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ color: '#eef2ff', fontSize: 12, fontWeight: 700 }}>Recent Training Jobs</div>
+                <div style={badge}>{recentJobs.length}</div>
+              </div>
+              {autoAcceptPolicy && (
+                <div style={{ color: '#8b93bb', fontSize: 11, lineHeight: 1.45, marginTop: 6 }}>
+                  Auto-accept: {autoAcceptPolicy.enabled ? 'on' : 'off'} · min {autoAcceptPolicy.placeMinHits}/
+                  {autoAcceptPolicy.samples} place, {autoAcceptPolicy.sockMinHits}/{autoAcceptPolicy.samples} sock
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                {recentJobs.map((job, idx) => {
+                  const quick = job.quick_check
+                  const passed = quick?.passes_threshold === true
+                  const failed = quick?.status === 'failed'
+                  const regressed = hasRegression(job, idx)
+                  return (
+                    <div key={job.id} style={{ ...rowCard, borderColor: regressed ? '#6a3340' : '#2a3352' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ color: '#d7defe', fontSize: 11, fontWeight: 700 }}>{job.id}</div>
+                        <div style={{ ...miniBadge, background: '#202742', borderColor: '#33406e' }}>{job.status}</div>
+                      </div>
+                      <div style={{ color: '#8b93bb', fontSize: 11, marginTop: 4 }}>
+                        {job.executor}
+                        {job.finished_at ? ` · ${new Date(job.finished_at).toLocaleString()}` : ''}
+                      </div>
+                      {quick?.status === 'ok' && quick.place && quick.sock && (
+                        <div style={{ color: passed ? '#9ff7b4' : '#ffd59a', fontSize: 11, marginTop: 4 }}>
+                          QC: place {quick.place.hits}/{quick.place.total}, sock {quick.sock.hits}/{quick.sock.total}
+                          {passed ? ' · pass' : ' · below threshold'}
+                          {regressed ? ' · regression' : ''}
+                        </div>
+                      )}
+                      {failed && <div style={{ color: '#ffb8b8', fontSize: 11, marginTop: 4 }}>QC failed</div>}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
 
@@ -1388,4 +1484,22 @@ const thumbBadge: React.CSSProperties = {
   fontWeight: 800,
   letterSpacing: '0.04em',
   textTransform: 'uppercase',
+}
+
+const rowCard: React.CSSProperties = {
+  background: '#0f1426',
+  border: '1px solid #2a3352',
+  borderRadius: 10,
+  padding: '8px 10px',
+}
+
+const miniBadge: React.CSSProperties = {
+  padding: '1px 6px',
+  borderRadius: 999,
+  border: '1px solid #33406e',
+  color: '#a9ddff',
+  fontSize: 10,
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
 }

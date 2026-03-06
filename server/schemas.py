@@ -257,6 +257,14 @@ class PlaceQuickCheckResponse(BaseModel):
     sock_images: list[PlaceQuickCheckImageResult]
 
 
+class PlaceTrainingJobsResponse(BaseModel):
+    items: list[PlaceTrainingJob]
+    auto_accept_enabled: bool
+    auto_accept_quick_check_samples: int
+    auto_accept_place_min_hits: int
+    auto_accept_sock_min_hits: int
+
+
 class PlaceSetActiveRequest(BaseModel):
     place_id: str | None = None
 

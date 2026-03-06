@@ -22,6 +22,7 @@ from server.schemas import (
     PlaceQuickCheckResponse,
     PlaceQuickCheckClassSummary,
     PlaceQuickCheckImageResult,
+    PlaceTrainingJobsResponse,
     PlaceCreateRequest,
     PlaceImagesUploadRequest,
     PlaceImagesListResponse,
@@ -200,28 +201,33 @@ def _maybe_activate_trained_model(job) -> None:
         return
     if not settings.auto_accept_enabled:
         return
-    quick_check = job.quick_check or {}
-    if quick_check.get("status") != "ok":
+    if not _quick_check_passes_threshold(job.quick_check):
         return
+    target_path = _local_artifact_path(job)
+    if target_path is None or settings.model_path == target_path:
+        return
+    _inference_router.reload_local_model(target_path)
 
+
+def _quick_check_passes_threshold(quick_check: dict | None) -> bool:
+    if not settings.auto_accept_enabled:
+        return False
+    if not quick_check or quick_check.get("status") != "ok":
+        return False
     place_result = quick_check.get("place") or {}
     sock_result = quick_check.get("sock") or {}
     place_hits = int(place_result.get("hits", 0))
     place_total = int(place_result.get("total", 0))
     sock_hits = int(sock_result.get("hits", 0))
     sock_total = int(sock_result.get("total", 0))
-
     min_samples = max(1, int(settings.auto_accept_quick_check_samples))
     if place_total < min_samples or sock_total < min_samples:
-        return
+        return False
     if place_hits < int(settings.auto_accept_place_min_hits):
-        return
+        return False
     if sock_hits < int(settings.auto_accept_sock_min_hits):
-        return
-    target_path = _local_artifact_path(job)
-    if target_path is None or settings.model_path == target_path:
-        return
-    _inference_router.reload_local_model(target_path)
+        return False
+    return True
 
 
 def _resolve_quick_check_model(place_id: str, explicit_model_path: str | None):
@@ -382,12 +388,26 @@ def _maybe_store_quick_check(job: PlaceTrainingJob) -> PlaceTrainingJob:
                 "sock": result.sock.total,
             },
         }
+        payload["passes_threshold"] = _quick_check_passes_threshold(payload)
     except Exception as exc:
         payload = {
             "status": "failed",
             "checked_at": datetime.now(UTC).isoformat(),
             "error": str(exc),
+            "passes_threshold": False,
         }
+    updated = _store.update_job(job.id, quick_check=payload)
+    return updated or job
+
+
+def _maybe_backfill_quick_check_threshold(job: PlaceTrainingJob) -> PlaceTrainingJob:
+    quick_check = job.quick_check or {}
+    if quick_check.get("status") != "ok":
+        return job
+    if quick_check.get("passes_threshold") is not None:
+        return job
+    payload = dict(quick_check)
+    payload["passes_threshold"] = _quick_check_passes_threshold(payload)
     updated = _store.update_job(job.id, quick_check=payload)
     return updated or job
 
@@ -507,6 +527,22 @@ async def list_place_annotations(place_id: str):
     return PlaceAnnotationsListResponse(items=items)
 
 
+@router.get("/{place_id}/jobs", response_model=PlaceTrainingJobsResponse)
+async def list_place_jobs(place_id: str, limit: int = 10):
+    if _store.get_place(place_id) is None:
+        raise HTTPException(status_code=404, detail="Place not found")
+    safe_limit = max(1, min(limit, 100))
+    jobs = _store.list_jobs(place_id=place_id, limit=safe_limit)
+    jobs = [_maybe_backfill_quick_check_threshold(job) for job in jobs]
+    return PlaceTrainingJobsResponse(
+        items=jobs,
+        auto_accept_enabled=settings.auto_accept_enabled,
+        auto_accept_quick_check_samples=settings.auto_accept_quick_check_samples,
+        auto_accept_place_min_hits=settings.auto_accept_place_min_hits,
+        auto_accept_sock_min_hits=settings.auto_accept_sock_min_hits,
+    )
+
+
 @router.post("/quick-check", response_model=PlaceQuickCheckResponse)
 async def quick_check_place(body: PlaceQuickCheckRequest):
     return _run_quick_check(
@@ -624,5 +660,6 @@ async def get_place_job(job_id: str):
             if updated is not None:
                 job = updated
     job = _maybe_store_quick_check(job)
+    job = _maybe_backfill_quick_check_threshold(job)
     _maybe_activate_trained_model(job)
     return job

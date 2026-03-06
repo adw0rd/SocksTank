@@ -507,6 +507,44 @@ class PlacesApiTests(unittest.TestCase):
         self.assertEqual(payload["sock"]["hits"], 1)
         self.assertEqual(payload["sock"]["total"], 1)
 
+    def test_list_place_jobs_returns_policy_and_recent_jobs(self) -> None:
+        image = np.zeros((24, 24, 3), dtype=np.uint8)
+        ok, encoded = cv2.imencode(".jpg", image)
+        self.assertTrue(ok)
+        jpeg_bytes = encoded.tobytes()
+
+        create = self.client.post("/api/places", json={"name": "History"})
+        place_id = create.json()["id"]
+        upload = self.client.post(
+            f"/api/places/{place_id}/images",
+            json={
+                "items": [
+                    {
+                        "filename": "history.jpg",
+                        "content_base64": base64.b64encode(jpeg_bytes).decode("ascii"),
+                    }
+                ]
+            },
+        )
+        image_id = upload.json()["items"][0]["id"]
+        annotate = self.client.put(
+            f"/api/places/{place_id}/images/{image_id}/annotation",
+            json={"x_center": 0.5, "y_center": 0.5, "width": 0.4, "height": 0.4},
+        )
+        self.assertEqual(annotate.status_code, 200)
+
+        train = self.client.post(f"/api/places/{place_id}/train", json={})
+        job_id = train.json()["job_id"]
+        with mock.patch.object(routes_places, "_run_quick_check", return_value=self._ok_quick_check(place_id, "place_history")):
+            self.client.get(f"/api/places/jobs/{job_id}")
+
+        response = self.client.get(f"/api/places/{place_id}/jobs?limit=10")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["auto_accept_enabled"])
+        self.assertEqual(payload["auto_accept_quick_check_samples"], 5)
+        self.assertEqual(payload["items"][0]["id"], job_id)
+
     def test_activate_requires_ready_place(self) -> None:
         create = self.client.post("/api/places", json={"name": "Dryer"})
         place_id = create.json()["id"]

@@ -552,6 +552,18 @@ class PlaceStore:
         candidates.sort(key=lambda job: job.get("finished_at") or "")
         return PlaceTrainingJob.model_validate(candidates[-1])
 
+    def list_jobs(self, place_id: str | None = None, limit: int = 20) -> list[PlaceTrainingJob]:
+        jobs = self._load_jobs()
+        items: list[dict] = []
+        for item in jobs["jobs"]:
+            if place_id and item.get("place_id") != place_id:
+                continue
+            items.append(item)
+        items.sort(key=lambda job: job.get("queued_at") or "", reverse=True)
+        if limit > 0:
+            items = items[:limit]
+        return [PlaceTrainingJob.model_validate(item) for item in items]
+
     def set_active_target(self, place_id: str | None) -> str | None:
         data = self._load_index()
         if place_id is not None:
