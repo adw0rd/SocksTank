@@ -197,6 +197,9 @@ export function PlacesPanel() {
   } | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const uploadInputRef = useRef<HTMLInputElement | null>(null)
+  const [annotatorImageLoading, setAnnotatorImageLoading] = useState(false)
+  const annotatorLoadingStartedAtRef = useRef(0)
+  const annotatorLoadingTimeoutRef = useRef<number | null>(null)
 
   const fetchPlaces = useCallback(() => {
     fetch('/api/places')
@@ -301,6 +304,38 @@ export function PlacesPanel() {
     fetchPlaceAssets(selectedPlaceId)
     fetchPlaceJobs(selectedPlaceId)
   }, [fetchPlaceAssets, fetchPlaceJobs, selectedPlaceId])
+
+  useEffect(() => {
+    if (annotatorLoadingTimeoutRef.current !== null) {
+      window.clearTimeout(annotatorLoadingTimeoutRef.current)
+      annotatorLoadingTimeoutRef.current = null
+    }
+    if (!selectedImageId) {
+      setAnnotatorImageLoading(false)
+      return
+    }
+    annotatorLoadingStartedAtRef.current = Date.now()
+    setAnnotatorImageLoading(true)
+  }, [selectedImageId])
+
+  const finishAnnotatorLoading = () => {
+    const minVisibleMs = 180
+    const elapsedMs = Date.now() - annotatorLoadingStartedAtRef.current
+    const delayMs = Math.max(0, minVisibleMs - elapsedMs)
+    annotatorLoadingTimeoutRef.current = window.setTimeout(() => {
+      setAnnotatorImageLoading(false)
+      annotatorLoadingTimeoutRef.current = null
+    }, delayMs)
+  }
+
+  useEffect(
+    () => () => {
+      if (annotatorLoadingTimeoutRef.current !== null) {
+        window.clearTimeout(annotatorLoadingTimeoutRef.current)
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -1180,7 +1215,7 @@ export function PlacesPanel() {
 
       {showGallery && selectedPlace && (
         <div style={modalBackdrop} onClick={() => setShowGallery(false)}>
-          <div style={modalCard} onClick={(event) => event.stopPropagation()}>
+          <div data-testid="places-photo-library-modal" style={modalCard} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
               <div>
                 <div style={{ color: '#eef2ff', fontSize: 15, fontWeight: 800 }}>Photo Library</div>
@@ -1224,6 +1259,7 @@ export function PlacesPanel() {
                 </div>
                 <div
                   ref={canvasRef}
+                  data-testid="places-annotator-canvas"
                   onPointerDown={onPointerDown}
                   onPointerMove={onPointerMove}
                   onPointerUp={onPointerUp}
@@ -1236,17 +1272,28 @@ export function PlacesPanel() {
                     border: '1px solid #2c3558',
                     background: '#0b1020',
                     marginBottom: 10,
-                    cursor: 'crosshair',
+                    cursor: annotatorImageLoading ? 'progress' : 'crosshair',
                   }}
                 >
                   <img
+                    key={selectedImage.id}
+                    data-testid="places-annotator-image"
                     src={`/api/places/${selectedPlace.id}/images/${selectedImage.id}`}
                     alt={selectedImage.filename}
-                    style={{ display: 'block', width: '100%', height: 'auto' }}
+                    onLoad={finishAnnotatorLoading}
+                    onError={finishAnnotatorLoading}
+                    style={{ display: 'block', width: '100%', height: 'auto', opacity: annotatorImageLoading ? 0 : 1 }}
                     draggable={false}
                   />
 
-                  {selectedAnnotation && !draftBox && (
+                  {annotatorImageLoading && (
+                    <div data-testid="places-annotator-loading" style={imageLoadingOverlay}>
+                      <span style={spinner} />
+                      <span>Loading...</span>
+                    </div>
+                  )}
+
+                  {selectedAnnotation && !draftBox && !annotatorImageLoading && (
                     <div
                       style={{
                         ...annotationBox,
@@ -1255,7 +1302,7 @@ export function PlacesPanel() {
                     />
                   )}
 
-                  {draftStyle && (
+                  {draftStyle && !annotatorImageLoading && (
                     <div
                       style={{
                         ...annotationBox,
@@ -1287,7 +1334,7 @@ export function PlacesPanel() {
                   {selectedAnnotation && !draftBox && (
                     <button
                       onClick={loadSavedAnnotationIntoDraft}
-                      disabled={busy}
+                      disabled={busy || annotatorImageLoading}
                       style={{ ...actionButton, opacity: busy ? 0.6 : 1 }}
                     >
                       Edit Saved
@@ -1295,21 +1342,21 @@ export function PlacesPanel() {
                   )}
                   <button
                     onClick={() => void saveAnnotation(false)}
-                    disabled={busy || !draftBox}
+                    disabled={busy || !draftBox || annotatorImageLoading}
                     style={{ ...actionButton, flex: 1, opacity: busy || !draftBox ? 0.6 : 1 }}
                   >
                     Save Box
                   </button>
                   <button
                     onClick={() => void saveAnnotation(true)}
-                    disabled={busy || !draftBox || selectedImageIndex >= images.length - 1}
+                    disabled={busy || !draftBox || selectedImageIndex >= images.length - 1 || annotatorImageLoading}
                     style={{ ...actionButton, opacity: busy || !draftBox || selectedImageIndex >= images.length - 1 ? 0.6 : 1 }}
                   >
                     Save & Next
                   </button>
                   <button
                     onClick={() => setDraftBox(null)}
-                    disabled={busy || !draftBox}
+                    disabled={busy || !draftBox || annotatorImageLoading}
                     style={{ ...actionButton, opacity: busy || !draftBox ? 0.6 : 1 }}
                   >
                     Reset
@@ -1329,6 +1376,7 @@ export function PlacesPanel() {
                 >
                   <button
                     type="button"
+                    data-testid={`places-thumb-${image.id}`}
                     onClick={() => {
                       setSelectedImageId(image.id)
                       setDraftBox(null)
@@ -1473,6 +1521,19 @@ const spinner: React.CSSProperties = {
   border: '2px solid rgba(215, 222, 254, 0.28)',
   borderTopColor: '#d7defe',
   animation: 'place-spin 0.8s linear infinite',
+}
+
+const imageLoadingOverlay: React.CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  background: 'rgba(7, 10, 22, 0.78)',
+  color: '#d7defe',
+  fontSize: 12,
+  fontWeight: 700,
 }
 
 const progressTrack: React.CSSProperties = {

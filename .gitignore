@@ -14,6 +14,8 @@ user_data/
 # Frontend
 frontend/node_modules/
 frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
