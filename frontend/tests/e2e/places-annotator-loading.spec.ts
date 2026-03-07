@@ -117,7 +117,7 @@ test('shows loading overlay while switching annotation image', async ({ page }) 
 
   await page.goto('/')
 
-  const openLibraryButton = page.getByRole('button', { name: /Open Photo Library/i })
+  const openLibraryButton = page.getByTestId('places-open-library')
   await expect(openLibraryButton).toBeVisible()
   await openLibraryButton.click()
   await expect(page.getByTestId('places-photo-library-modal')).toBeVisible()

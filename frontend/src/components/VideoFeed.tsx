@@ -33,6 +33,7 @@ export function VideoFeed() {
       }}
     >
       <button
+        data-testid="video-fullscreen-toggle"
         onClick={() => { void toggleFullscreen() }}
         style={{
           position: 'absolute',
@@ -53,6 +54,7 @@ export function VideoFeed() {
         {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
       </button>
       <img
+        data-testid="video-stream"
         src="/api/video/stream"
         alt="Camera"
         style={{

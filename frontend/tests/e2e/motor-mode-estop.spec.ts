@@ -10,7 +10,7 @@ test('sends motor, mode, and stop commands from UI controls', async ({ page }) =
   })
   await page.goto('/')
 
-  const fwd = page.getByRole('button', { name: 'W / FWD' })
+  const fwd = page.getByTestId('motor-btn-fwd')
   await fwd.dispatchEvent('mousedown')
   await fwd.dispatchEvent('mouseup')
 
@@ -19,8 +19,8 @@ test('sends motor, mode, and stop commands from UI controls', async ({ page }) =
   await page.keyboard.up('a')
   await page.keyboard.up('w')
 
-  await page.getByRole('button', { name: 'AI Hunt' }).click()
-  await page.getByRole('button', { name: 'STOP' }).click()
+  await page.getByTestId('mode-btn-ai').click()
+  await page.getByTestId('estop-toggle').click()
 
   const ws = await harness.wsMessages()
   expect(ws.some((item) => item.cmd === 'motor' && Number(item.params.left) > 0 && Number(item.params.right) > 0)).toBeTruthy()
@@ -38,7 +38,7 @@ test('locks manual motor controls when AI mode is active', async ({ page }) => {
   })
   await page.goto('/')
 
-  const fwd = page.getByRole('button', { name: 'W / FWD' })
+  const fwd = page.getByTestId('motor-btn-fwd')
   await expect(fwd).toBeDisabled()
   await expect(page.getByText('AI owns drive train')).toBeVisible()
 

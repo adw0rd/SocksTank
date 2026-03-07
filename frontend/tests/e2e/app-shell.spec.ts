@@ -20,17 +20,17 @@ test('renders main control surface and live status blocks', async ({ page }) => 
   await page.goto('/')
 
   await expect(page.getByRole('heading', { name: 'SocksTank Control Surface' })).toBeVisible()
-  await expect(page.getByText('Camera: Mock Loop')).toBeVisible()
-  await expect(page.getByText('REMOTE · Remote blackops:8090')).toBeVisible()
-  await expect(page.getByText('E-Stop Latched').first()).toBeVisible()
+  await expect(page.getByTestId('header-camera-chip')).toContainText('Camera: Mock Loop')
+  await expect(page.getByTestId('header-inference-chip')).toContainText('REMOTE · Remote blackops:8090')
+  await expect(page.getByTestId('header-estop-chip')).toContainText('E-Stop Latched')
 
-  await expect(page.getByText('Sensors', { exact: true })).toBeVisible()
+  await expect(page.getByTestId('panel-sensors').getByText('Sensors', { exact: true })).toBeVisible()
   await expect(page.getByText('CPU Temp')).toBeVisible()
   await expect(page.getByText('Distance')).toBeVisible()
 
-  await expect(page.getByText('WS')).toBeVisible()
+  await expect(page.getByTestId('panel-status').getByText('WS')).toBeVisible()
   await expect(page.getByText('Detections')).toBeVisible()
 
-  await expect(page.getByRole('button', { name: 'Fullscreen' })).toBeVisible()
-  await expect(page.getByRole('img', { name: 'Camera' })).toBeVisible()
+  await expect(page.getByTestId('video-fullscreen-toggle')).toBeVisible()
+  await expect(page.getByTestId('video-stream')).toBeVisible()
 })

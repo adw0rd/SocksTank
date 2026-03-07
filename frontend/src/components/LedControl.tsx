@@ -62,6 +62,7 @@ export function LedControl({ send, telemetry }: Props) {
             </div>
           </div>
           <button
+            data-testid="led-expand-toggle"
             onClick={() => setExpanded((prev) => !prev)}
             style={{
               padding: '9px 12px',
@@ -86,12 +87,14 @@ export function LedControl({ send, telemetry }: Props) {
             </div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 10, marginTop: 10 }}>
               <input
+                data-testid="led-color-input"
                 type="color" value={color}
                 onChange={(e) => setColor(e.target.value)}
                 style={{ width: 48, height: 36, border: 'none', cursor: 'pointer' }}
                 disabled={!supported}
               />
               <button
+                data-testid="led-apply-color"
                 onClick={applyColor}
                 disabled={!supported}
                 style={{
@@ -108,6 +111,7 @@ export function LedControl({ send, telemetry }: Props) {
               {PRESETS.map((p) => (
                 <button
                   key={p.effect}
+                  data-testid={`led-preset-${p.effect}`}
                   onClick={() => supported && send({ cmd: 'led', params: { effect: p.effect } })}
                   disabled={!supported}
                   style={{

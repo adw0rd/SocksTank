@@ -8,6 +8,7 @@ gpu_servers.json
 dataset/
 images/
 user_data/
+backups/
 *.mp4
 !models/*.pt
 

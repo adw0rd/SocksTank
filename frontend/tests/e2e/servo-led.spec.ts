@@ -10,12 +10,12 @@ test('toggles claw servo power and auxiliary servo panel', async ({ page }) => {
   })
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Disable' }).click()
+  await page.getByTestId('servo-claw-toggle').click()
   await expect(page.getByText('Disabled')).toBeVisible()
-  await page.getByRole('button', { name: 'Enable' }).click()
+  await page.getByTestId('servo-claw-toggle').click()
   await expect(page.getByText('Enabled')).toBeVisible()
 
-  await page.getByRole('button', { name: 'Show' }).nth(0).click()
+  await page.getByTestId('servo-aux-toggle').click()
   await expect(page.getByText('On some builds this servo is used for camera rotation.')).toBeVisible()
 
   const ws = await harness.wsMessages()
@@ -31,11 +31,11 @@ test('applies led color and preset effects', async ({ page }) => {
   })
   await page.goto('/')
 
-  const colorPicker = page.locator('input[type="color"]')
+  const colorPicker = page.getByTestId('led-color-input')
   await colorPicker.fill('#ff0000')
-  await page.getByRole('button', { name: 'Apply Color' }).click()
-  await page.getByRole('button', { name: 'Rainbow' }).click()
-  await page.getByRole('button', { name: 'Breathing' }).click()
+  await page.getByTestId('led-apply-color').click()
+  await page.getByTestId('led-preset-rainbow').click()
+  await page.getByTestId('led-preset-breathing').click()
 
   const ws = await harness.wsMessages()
   expect(ws.some((item) => item.cmd === 'led' && item.params.r === 255 && item.params.g === 0 && item.params.b === 0)).toBeTruthy()

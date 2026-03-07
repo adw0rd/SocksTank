@@ -49,12 +49,14 @@ export function ConfigPanel({ telemetry }: Props) {
         <div style={{ minWidth: 0 }}>
           <div style={{ color: '#aab1d6', fontSize: 13, marginBottom: 6 }}>Confidence: {confidence.toFixed(2)}</div>
           <input
+            data-testid="config-confidence-slider"
             type="range" min={0.1} max={1} step={0.05} value={confidence}
             onChange={(e) => setConfidence(Number(e.target.value))}
             style={{ width: '100%' }}
           />
         </div>
         <button
+          data-testid="config-save"
           onClick={save}
           style={{
             padding: '8px 12px', background: '#2d8cff', color: '#fff',

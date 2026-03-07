@@ -853,12 +853,14 @@ export function PlacesPanel() {
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
         <input
+          data-testid="places-new-name"
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="New place name"
           style={inputStyle}
         />
         <button
+          data-testid="places-add"
           onClick={createPlace}
           disabled={busy || !name.trim()}
           style={{
@@ -878,6 +880,7 @@ export function PlacesPanel() {
           places.map((place) => (
             <button
               key={place.id}
+              data-testid={`places-item-${place.id}`}
               onClick={() => setSelectedPlaceId(place.id)}
               style={{
                 ...placeRow,
@@ -911,6 +914,7 @@ export function PlacesPanel() {
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             <button
+              data-testid="places-set-target"
               onClick={() => setActiveTarget(selectedPlace.is_active_target ? null : selectedPlace.id)}
               disabled={busy}
               style={{
@@ -923,6 +927,7 @@ export function PlacesPanel() {
               {selectedPlace.is_active_target ? 'Clear Target' : 'Set Target'}
             </button>
             <button
+              data-testid="places-train"
               onClick={triggerTrain}
               disabled={busy || training}
               style={{
@@ -945,6 +950,7 @@ export function PlacesPanel() {
             </div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
               <select
+                data-testid="places-quick-check-select"
                 value={quickCheckPlaceId ?? ''}
                 onChange={(event) => setQuickCheckPlaceId(event.target.value || null)}
                 disabled={busy || quickChecking || places.length === 0}
@@ -962,6 +968,7 @@ export function PlacesPanel() {
                 ))}
               </select>
               <button
+                data-testid="places-quick-check-run"
                 onClick={runQuickCheck}
                 disabled={busy || quickChecking || !quickCheckPlaceId}
                 style={{
@@ -1138,6 +1145,7 @@ export function PlacesPanel() {
           )}
 
           <input
+            data-testid="places-upload-input"
             ref={uploadInputRef}
             type="file"
             accept="image/*"
@@ -1149,6 +1157,7 @@ export function PlacesPanel() {
             style={{ display: 'none' }}
           />
           <button
+            data-testid="places-upload-open"
             type="button"
             onClick={() => uploadInputRef.current?.click()}
             disabled={busy || uploading}
@@ -1192,7 +1201,12 @@ export function PlacesPanel() {
 
           {images.length > 0 && (
             <div style={{ marginBottom: 10 }}>
-              <button type="button" onClick={() => setShowGallery(true)} style={{ ...actionButton, width: '100%', marginBottom: 6 }}>
+              <button
+                data-testid="places-open-library"
+                type="button"
+                onClick={() => setShowGallery(true)}
+                style={{ ...actionButton, width: '100%', marginBottom: 6 }}
+              >
                 Open Photo Library ({images.length})
               </button>
               <div style={{ color: '#8b93bb', fontSize: 11, lineHeight: 1.45 }}>
@@ -1224,6 +1238,7 @@ export function PlacesPanel() {
                 </div>
               </div>
               <button
+                data-testid="places-library-close"
                 type="button"
                 onClick={() => setShowGallery(false)}
                 style={{ ...actionButton, padding: '6px 10px' }}
@@ -1241,6 +1256,7 @@ export function PlacesPanel() {
                   {images.length > 1 && (
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                       <button
+                        data-testid="places-annotator-prev"
                         onClick={() => selectRelativeImage(-1)}
                         disabled={selectedImageIndex <= 0}
                         style={{ ...actionButton, padding: '6px 8px', opacity: selectedImageIndex <= 0 ? 0.5 : 1 }}
@@ -1248,6 +1264,7 @@ export function PlacesPanel() {
                         Prev
                       </button>
                       <button
+                        data-testid="places-annotator-next"
                         onClick={() => selectRelativeImage(1)}
                         disabled={selectedImageIndex >= images.length - 1}
                         style={{ ...actionButton, padding: '6px 8px', opacity: selectedImageIndex >= images.length - 1 ? 0.5 : 1 }}
@@ -1333,6 +1350,7 @@ export function PlacesPanel() {
                 <div style={{ display: 'flex', gap: 8 }}>
                   {selectedAnnotation && !draftBox && (
                     <button
+                      data-testid="places-annotator-edit-saved"
                       onClick={loadSavedAnnotationIntoDraft}
                       disabled={busy || annotatorImageLoading}
                       style={{ ...actionButton, opacity: busy ? 0.6 : 1 }}
@@ -1341,6 +1359,7 @@ export function PlacesPanel() {
                     </button>
                   )}
                   <button
+                    data-testid="places-annotator-save"
                     onClick={() => void saveAnnotation(false)}
                     disabled={busy || !draftBox || annotatorImageLoading}
                     style={{ ...actionButton, flex: 1, opacity: busy || !draftBox ? 0.6 : 1 }}
@@ -1348,6 +1367,7 @@ export function PlacesPanel() {
                     Save Box
                   </button>
                   <button
+                    data-testid="places-annotator-save-next"
                     onClick={() => void saveAnnotation(true)}
                     disabled={busy || !draftBox || selectedImageIndex >= images.length - 1 || annotatorImageLoading}
                     style={{ ...actionButton, opacity: busy || !draftBox || selectedImageIndex >= images.length - 1 ? 0.6 : 1 }}
@@ -1355,6 +1375,7 @@ export function PlacesPanel() {
                     Save & Next
                   </button>
                   <button
+                    data-testid="places-annotator-reset"
                     onClick={() => setDraftBox(null)}
                     disabled={busy || !draftBox || annotatorImageLoading}
                     style={{ ...actionButton, opacity: busy || !draftBox ? 0.6 : 1 }}

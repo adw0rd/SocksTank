@@ -26,6 +26,7 @@ Validate the full web control surface through end-to-end browser flows with mock
 - `frontend/tests/e2e/config-panel.spec.ts`
 - `frontend/tests/e2e/places-workflow.spec.ts`
 - `frontend/tests/e2e/places-annotator-loading.spec.ts`
+- `frontend/tests/e2e/edge-cases.spec.ts`
 
 ## Coverage Matrix
 | UI Area | Covered | Notes |
@@ -51,6 +52,9 @@ Validate the full web control surface through end-to-end browser flows with mock
 | Places quick-check | Yes | Trigger and result feedback |
 | Places train | Yes | Train trigger and job cards |
 | Annotator loading overlay | Yes | Switch-frame loading behavior |
+| Empty places and empty GPU list | Yes | Empty state rendering |
+| Places create backend error | Yes | Error message rendering |
+| Quick-check and train backend failures | Yes | Failure feedback rendering |
 
 ## Known Gaps
 - Fullscreen API state transitions are not deeply asserted (only control presence).
@@ -58,8 +62,8 @@ Validate the full web control surface through end-to-end browser flows with mock
 - No cross-browser matrix yet (Chromium only).
 
 ## CI Execution
-GitHub Actions runs in parallel:
-- Backend unit test job
-- Frontend Playwright E2E job
+GitHub Actions uses split workflows:
+- `Tests` workflow: backend unit tests on push and pull_request.
+- `UI E2E` workflow: Playwright e2e on pull_request, manual dispatch, and nightly schedule.
 
-This gives fast feedback and ensures UI flows remain green on each push and PR.
+Playwright stores `trace`, `screenshot`, and `video` only on failure, and CI uploads those artifacts only when the run fails.

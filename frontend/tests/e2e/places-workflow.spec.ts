@@ -8,11 +8,11 @@ test('creates place, uploads photos, annotates, quick-checks, and trains', async
   const harness = await setupMockApp(page)
   await page.goto('/')
 
-  await page.getByPlaceholder('New place name').fill('Base 1')
-  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByTestId('places-new-name').fill('Base 1')
+  await page.getByTestId('places-add').click()
   await expect(page.getByText('Created Base 1')).toBeVisible()
 
-  await page.locator('input[type="file"]').setInputFiles([
+  await page.getByTestId('places-upload-input').setInputFiles([
     {
       name: 'base1_1.png',
       mimeType: 'image/png',
@@ -26,7 +26,7 @@ test('creates place, uploads photos, annotates, quick-checks, and trains', async
   ])
   await expect(page.getByText('Uploaded 2 image(s)')).toBeVisible()
 
-  await page.getByRole('button', { name: /Open Photo Library/ }).click()
+  await page.getByTestId('places-open-library').click()
   await expect(page.getByTestId('places-photo-library-modal')).toBeVisible()
   await expect(page.getByTestId('places-annotator-image')).toBeVisible()
 
@@ -39,14 +39,14 @@ test('creates place, uploads photos, annotates, quick-checks, and trains', async
   await page.mouse.down()
   await page.mouse.move(box.x + 220, box.y + 170)
   await page.mouse.up()
-  await page.getByRole('button', { name: 'Save Box' }).click()
+  await page.getByTestId('places-annotator-save').click()
   await expect(page.getByText('Annotation saved')).toBeVisible()
 
-  await page.getByRole('button', { name: 'Close' }).click()
-  await page.getByRole('button', { name: 'Run Check' }).click()
+  await page.getByTestId('places-library-close').click()
+  await page.getByTestId('places-quick-check-run').click()
   await expect(page.getByText(/Quick check done:/)).toBeVisible()
 
-  await page.getByRole('button', { name: 'Train' }).click()
+  await page.getByTestId('places-train').click()
   await expect(page.getByText(/Training job .* started on/)).toBeVisible()
   await expect(page.getByText('Training Job', { exact: true })).toBeVisible()
   await expect(page.getByText('Recent Training Jobs')).toBeVisible()

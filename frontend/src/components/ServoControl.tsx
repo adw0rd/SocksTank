@@ -59,6 +59,7 @@ export function ServoControl({ send, telemetry }: Props) {
           <span style={{ fontWeight: 700 }}>{angles[servo.channel]}°</span>
         </div>
         <input
+          data-testid={`servo-slider-${servo.channel}`}
           type="range"
           min={servo.min}
           max={servo.max}
@@ -85,6 +86,7 @@ export function ServoControl({ send, telemetry }: Props) {
             </div>
           </div>
           <button
+            data-testid="servo-claw-toggle"
             onClick={toggleClawPower}
             style={{
               padding: '9px 12px',
@@ -116,6 +118,7 @@ export function ServoControl({ send, telemetry }: Props) {
             </div>
           </div>
           <button
+            data-testid="servo-aux-toggle"
             onClick={() => setAuxExpanded((prev) => !prev)}
             style={{
               padding: '9px 12px',

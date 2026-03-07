@@ -11,6 +11,7 @@ export function EmergencyStop({ send, telemetry }: Props) {
   return (
     <div style={{ padding: 16 }}>
       <button
+        data-testid="estop-toggle"
         onClick={() => send({ cmd: 'stop', params: { active: !active } })}
         style={{
           width: '100%',

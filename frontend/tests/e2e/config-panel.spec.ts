@@ -10,9 +10,9 @@ test('updates confidence in config panel', async ({ page }) => {
   })
   await page.goto('/')
 
-  const confidenceSlider = page.locator('input[type="range"]').last()
+  const confidenceSlider = page.getByTestId('config-confidence-slider')
   await confidenceSlider.fill('0.65')
-  await page.getByRole('button', { name: 'Save' }).click()
+  await page.getByTestId('config-save').click()
 
   const saveRequest = harness.requests.find((entry) => entry.method === 'PUT' && entry.path === '/api/config')
   expect(saveRequest).toBeDefined()

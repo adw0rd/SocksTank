@@ -125,6 +125,7 @@ export function InferencePanel({ telemetry }: Props) {
         {MODES.map((mode) => (
           <button
             key={mode}
+            data-testid={`inference-mode-${mode}`}
             onClick={() => setMode(mode)}
             style={{
               flex: 1, padding: '10px 8px', fontSize: 13,
@@ -140,13 +141,13 @@ export function InferencePanel({ telemetry }: Props) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
-        <div style={statCard}>
+        <div style={statCard} data-testid="inference-backend-card">
           <div style={statLabel}>Backend</div>
-          <div style={statValue}>{backendLabel}</div>
+          <div style={statValue} data-testid="inference-backend-value">{backendLabel}</div>
         </div>
-        <div style={statCard}>
+        <div style={statCard} data-testid="inference-latency-card">
           <div style={statLabel}>Latency</div>
-          <div style={statValue}>{inferenceMs > 0 ? `${inferenceMs.toFixed(0)} ms` : 'Idle'}</div>
+          <div style={statValue} data-testid="inference-latency-value">{inferenceMs > 0 ? `${inferenceMs.toFixed(0)} ms` : 'Idle'}</div>
         </div>
       </div>
       {inferenceError && (
@@ -156,6 +157,7 @@ export function InferencePanel({ telemetry }: Props) {
       {servers.map((s) => (
         <div
           key={s.host}
+          data-testid={`gpu-server-row-${s.host}`}
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '8px 0', borderTop: '1px solid #252545',
@@ -179,9 +181,10 @@ export function InferencePanel({ telemetry }: Props) {
             </div>
           </div>
           {s.status === 'online' ? (
-            <button onClick={() => stopServer(s.host)} style={btnSmall}>Stop</button>
+            <button data-testid={`gpu-server-stop-${s.host}`} onClick={() => stopServer(s.host)} style={btnSmall}>Stop</button>
           ) : (
             <button
+              data-testid={`gpu-server-start-${s.host}`}
               onClick={() => startServer(s.host)}
               disabled={loading[s.host]}
               style={{ ...btnSmall, opacity: loading[s.host] ? 0.5 : 1 }}
@@ -189,14 +192,15 @@ export function InferencePanel({ telemetry }: Props) {
               {loading[s.host] ? 'Starting...' : 'Start'}
             </button>
           )}
-          <button onClick={() => openEdit(s)} style={btnSmall}>Edit</button>
-          <button onClick={() => removeServer(s.host)} style={{ ...btnSmall, color: '#ef5350' }}>
+          <button data-testid={`gpu-server-edit-${s.host}`} onClick={() => openEdit(s)} style={btnSmall}>Edit</button>
+          <button data-testid={`gpu-server-delete-${s.host}`} onClick={() => removeServer(s.host)} style={{ ...btnSmall, color: '#ef5350' }}>
             ×
           </button>
         </div>
       ))}
 
       <button
+        data-testid="gpu-server-add"
         onClick={openAdd}
         style={{
           marginTop: 8, padding: '8px 12px', fontSize: 12,

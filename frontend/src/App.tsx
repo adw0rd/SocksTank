@@ -71,6 +71,7 @@ export default function App() {
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, minWidth: 0 }}>SocksTank Control Surface</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <div
+            data-testid="header-camera-chip"
             style={{
               padding: '8px 12px',
               borderRadius: 999,
@@ -91,6 +92,7 @@ export default function App() {
             Camera: {cameraHeader}
           </div>
           <div
+            data-testid="header-inference-chip"
             style={{
               padding: '8px 12px',
               borderRadius: 999,
@@ -111,6 +113,7 @@ export default function App() {
             {inferenceHeader}
           </div>
           <div
+            data-testid="header-estop-chip"
             style={{
               padding: '8px 12px',
               borderRadius: 999,
@@ -138,48 +141,48 @@ export default function App() {
       }}>
         {/* Left sidebar: direct controls */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={panelStyle}>
+          <div style={panelStyle} data-testid="panel-terminator">
             <TerminatorPanel />
           </div>
-          <div style={panelStyle}>
+          <div style={panelStyle} data-testid="panel-sensors">
             <SensorDisplay telemetry={telemetry} />
           </div>
-          <div style={panelStyle}>
+          <div style={panelStyle} data-testid="panel-motor">
             <MotorControl send={send} telemetry={telemetry} />
           </div>
-          <div style={panelStyle}>
+          <div style={panelStyle} data-testid="panel-servo">
             <ServoControl send={send} telemetry={telemetry} />
           </div>
-          <div style={panelStyle}>
+          <div style={panelStyle} data-testid="panel-led">
             <LedControl send={send} telemetry={telemetry} />
           </div>
         </div>
 
         {/* Center column: video and live state */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={panelStyle}>
+          <div style={panelStyle} data-testid="panel-video">
             <VideoFeed />
           </div>
-          <div style={panelStyle}>
+          <div style={panelStyle} data-testid="panel-status">
             <StatusBar telemetry={telemetry} wsStatus={status} />
           </div>
-          <div style={panelStyle}>
+          <div style={panelStyle} data-testid="panel-places">
             <PlacesPanel />
           </div>
         </div>
 
         {/* Right sidebar: system and inference */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={panelStyle}>
+          <div style={panelStyle} data-testid="panel-estop">
             <EmergencyStop send={send} telemetry={telemetry} />
           </div>
-          <div style={panelStyle}>
+          <div style={panelStyle} data-testid="panel-mode">
             <ModeSelector send={send} telemetry={telemetry} />
           </div>
-          <div style={panelStyle}>
+          <div style={panelStyle} data-testid="panel-inference">
             <InferencePanel telemetry={telemetry} />
           </div>
-          <div style={panelStyle}>
+          <div style={panelStyle} data-testid="panel-config">
             <ConfigPanel telemetry={telemetry} />
           </div>
         </div>

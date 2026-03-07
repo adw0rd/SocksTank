@@ -162,6 +162,7 @@ export function MotorControl({ send, telemetry }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <span style={{ color: '#aab1d6', fontSize: 13, minWidth: 90 }}>Speed: {speed}</span>
         <input
+          data-testid="motor-speed-slider"
           type="range" min={500} max={4095} value={speed}
           onChange={(e) => setSpeed(Number(e.target.value))}
           style={{ flex: 1 }}
@@ -170,11 +171,11 @@ export function MotorControl({ send, telemetry }: Props) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, opacity: locked ? 0.55 : 1 }}>
-        <button disabled={locked} style={btnStyle('#32414a')} {...holdToDrive(driveProfiles.tl.left, driveProfiles.tl.right)}>Q / TL</button>
-        <button disabled={locked} style={btnStyle('#2d8cff')} {...holdToDrive(driveProfiles.fwd.left, driveProfiles.fwd.right)}>W / FWD</button>
-        <button disabled={locked} style={btnStyle('#32414a')} {...holdToDrive(driveProfiles.tr.left, driveProfiles.tr.right)}>E / TR</button>
+        <button data-testid="motor-btn-tl" disabled={locked} style={btnStyle('#32414a')} {...holdToDrive(driveProfiles.tl.left, driveProfiles.tl.right)}>Q / TL</button>
+        <button data-testid="motor-btn-fwd" disabled={locked} style={btnStyle('#2d8cff')} {...holdToDrive(driveProfiles.fwd.left, driveProfiles.fwd.right)}>W / FWD</button>
+        <button data-testid="motor-btn-tr" disabled={locked} style={btnStyle('#32414a')} {...holdToDrive(driveProfiles.tr.left, driveProfiles.tr.right)}>E / TR</button>
 
-        <button disabled={locked} style={btnStyle('#3d5361')} {...holdToDrive(driveProfiles.left.left, driveProfiles.left.right)}>A / LEFT</button>
+        <button data-testid="motor-btn-left" disabled={locked} style={btnStyle('#3d5361')} {...holdToDrive(driveProfiles.left.left, driveProfiles.left.right)}>A / LEFT</button>
         <div
           style={{
             borderRadius: 6,
@@ -191,11 +192,11 @@ export function MotorControl({ send, telemetry }: Props) {
         >
           Hold to drive
         </div>
-        <button disabled={locked} style={btnStyle('#3d5361')} {...holdToDrive(driveProfiles.right.left, driveProfiles.right.right)}>D / RIGHT</button>
+        <button data-testid="motor-btn-right" disabled={locked} style={btnStyle('#3d5361')} {...holdToDrive(driveProfiles.right.left, driveProfiles.right.right)}>D / RIGHT</button>
 
-        <button disabled={locked} style={btnStyle('#32414a')} {...holdToDrive(driveProfiles.bl.left, driveProfiles.bl.right)}>Z / BL</button>
-        <button disabled={locked} style={btnStyle('#2d8cff')} {...holdToDrive(driveProfiles.bwd.left, driveProfiles.bwd.right)}>X / BWD</button>
-        <button disabled={locked} style={btnStyle('#32414a')} {...holdToDrive(driveProfiles.br.left, driveProfiles.br.right)}>C / BR</button>
+        <button data-testid="motor-btn-bl" disabled={locked} style={btnStyle('#32414a')} {...holdToDrive(driveProfiles.bl.left, driveProfiles.bl.right)}>Z / BL</button>
+        <button data-testid="motor-btn-bwd" disabled={locked} style={btnStyle('#2d8cff')} {...holdToDrive(driveProfiles.bwd.left, driveProfiles.bwd.right)}>X / BWD</button>
+        <button data-testid="motor-btn-br" disabled={locked} style={btnStyle('#32414a')} {...holdToDrive(driveProfiles.br.left, driveProfiles.br.right)}>C / BR</button>
       </div>
     </div>
   )

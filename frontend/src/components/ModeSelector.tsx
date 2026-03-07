@@ -30,6 +30,7 @@ export function ModeSelector({ send, telemetry }: Props) {
         {MODES.map((mode) => (
           <button
             key={mode.value}
+            data-testid={`mode-btn-${mode.value}`}
             onClick={() => send({ cmd: 'mode', params: { mode: mode.value } })}
             style={{
               padding: '12px 10px',

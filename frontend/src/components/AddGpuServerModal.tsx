@@ -66,12 +66,12 @@ export function AddGpuServerModal({ onClose, onSaved, server }: Props) {
   }
 
   return (
-    <div style={{
+    <div data-testid="gpu-modal-backdrop" style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 1000,
     }}>
-      <div style={{
+      <div data-testid="gpu-modal" style={{
         background: '#1a1a2e', borderRadius: 12, padding: 24, width: 360,
         border: '1px solid #252545',
       }}>
@@ -79,6 +79,7 @@ export function AddGpuServerModal({ onClose, onSaved, server }: Props) {
 
         <label style={labelStyle}>Name</label>
         <input
+          data-testid="gpu-modal-name"
           value={name} onChange={(e) => setName(e.target.value)}
           placeholder="Blackops RTX 4070"
           style={inputStyle}
@@ -86,6 +87,7 @@ export function AddGpuServerModal({ onClose, onSaved, server }: Props) {
 
         <label style={labelStyle}>Host</label>
         <input
+          data-testid="gpu-modal-host"
           value={host} onChange={(e) => setHost(e.target.value)}
           placeholder="192.168.0.188"
           style={inputStyle}
@@ -93,12 +95,14 @@ export function AddGpuServerModal({ onClose, onSaved, server }: Props) {
 
         <label style={labelStyle}>Port</label>
         <input
+          data-testid="gpu-modal-port"
           type="number" value={port} onChange={(e) => setPort(Number(e.target.value))}
           style={inputStyle}
         />
 
         <label style={labelStyle}>Username</label>
         <input
+          data-testid="gpu-modal-username"
           value={username} onChange={(e) => setUsername(e.target.value)}
           placeholder="user"
           style={inputStyle}
@@ -109,6 +113,7 @@ export function AddGpuServerModal({ onClose, onSaved, server }: Props) {
           {(['key', 'password'] as const).map((t) => (
             <button
               key={t}
+              data-testid={`gpu-modal-auth-${t}`}
               onClick={() => setAuthType(t)}
               style={{
                 flex: 1, padding: '6px', fontSize: 12,
@@ -125,6 +130,7 @@ export function AddGpuServerModal({ onClose, onSaved, server }: Props) {
           <>
             <label style={labelStyle}>Password</label>
             <input
+              data-testid="gpu-modal-password"
               type="password" value={password} onChange={(e) => setPassword(e.target.value)}
               style={inputStyle}
             />
@@ -133,6 +139,7 @@ export function AddGpuServerModal({ onClose, onSaved, server }: Props) {
           <>
             <label style={labelStyle}>Key Path</label>
             <input
+              data-testid="gpu-modal-key-path"
               value={keyPath} onChange={(e) => setKeyPath(e.target.value)}
               style={inputStyle}
             />
@@ -150,13 +157,13 @@ export function AddGpuServerModal({ onClose, onSaved, server }: Props) {
         )}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button onClick={test} disabled={!host || !username} style={{ ...actionBtn, background: '#37474f', flex: 1 }}>
+          <button data-testid="gpu-modal-test" onClick={test} disabled={!host || !username} style={{ ...actionBtn, background: '#37474f', flex: 1 }}>
             Test
           </button>
-          <button onClick={save} disabled={!host || !username || saving} style={{ ...actionBtn, background: '#1976d2', flex: 1 }}>
+          <button data-testid="gpu-modal-save" onClick={save} disabled={!host || !username || saving} style={{ ...actionBtn, background: '#1976d2', flex: 1 }}>
             {saving ? '...' : editing ? 'Update' : 'Save'}
           </button>
-          <button onClick={onClose} style={{ ...actionBtn, background: '#37474f', flex: 0 }}>
+          <button data-testid="gpu-modal-cancel" onClick={onClose} style={{ ...actionBtn, background: '#37474f', flex: 0 }}>
             Cancel
           </button>
         </div>
