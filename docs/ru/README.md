@@ -112,6 +112,9 @@ sudo pip install . --break-system-packages
 * **Бенчмарки**
     * [Бенчмарки инференса](benchmarks.md)
     * [Бенчмарки диска](disk-benchmarks.md)
+* **Тестирование и качество**
+    * [План UI E2E тестов и покрытие](../plans/2026-03-06-ui-e2e-test-plan.md)
+    * GitHub Actions workflow: `Tests` (backend) и `UI E2E` (Playwright)
 * [**Инфраструктура**](infrastructure.md)
 
 ---

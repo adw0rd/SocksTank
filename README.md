@@ -105,6 +105,13 @@ FastAPI backend (REST + WebSocket + static frontend)
 - [Inference benchmarks](docs/en/benchmarks.md)
 - [Disk benchmarks](docs/en/disk-benchmarks.md)
 - [Infrastructure](docs/en/infrastructure.md)
+- [UI E2E test plan](docs/plans/2026-03-06-ui-e2e-test-plan.md)
+
+### CI and Testing
+
+- `Tests` GitHub Actions workflow runs backend tests on `push` and `pull_request`.
+- `UI E2E` GitHub Actions workflow runs Playwright UI tests on `pull_request`, nightly, and manual dispatch.
+- On UI failures, Playwright artifacts are retained (`trace`, `screenshot`, `video`).
 
 ---
 

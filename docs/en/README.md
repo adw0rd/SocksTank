@@ -112,6 +112,9 @@ sudo pip install . --break-system-packages
 * **Benchmarks**
     * [Inference benchmarks](benchmarks.md)
     * [Disk benchmarks](disk-benchmarks.md)
+* **Testing and quality**
+    * [UI E2E test plan and coverage](../plans/2026-03-06-ui-e2e-test-plan.md)
+    * GitHub Actions workflows: `Tests` (backend) and `UI E2E` (Playwright)
 * [**Infrastructure**](infrastructure.md)
 
 ---
